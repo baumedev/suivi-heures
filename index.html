@@ -3383,7 +3383,7 @@ function doLogin(){
 }
 
 function doLogout(){
-  if(!confirm("Se déconnecter?"))return;
+  if(!confirm("Se deconnecter?"))return;
   state.currentUser=null;
   localStorage.removeItem('sh_session');
   document.getElementById('loginScreen').style.display='flex';
@@ -3421,7 +3421,7 @@ function buildUtilisateurs(){
   const c=document.getElementById('content-reglages');
   if(!c)return;
   if(!state.currentUser||state.currentUser.role!=='admin'){
-    c.innerHTML='<div class="empty">⛔ Accès réservé à l'administrateur.</div>';
+    c.innerHTML="<div style='text-align:center;padding:40px 20px;color:var(--secondary);font-size:13px;'>&#128683; Acces reserve a l'administrateur.</div>";
     return;
   }
   const rows=state.utilisateurs.map((u,i)=>`
@@ -3491,7 +3491,7 @@ function saveUserModal(idx){
   const password=document.getElementById('u-pass').value;
   const role=document.getElementById('u-role').value;
   if(!nom||!username||!password){alert("Tous les champs sont obligatoires.");return;}
-  if(idx===-1&&state.utilisateurs.find(u=>u.username===username)){alert("Ce nom d'utilisateur existe déjà.");return;}
+  if(idx===-1&&state.utilisateurs.find(u=>u.username===username)){alert("Ce nom utilisateur existe deja.");return;}
   const user={username,password,nom,role};
   if(idx===-1)state.utilisateurs.push(user);
   else state.utilisateurs[idx]=user;
