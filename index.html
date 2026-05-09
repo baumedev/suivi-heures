@@ -119,6 +119,15 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .sync-dot.ok{background:#639922;}
 .sync-dot.err{background:#E24B4A;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e 0%,#0C447C 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+.login-box{background:#fff;border-radius:18px;padding:32px 24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+.login-logo{text-align:center;margin-bottom:24px;}
+.login-logo .logo-icon{font-size:48px;display:block;margin-bottom:8px;}
+.login-logo h1{font-size:20px;font-weight:700;margin:0;color:#1a1a1a;}
+.login-logo p{font-size:13px;color:var(--secondary);margin:4px 0 0;}
+.login-error{background:#FCEBEB;color:#791F1F;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;margin-bottom:12px;display:none;}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;cursor:pointer;color:var(--secondary);}
+.logout-btn:hover{background:#f0f0f0;}
 .tab-heures.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
 .tab-reglages.active{color:#534AB7;border-bottom-color:#534AB7;}
 .tab-facturation.active{color:#1a6b3a;border-bottom-color:#2ea15a;}
@@ -156,9 +165,30 @@ body{background:#fff;font-size:11px;}
 </head>
 <body>
 
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-icon">🏗</span>
+      <h1>Suivi des heures</h1>
+      <p>Connecte-toi pour continuer</p>
+    </div>
+    <div class="login-error" id="loginError">Nom d'utilisateur ou mot de passe incorrect.</div>
+    <div class="field"><label>Utilisateur</label>
+      <input type="text" id="login-user" placeholder="Ton nom d'utilisateur" autocomplete="username" autocapitalize="none"/>
+    </div>
+    <div class="field"><label>Mot de passe</label>
+      <input type="password" id="login-pass" placeholder="Ton mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()" style="margin-top:4px;">Se connecter →</button>
+    <p style="font-size:11px;color:var(--secondary);text-align:center;margin:12px 0 0;">Contacte l'administrateur si tu as oublié ton mot de passe.</p>
+  </div>
+</div>
+
 <div class="sync-bar" id="syncBar">
   <div class="sync-dot syncing" id="syncDot"></div>
   <span id="syncText">Connexion à Supabase...</span>
+  <span id="currentUserBadge" style="margin-left:auto;font-size:11px;color:var(--secondary);display:none;"></span>
+  <button class="logout-btn" id="logoutBtn" style="display:none;margin-left:8px;" onclick="doLogout()">Déconnexion</button>
 </div>
 
 <nav class="top-nav">
@@ -199,6 +229,7 @@ body{background:#fff;font-size:11px;}
 <div id="page-reglages" class="page">
   <nav class="sub-nav" id="reglages-subnav">
     <button class="active" onclick="setReglagesSub('backup')">💾 Sauvegarde</button>
+    <button onclick="setReglagesSub('utilisateurs')">👥 Utilisateurs</button>
     <button onclick="setReglagesSub('problemes')">🐛 Problèmes</button>
     <button onclick="setReglagesSub('suggestions')">💡 Suggestions</button>
   </nav>
@@ -246,6 +277,14 @@ let state = {
   clients:[],
   clientId:0,
   empInfos:{},
+  utilisateurs:[
+    {username:'admin',password:'Admin2024!',nom:'Administrateur',role:'admin'},
+    {username:'victor',password:'Victor2024!',nom:'Victor',role:'employe'},
+    {username:'edouard',password:'Edouard2024!',nom:'Edouard',role:'employe'},
+    {username:'denis',password:'Denis2024!',nom:'Denis',role:'employe'},
+    {username:'dom',password:'Dom2024!',nom:'Dom',role:'employe'}
+  ],
+  currentUser:null,
   tickets:[],
   ticketId:0,
   suggestions:[{
@@ -2662,7 +2701,7 @@ function buildFournisseursFiches(){
 function setReglagesSub(sub){
   window._reglagesSub=sub;
   const btns=document.querySelectorAll('#reglages-subnav button');
-  const subs=['backup','problemes','suggestions'];
+  const subs=['backup','utilisateurs','problemes','suggestions'];
   btns.forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
   renderReglages();
 }
@@ -2671,6 +2710,7 @@ function renderReglages(){
   const c=document.getElementById('content-reglages');
   if(!c)return;
   const sub=window._reglagesSub||'backup';
+  if(sub==='utilisateurs'){buildUtilisateurs();return;}
   if(sub==='problemes'){c.innerHTML=buildProblemes();return;}
   if(sub==='suggestions'){c.innerHTML=buildSuggestions();return;}
   const lastBackup=localStorage.getItem('sh_last_backup')||'Jamais';
@@ -3319,6 +3359,152 @@ function imprimerRapport(){
   window.print();
 }
 
+
+// ─── AUTHENTIFICATION ─────────────────────────────────────
+function doLogin(){
+  const user=document.getElementById('login-user').value.trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value;
+  const found=state.utilisateurs.find(u=>u.username.toLowerCase()===user&&u.password===pass);
+  const errEl=document.getElementById('loginError');
+  if(!found){
+    errEl.style.display='block';
+    document.getElementById('login-pass').value='';
+    return;
+  }
+  errEl.style.display='none';
+  state.currentUser=found;
+  localStorage.setItem('sh_session',JSON.stringify({username:found.username,nom:found.nom,role:found.role}));
+  document.getElementById('loginScreen').style.display='none';
+  // Show user badge
+  const badge=document.getElementById('currentUserBadge');
+  const logoutBtn=document.getElementById('logoutBtn');
+  if(badge){badge.textContent='👤 '+found.nom;badge.style.display='inline';}
+  if(logoutBtn)logoutBtn.style.display='inline-block';
+}
+
+function doLogout(){
+  if(!confirm("Se déconnecter?"))return;
+  state.currentUser=null;
+  localStorage.removeItem('sh_session');
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  const badge=document.getElementById('currentUserBadge');
+  const logoutBtn=document.getElementById('logoutBtn');
+  if(badge)badge.style.display='none';
+  if(logoutBtn)logoutBtn.style.display='none';
+}
+
+function checkSession(){
+  try{
+    const s=localStorage.getItem('sh_session');
+    if(s){
+      const sess=JSON.parse(s);
+      // Verify user still exists
+      const found=state.utilisateurs.find(u=>u.username===sess.username);
+      if(found){
+        state.currentUser=found;
+        document.getElementById('loginScreen').style.display='none';
+        const badge=document.getElementById('currentUserBadge');
+        const logoutBtn=document.getElementById('logoutBtn');
+        if(badge){badge.textContent='👤 '+found.nom;badge.style.display='inline';}
+        if(logoutBtn)logoutBtn.style.display='inline-block';
+        return true;
+      }
+    }
+  }catch(e){}
+  return false;
+}
+
+// ─── GESTION UTILISATEURS (Admin seulement) ───────────────
+function buildUtilisateurs(){
+  const c=document.getElementById('content-reglages');
+  if(!c)return;
+  if(!state.currentUser||state.currentUser.role!=='admin'){
+    c.innerHTML='<div class="empty">⛔ Accès réservé à l'administrateur.</div>';
+    return;
+  }
+  const rows=state.utilisateurs.map((u,i)=>`
+    <tr style="border-bottom:0.5px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="font-size:13px;font-weight:600;">${u.nom}</div>
+        <div style="font-size:11px;color:var(--secondary);">@${u.username}</div>
+      </td>
+      <td style="padding:10px 8px;"><span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${u.role==='admin'?'#E6F1FB':'#f0f0f0'};color:${u.role==='admin'?'#0C447C':'#666'}">${u.role==='admin'?'Admin':'Employé'}</span></td>
+      <td style="padding:10px 8px;text-align:right;">
+        <button class="btn-edit" onclick="openUserModal(${i})" style="font-size:13px;">✏️</button>
+        ${u.username!=='admin'?`<button class="btn-del" onclick="supprimerUser(${i})">✕</button>`:''}
+      </td>
+    </tr>`).join('');
+  c.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${state.utilisateurs.length} utilisateur${state.utilisateurs.length>1?'s':''}</span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openUserModal(-1)">+ Nouvel utilisateur</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f9f9f9;border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">UTILISATEUR</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">RÔLE</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="background:#FEF3C7;border-radius:var(--radius-sm);padding:10px 12px;margin-top:12px;font-size:12px;color:#92400E;">
+      ⚠️ Les mots de passe par défaut sont indiqués ci-dessous. Demandez à chaque utilisateur de les changer.<br><br>
+      ${state.utilisateurs.map(u=>`<strong>${u.nom}</strong>: ${u.password}`).join(' · ')}
+    </div>`;
+}
+
+function openUserModal(idx){
+  const isNew=idx===-1;
+  const u=isNew?{username:'',password:'',nom:'',role:'employe'}:state.utilisateurs[idx];
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>${isNew?'Nouvel utilisateur':'Modifier utilisateur'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Nom affiché</label><input type="text" id="u-nom" value="${u.nom||''}" placeholder="Ex: Victor"/></div>
+      <div class="field"><label>Nom d'utilisateur</label><input type="text" id="u-user" value="${u.username||''}" placeholder="Ex: victor" autocapitalize="none"/></div>
+    </div>
+    <div class="field"><label>Mot de passe</label><input type="password" id="u-pass" value="${u.password||''}" placeholder="Mot de passe"/></div>
+    <div class="field"><label>Rôle</label>
+      <select id="u-role" style="width:100%;">
+        <option value="employe" ${u.role==='employe'?'selected':''}>Employé</option>
+        <option value="admin" ${u.role==='admin'?'selected':''}>Administrateur</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveUserModal(${idx})">💾 Sauvegarder</button>
+      ${!isNew&&u.username!=='admin'?`<button class="btn btn-sm btn-danger" onclick="supprimerUser(${idx})">🗑</button>`:''}
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveUserModal(idx){
+  const nom=document.getElementById('u-nom').value.trim();
+  const username=document.getElementById('u-user').value.trim().toLowerCase();
+  const password=document.getElementById('u-pass').value;
+  const role=document.getElementById('u-role').value;
+  if(!nom||!username||!password){alert("Tous les champs sont obligatoires.");return;}
+  if(idx===-1&&state.utilisateurs.find(u=>u.username===username)){alert("Ce nom d'utilisateur existe déjà.");return;}
+  const user={username,password,nom,role};
+  if(idx===-1)state.utilisateurs.push(user);
+  else state.utilisateurs[idx]=user;
+  closeModal();
+  buildUtilisateurs();
+}
+
+function supprimerUser(idx){
+  if(!confirm("Supprimer cet utilisateur?"))return;
+  state.utilisateurs.splice(idx,1);
+  buildUtilisateurs();
+}
+
 // ─── INIT ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
   // 1. Show heures page immediately
@@ -3328,7 +3514,15 @@ window.addEventListener('DOMContentLoaded', function(){
   
   // 2. Load local data only (no render yet, setHeuresEmp will render)
   loadLocal(false);
-  setTimeout(()=>setHeuresEmp('victor'),50);
+  setTimeout(()=>{
+    setHeuresEmp('victor');
+    // Check if user has active session
+    if(!checkSession()){
+      // Show login screen
+      const ls=document.getElementById('loginScreen');
+      if(ls)ls.style.display='flex';
+    }
+  },50);
   
   // 3. Sync with Supabase once in background — only update state, never re-render
   setTimeout(async()=>{
