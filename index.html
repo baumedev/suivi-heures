@@ -186,7 +186,16 @@ body{background:#fff;font-size:11px;}
 <div id="page-edouard" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('edouard','cal')">📅 Calendrier</button><button onclick="setSub('edouard','liste')">📋 Liste</button><button onclick="setSub('edouard','rapport')">📈 Rapport</button></nav><div class="content" id="content-edouard"></div></div>
 <div id="page-denis" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('denis','cal')">📅 Calendrier</button><button onclick="setSub('denis','liste')">📋 Liste</button><button onclick="setSub('denis','rapport')">📈 Rapport</button></nav><div class="content" id="content-denis"></div></div>
 <div id="page-chantiers" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('chantiers','clients')">👤 Clients</button><button onclick="setSub('chantiers','chantiersList')">🏗 Chantiers</button><button onclick="setSub('chantiers','employes')">👷 Employés</button><button onclick="setSub('chantiers','sstraitants_fiches')">🔧 Sous-traitants</button><button onclick="setSub('chantiers','fournisseurs_fiches')">🏪 Fournisseurs</button><button onclick="setSub('chantiers','entreprise_fiche')">🏢 Entreprise</button><button onclick="setSub('chantiers','listes')">✅ Tâches</button></nav><div class="content" id="content-chantiers"></div></div>
-<div id="page-rapport" class="page"><div class="content" id="content-rapport"></div></div>
+<div id="page-rapport" class="page">
+  <nav class="sub-nav" id="rapport-subnav">
+    <button class="active" onclick="setRapportSub('dashboard')">📊 Tableau de bord</button>
+    <button onclick="setRapportSub('chantier')">🏗 Par chantier</button>
+    <button onclick="setRapportSub('employe')">👷 Par employé</button>
+    <button onclick="setRapportSub('paie')">💵 Paie</button>
+    <button onclick="setRapportSub('periode')">📅 Par période</button>
+  </nav>
+  <div class="content" id="content-rapport"></div>
+</div>
 <div id="page-reglages" class="page">
   <nav class="sub-nav" id="reglages-subnav">
     <button class="active" onclick="setReglagesSub('backup')">💾 Sauvegarde</button>
@@ -715,7 +724,21 @@ function buildRapportEmp(emp){
 
 
 // ─── RAPPORT COMPLET ──────────────────────────────────────
+function setRapportSub(sub){
+  window._rapportMainSub=sub;
+  const btns=document.querySelectorAll('#rapport-subnav button');
+  const subs=['dashboard','chantier','employe','paie','periode'];
+  btns.forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
+  renderRapportPeriode();
+}
+
 function renderRapportPeriode(){
+  const sub=window._rapportMainSub||'dashboard';
+  if(sub==='dashboard'){buildDashboard();return;}
+  if(sub==='chantier'){buildRapportChantier();return;}
+  if(sub==='employe'){buildRapportEmployes();return;}
+  if(sub==='paie'){buildRapportPaie();return;}
+  // Default: periode
   document.getElementById('content-rapport').innerHTML=`
     <div class="card">
       <div class="card-title">📊 Rapports</div>
@@ -2839,6 +2862,397 @@ function supprimerTicket(id,type){
   else state.suggestions=state.suggestions.filter(s=>s.id!==id);
   saveToCloud();
   renderReglages();
+}
+
+
+// ─── TABLEAU DE BORD ──────────────────────────────────────
+function buildDashboard(){
+  const c=document.getElementById('content-rapport');
+  if(!c)return;
+  const today=new Date();
+  const moisDebut=new Date(today.getFullYear(),today.getMonth(),1);
+  const moisFin=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59);
+  const semaineDebut=new Date(today);
+  semaineDebut.setDate(today.getDate()-(today.getDay()||7)+1);
+  semaineDebut.setHours(0,0,0,0);
+
+  // Heures ce mois
+  let hMois=0,hMoisFact=0;
+  Object.keys(EMPS).forEach(emp=>{
+    state.entries[emp].forEach(en=>{
+      const d=new Date(en.date+'T12:00:00');
+      if(d>=moisDebut&&d<=moisFin){hMois+=en.heures;if(en.facturable)hMoisFact+=en.heures;}
+    });
+  });
+
+  // Heures cette semaine
+  let hSemaine=0;
+  Object.keys(EMPS).forEach(emp=>{
+    state.entries[emp].forEach(en=>{
+      const d=new Date(en.date+'T12:00:00');
+      if(d>=semaineDebut&&d<=today)hSemaine+=en.heures;
+    });
+  });
+
+  // Montant à facturer ce mois (heures facturables × taux)
+  let montantMois=0;
+  const hParCh={};
+  Object.keys(EMPS).forEach(emp=>{
+    state.entries[emp].filter(en=>{const d=new Date(en.date+'T12:00:00');return en.facturable&&d>=moisDebut&&d<=moisFin;}).forEach(en=>{
+      if(!hParCh[en.chantier])hParCh[en.chantier]=0;hParCh[en.chantier]+=en.heures;
+    });
+  });
+  Object.entries(hParCh).forEach(([ch,h])=>{const m=calcMontant(h,ch);if(m)montantMois+=m;});
+
+  // Factures en attente
+  const facturesEnvoyees=state.factures.filter(f=>f.statut==='envoye');
+  const totalEnAttente=facturesEnvoyees.reduce((s,f)=>s+f.grandTotal,0);
+  const facturesBrouillon=state.factures.filter(f=>f.statut==='brouillon');
+
+  // Heures par employé ce mois
+  const hEmp={};
+  Object.entries(EMPS).forEach(([empKey,e])=>{
+    let h=0;
+    state.entries[empKey].forEach(en=>{const d=new Date(en.date+'T12:00:00');if(d>=moisDebut&&d<=moisFin)h+=en.heures;});
+    hEmp[empKey]={h,label:e.label,col:e.col,bg:e.bg};
+  });
+  const maxH=Math.max(...Object.values(hEmp).map(v=>v.h),1);
+
+  // Heures par chantier ce mois
+  const hCh={};
+  Object.keys(EMPS).forEach(emp=>{
+    state.entries[emp].forEach(en=>{const d=new Date(en.date+'T12:00:00');if(d>=moisDebut&&d<=moisFin){if(!hCh[en.chantier||'—'])hCh[en.chantier||'—']=0;hCh[en.chantier||'—']+=en.heures;}});
+  });
+  const topCh=Object.entries(hCh).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxCh=topCh.length?topCh[0][1]:1;
+
+  // Alertes
+  const alertes=[];
+  if(facturesBrouillon.length)alertes.push({type:'warn',msg:`${facturesBrouillon.length} facture${facturesBrouillon.length>1?'s':''} en brouillon non envoyée${facturesBrouillon.length>1?'s':''}`});
+  if(facturesEnvoyees.length)alertes.push({type:'info',msg:`${facturesEnvoyees.length} facture${facturesEnvoyees.length>1?'s':''} envoyée${facturesEnvoyees.length>1?'s':''} en attente de paiement — ${totalEnAttente.toFixed(2)} $`});
+  const moisNom=today.toLocaleDateString('fr-CA',{month:'long',year:'numeric'});
+
+  c.innerHTML=`
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--secondary);">📊 Tableau de bord — ${moisNom.charAt(0).toUpperCase()+moisNom.slice(1)}</div>
+
+    ${alertes.length?`<div style="margin-bottom:12px;">${alertes.map(a=>`
+      <div style="background:${a.type==='warn'?'#FEF3C7':'#E6F1FB'};border-left:3px solid ${a.type==='warn'?'#F59E0B':'#185FA5'};padding:10px 12px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:6px;color:${a.type==='warn'?'#92400E':'#0C447C'};">
+        ${a.type==='warn'?'⚠️':'ℹ️'} ${a.msg}
+      </div>`).join('')}</div>`:''}
+
+    <div class="stats-row-4" style="margin-bottom:16px;">
+      <div class="stat-box"><div class="label">Heures cette semaine</div><div class="value">${hSemaine.toFixed(1)}h</div></div>
+      <div class="stat-box stat-fact"><div class="label">Heures ce mois</div><div class="value">${hMois.toFixed(1)}h</div></div>
+      <div class="stat-box stat-money"><div class="label">💰 À facturer ce mois</div><div class="value">${montantMois>0?montantMois.toFixed(0)+' $':'—'}</div></div>
+      <div class="stat-box stat-nf"><div class="label">En attente paiement</div><div class="value">${totalEnAttente>0?totalEnAttente.toFixed(0)+' $':'—'}</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:12px;">
+      <div class="card">
+        <div class="card-title">👷 Heures par employé ce mois</div>
+        ${Object.entries(hEmp).map(([k,v])=>`
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:12px;font-weight:500;color:${v.col};">${v.label}</span>
+              <span style="font-size:12px;font-weight:600;">${v.h.toFixed(1)}h</span>
+            </div>
+            <div style="background:#f0f0f0;border-radius:20px;height:8px;overflow:hidden;">
+              <div style="background:${v.col};height:100%;width:${v.h>0?Math.round(v.h/maxH*100):0}%;border-radius:20px;transition:width 0.5s;"></div>
+            </div>
+          </div>`).join('')}
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏗 Heures par chantier ce mois</div>
+        ${topCh.length?topCh.map(([ch,h])=>`
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+              <span style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;">${ch}</span>
+              <span style="font-size:12px;font-weight:600;">${h.toFixed(1)}h</span>
+            </div>
+            <div style="background:#f0f0f0;border-radius:20px;height:8px;overflow:hidden;">
+              <div style="background:#185FA5;height:100%;width:${Math.round(h/maxCh*100)}%;border-radius:20px;"></div>
+            </div>
+          </div>`).join(''):'<div class="empty" style="padding:10px 0;">Aucune heure ce mois.</div>'}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🧾 Dernières factures</div>
+      ${state.factures.slice(0,5).map(f=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border);">
+          <div>
+            <span style="font-size:12px;font-weight:600;color:#0C447C;">#${f.numero}</span>
+            <span style="font-size:12px;margin-left:8px;">${f.chantier}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="statut-badge statut-${f.statut}">${f.statut==='brouillon'?'Brouillon':f.statut==='envoye'?'Envoyée':'Payée'}</span>
+            <span style="font-size:13px;font-weight:600;">${f.grandTotal.toFixed(2)} $</span>
+          </div>
+        </div>`).join('')||'<div class="empty" style="padding:10px 0;">Aucune facture.</div>'}
+      ${state.factures.length>5?`<button class="btn btn-sm" style="margin-top:8px;width:100%;" onclick="setSub('facturation','historique');setEmp('facturation')">Voir toutes les factures →</button>`:''}
+    </div>`;
+}
+
+// ─── RAPPORT PAR CHANTIER ─────────────────────────────────
+function buildRapportChantier(){
+  const c=document.getElementById('content-rapport');
+  if(!c)return;
+  const chOpts=selOpts(state.chantiers,'','-- Tous les chantiers --');
+  c.innerHTML=`
+    <div class="card">
+      <div class="card-title">🏗 Rapport par chantier</div>
+      <div class="field"><label>Chantier</label><select id="rc-ch" style="width:100%;" onchange="genRapportChantier()">${chOpts}</select></div>
+      <div class="grid2">
+        <div class="field"><label>Date début</label><input type="date" id="rc-d1" style="width:100%;color:var(--primary);" onchange="genRapportChantier()"/></div>
+        <div class="field"><label>Date fin</label><input type="date" id="rc-d2" style="width:100%;color:var(--primary);" onchange="genRapportChantier()"/></div>
+      </div>
+    </div>
+    <div id="rc-result"></div>`;
+}
+
+function genRapportChantier(){
+  const ch=document.getElementById('rc-ch').value;
+  const d1s=document.getElementById('rc-d1').value;
+  const d2s=document.getElementById('rc-d2').value;
+  const d1=d1s?new Date(d1s+'T00:00:00'):null;
+  const d2=d2s?new Date(d2s+'T23:59:59'):null;
+  const chs=ch?[ch]:state.chantiers;
+  let html='';
+  chs.forEach(chantier=>{
+    const fiche=state.fiches[chantier]||{};
+    const taux=parseFloat(fiche.taux)||0;
+    const fg=parseFloat(fiche.fraisGestion)||0;
+    // Heures par employé
+    let totalH=0,totalFact=0;
+    const parEmp={};
+    Object.entries(EMPS).forEach(([empKey,e])=>{
+      const entries=state.entries[empKey].filter(en=>{
+        if(en.chantier!==chantier)return false;
+        if(d1&&new Date(en.date+'T12:00:00')<d1)return false;
+        if(d2&&new Date(en.date+'T12:00:00')>d2)return false;
+        return true;
+      });
+      const h=entries.reduce((s,en)=>s+en.heures,0);
+      const hf=entries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+      if(h>0)parEmp[empKey]={h,hf,label:e.label,col:e.col};
+      totalH+=h;totalFact+=hf;
+    });
+    if(!totalH&&!ch)return;
+    const montantMdo=taux>0?totalFact*taux:0;
+    // Factures SST
+    const sstFacts=state.sstFactures.filter(a=>{
+      if(a.chantier!==chantier)return false;
+      if(d1&&new Date(a.date+'T12:00:00')<d1)return false;
+      if(d2&&new Date(a.date+'T12:00:00')>d2)return false;
+      return true;
+    });
+    const totalSST=sstFacts.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    const totalSSTFact=sstFacts.filter(a=>a.facturable).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    // Achats
+    const achats=state.achats.filter(a=>{
+      if(a.chantier!==chantier)return false;
+      if(d1&&new Date(a.date+'T12:00:00')<d1)return false;
+      if(d2&&new Date(a.date+'T12:00:00')>d2)return false;
+      return true;
+    });
+    const totalAchats=achats.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    const totalAchatsFact=achats.filter(a=>a.facturable).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    // Total facturable
+    const soustotal=montantMdo+totalSSTFact+totalAchatsFact;
+    const montantFG=fg>0?soustotal*(fg/100):0;
+    const total=soustotal+montantFG;
+    const empRows=Object.entries(parEmp).map(([k,v])=>`
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:12px;color:${v.col};font-weight:500;">${v.label}</span>
+        <span style="font-size:12px;">${v.h.toFixed(1)}h <span class="fbadge fb-y">${v.hf.toFixed(1)}h fact.</span> ${taux>0?'= '+(v.hf*taux).toFixed(2)+' $':''}</span>
+      </div>`).join('');
+    html+=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div><div style="font-size:15px;font-weight:700;">🏗 ${chantier}</div>${fiche.numeroChantier?`<div style="font-size:11px;color:var(--secondary);">#${fiche.numeroChantier}</div>`:''}</div>
+        ${total>0?`<div style="text-align:right;"><div style="font-size:11px;color:var(--secondary);">À facturer</div><div style="font-size:20px;font-weight:700;color:#0C447C;">${total.toFixed(2)} $</div></div>`:''}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+        <div class="stat-box"><div class="label">Heures</div><div class="value">${totalH.toFixed(1)}h</div></div>
+        <div class="stat-box stat-fact"><div class="label">SST</div><div class="value">${totalSST.toFixed(0)} $</div></div>
+        <div class="stat-box stat-money"><div class="label">Matériaux</div><div class="value">${totalAchats.toFixed(0)} $</div></div>
+      </div>
+      ${empRows?`<div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px;">${empRows}</div>`:''}
+      ${total>0?`<div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;"><span>Main d'oeuvre</span><span>${montantMdo.toFixed(2)} $</span></div>
+        ${totalSSTFact>0?`<div style="display:flex;justify-content:space-between;"><span>Sous-traitants</span><span>${totalSSTFact.toFixed(2)} $</span></div>`:''}
+        ${totalAchatsFact>0?`<div style="display:flex;justify-content:space-between;"><span>Matériaux</span><span>${totalAchatsFact.toFixed(2)} $</span></div>`:''}
+        ${montantFG>0?`<div style="display:flex;justify-content:space-between;"><span>Frais gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);margin-top:4px;padding-top:4px;"><span>Total à facturer</span><span style="color:#0C447C;">${total.toFixed(2)} $</span></div>
+      </div>`:''}
+    </div>`;
+  });
+  const el=document.getElementById('rc-result');
+  if(el)el.innerHTML=html||'<div class="empty">Aucune donnée trouvée.</div>';
+}
+
+// ─── RAPPORT PAR EMPLOYÉ ──────────────────────────────────
+function buildRapportEmployes(){
+  const c=document.getElementById('content-rapport');
+  if(!c)return;
+  const empOpts='<option value="">-- Tous les employés --</option>'+Object.entries(EMPS).map(([k,e])=>`<option value="${k}">${e.label}</option>`).join('');
+  const chOpts=selOpts(state.chantiers,'','-- Tous les chantiers --');
+  c.innerHTML=`
+    <div class="card">
+      <div class="card-title">👷 Rapport par employé</div>
+      <div class="grid2">
+        <div class="field"><label>Employé</label><select id="re-emp" style="width:100%;">${empOpts}</select></div>
+        <div class="field"><label>Chantier</label><select id="re-ch" style="width:100%;">${chOpts}</select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Date début</label><input type="date" id="re-d1" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>Date fin</label><input type="date" id="re-d2" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      <button class="btn btn-primary" onclick="genRapportEmployes()">🔍 Générer</button>
+    </div>
+    <div id="re-result"></div>`;
+}
+
+function genRapportEmployes(){
+  const empF=document.getElementById('re-emp').value;
+  const chF=document.getElementById('re-ch').value;
+  const d1s=document.getElementById('re-d1').value;
+  const d2s=document.getElementById('re-d2').value;
+  const d1=d1s?new Date(d1s+'T00:00:00'):null;
+  const d2=d2s?new Date(d2s+'T23:59:59'):null;
+  const empKeys=empF?[empF]:Object.keys(EMPS);
+  let html='';
+  let grandTotal=0,grandFact=0;
+  empKeys.forEach(empKey=>{
+    const e=EMPS[empKey];
+    const entries=state.entries[empKey].filter(en=>{
+      if(chF&&en.chantier!==chF)return false;
+      if(d1&&new Date(en.date+'T12:00:00')<d1)return false;
+      if(d2&&new Date(en.date+'T12:00:00')>d2)return false;
+      return en.heures>0;
+    });
+    if(!entries.length)return;
+    const total=entries.reduce((s,en)=>s+en.heures,0);
+    const fact=entries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+    grandTotal+=total;grandFact+=fact;
+    const byCh={};
+    entries.forEach(en=>{if(!byCh[en.chantier||'—'])byCh[en.chantier||'—']=0;byCh[en.chantier||'—']+=en.heures;});
+    const byType={};
+    entries.forEach(en=>{if(!byType[en.type||'—'])byType[en.type||'—']=0;byType[en.type||'—']+=en.heures;});
+    html+=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${e.bg};color:${e.col};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">${e.label.slice(0,2).toUpperCase()}</div>
+          <div><div style="font-size:15px;font-weight:700;color:${e.col};">${e.label}</div><div style="font-size:11px;color:var(--secondary);">${entries.length} entrées</div></div>
+        </div>
+        <div style="text-align:right;"><div style="font-size:20px;font-weight:700;">${total.toFixed(1)}h</div><div style="display:flex;gap:4px;"><span class="fbadge fb-y">${fact.toFixed(1)}h</span><span class="fbadge fb-n">${(total-fact).toFixed(1)}h</span></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div><div class="section-label">PAR CHANTIER</div>${Object.entries(byCh).sort((a,b)=>b[1]-a[1]).map(([ch,h])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);"><span>${ch}</span><span>${h.toFixed(1)}h</span></div>`).join('')}</div>
+        <div><div class="section-label">PAR TYPE</div>${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,h])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;">${t}</span><span>${h.toFixed(1)}h</span></div>`).join('')}</div>
+      </div>
+    </div>`;
+  });
+  const el=document.getElementById('re-result');
+  if(el){
+    const summary=grandTotal>0?`<div class="stats-row"><div class="stat-box"><div class="label">Total heures</div><div class="value">${grandTotal.toFixed(1)}h</div></div><div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${grandFact.toFixed(1)}h</div></div><div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(grandTotal-grandFact).toFixed(1)}h</div></div></div>`:'';
+    el.innerHTML=summary+(html||'<div class="empty">Aucune donnée trouvée.</div>');
+  }
+}
+
+// ─── RAPPORT DE PAIE ──────────────────────────────────────
+function buildRapportPaie(){
+  const c=document.getElementById('content-rapport');
+  if(!c)return;
+  const today=new Date();
+  const debutMois=new Date(today.getFullYear(),today.getMonth(),1).toISOString().slice(0,10);
+  const finMois=new Date(today.getFullYear(),today.getMonth()+1,0).toISOString().slice(0,10);
+  c.innerHTML=`
+    <div class="card">
+      <div class="card-title">💵 Rapport de paie</div>
+      <div class="grid2">
+        <div class="field"><label>Date début</label><input type="date" id="rp2-d1" value="${debutMois}" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>Date fin</label><input type="date" id="rp2-d2" value="${finMois}" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      <button class="btn btn-primary" onclick="genRapportPaie()">🔍 Générer</button>
+    </div>
+    <div id="rp2-result"></div>`;
+  genRapportPaie();
+}
+
+function genRapportPaie(){
+  const d1s=document.getElementById('rp2-d1').value;
+  const d2s=document.getElementById('rp2-d2').value;
+  if(!d1s||!d2s)return;
+  const d1=new Date(d1s+'T00:00:00'),d2=new Date(d2s+'T23:59:59');
+  const d1L=d1.toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'});
+  const d2L=d2.toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'});
+  let html=`<div style="background:#f0f0f0;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--secondary);">${d1L} → ${d2L}</div>`;
+  let grandTotal=0,grandMontant=0;
+  Object.entries(EMPS).forEach(([empKey,e])=>{
+    const info=state.empInfos&&state.empInfos[empKey]?state.empInfos[empKey]:{};
+    const taux=parseFloat(info.taux)||0;
+    const entries=state.entries[empKey].filter(en=>{
+      const d=new Date(en.date+'T12:00:00');return d>=d1&&d<=d2&&en.heures>0;
+    });
+    if(!entries.length)return;
+    const total=entries.reduce((s,en)=>s+en.heures,0);
+    const montant=taux>0?total*taux:0;
+    grandTotal+=total;grandMontant+=montant;
+    const byCh={};
+    entries.forEach(en=>{if(!byCh[en.chantier||'—'])byCh[en.chantier||'—']=0;byCh[en.chantier||'—']+=en.heures;});
+    const detRows=entries.sort((a,b)=>a.date.localeCompare(b.date)).map(en=>`
+      <tr style="border-bottom:0.5px solid var(--border);">
+        <td style="padding:4px 0;font-size:11px;color:var(--secondary);">${en.date}</td>
+        <td style="padding:4px 0;font-size:12px;">${en.chantier||'—'}</td>
+        <td style="padding:4px 0;font-size:11px;color:var(--secondary);">${en.type||'—'}</td>
+        <td style="padding:4px 0;text-align:right;font-size:12px;font-weight:500;">${en.heures}h</td>
+        ${taux>0?`<td style="padding:4px 0;text-align:right;font-size:12px;">${(en.heures*taux).toFixed(2)} $</td>`:''}
+      </tr>`).join('');
+    html+=`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:${e.bg};color:${e.col};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">${e.label.slice(0,2).toUpperCase()}</div>
+          <div>
+            <div style="font-size:15px;font-weight:700;color:${e.col};">${info.prenom||e.label} ${info.nom||''}</div>
+            <div style="font-size:11px;color:var(--secondary);">${taux>0?taux+' $/h':'Taux non défini — configurer dans Fiches → Employés'}</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:20px;font-weight:700;">${total.toFixed(1)}h</div>
+          ${montant>0?`<div style="font-size:14px;font-weight:600;color:#0C447C;">${montant.toFixed(2)} $</div>`:''}
+        </div>
+      </div>
+      <details><summary>Voir le détail (${entries.length} entrée${entries.length>1?'s':''})</summary>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;">
+          <thead><tr>
+            <td style="font-size:10px;font-weight:600;padding:4px 0;">Date</td>
+            <td style="font-size:10px;font-weight:600;padding:4px 0;">Chantier</td>
+            <td style="font-size:10px;font-weight:600;padding:4px 0;">Type</td>
+            <td style="font-size:10px;font-weight:600;padding:4px 0;text-align:right;">H</td>
+            ${taux>0?'<td style="font-size:10px;font-weight:600;padding:4px 0;text-align:right;">Montant</td>':''}
+          </tr></thead>
+          <tbody>${detRows}</tbody>
+          <tfoot><tr>
+            <td colspan="${taux>0?4:3}" style="padding:6px 0;font-weight:700;border-top:1px solid var(--border);">Total</td>
+            <td style="text-align:right;font-weight:700;border-top:1px solid var(--border);">${total.toFixed(1)}h</td>
+            ${taux>0?`<td style="text-align:right;font-weight:700;border-top:1px solid var(--border);color:#0C447C;">${montant.toFixed(2)} $</td>`:''}
+          </tfoot>
+        </table>
+      </details>
+    </div>`;
+  });
+  if(grandTotal>0){
+    html=`<div class="stats-row"><div class="stat-box"><div class="label">Total heures</div><div class="value">${grandTotal.toFixed(1)}h</div></div><div class="stat-box stat-money"><div class="label">Total à payer</div><div class="value">${grandMontant>0?grandMontant.toFixed(2)+' $':'—'}</div></div><div class="stat-box stat-fact"><div class="label">Employés</div><div class="value">${Object.keys(EMPS).length}</div></div></div>`+html;
+    html+=`<button class="btn-pdf no-print" onclick="imprimerRapport()">📄 Imprimer / PDF</button>`;
+  }
+  const el=document.getElementById('rp2-result');
+  if(el)el.innerHTML=html||'<div class="empty">Aucune heure trouvée.</div>';
+}
+
+function imprimerRapport(){
+  document.querySelectorAll('details').forEach(d=>d.open=true);
+  window.print();
 }
 
 // ─── INIT ─────────────────────────────────────────────────
