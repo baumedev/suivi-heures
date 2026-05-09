@@ -163,11 +163,10 @@ body{background:#fff;font-size:11px;}
 
 <nav class="top-nav">
   <button class="tab-heures active" onclick="setEmp('heures')">⏱ Heures</button>
+  <button class="tab-facturation" onclick="setEmp('facturation')">🧾 Facturation</button>
   <button class="tab-chantiers" onclick="setEmp('chantiers')">📁 Fiches</button>
   <button class="tab-rapport" onclick="setEmp('rapport')">📊 Rapport</button>
   <button class="tab-reglages" onclick="setEmp('reglages')">⚙️ Réglages</button>
-  <button class="tab-facturation" onclick="setEmp('facturation')">🧾 Facturation</button>
-  
 </nav>
 
 <div id="page-heures" class="page active">
@@ -1385,21 +1384,33 @@ function buildNouvelleFacture(){
   const tvq=factCourante.appliquerTVQ?avantTaxes*0.09975:0;
   const grandTotal=avantTaxes+tps+tvq;
 
+  // Fiche client liée au chantier
+  const cidx=fiche.clientIdx!==undefined&&fiche.clientIdx!==''?parseInt(fiche.clientIdx):-1;
+  const clientLie=cidx>=0&&state.clients[cidx]?state.clients[cidx]:null;
+  const clientNomFac=clientLie?[clientLie.prenom,clientLie.nom].filter(Boolean).join(' '):'';
+
   return`
     <div class="card">
       <div class="card-title">🧾 Nouvelle facture</div>
       <div class="grid2">
         <div class="field"><label>No. de facture</label><input type="text" id="fac-num" value="${factCourante.numeroFacture||''}" oninput="factCourante.numeroFacture=this.value" placeholder="Ex: 2024-001"/></div>
-        <div class="field"><label>Chantier / Client</label><select id="fac-ch" onchange="factCourante.chantier=this.value;refreshFacture()">${chOpts}</select></div>
+        <div class="field"><label>Chantier</label><select id="fac-ch" onchange="factCourante.chantier=this.value;refreshFacture()">${chOpts}</select></div>
       </div>
+      ${clientNomFac?`<div style="background:#E6F1FB;border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:8px;margin-top:-4px;">
+        <span>👤</span><span style="font-weight:500;">${clientNomFac}</span>
+        ${clientLie&&clientLie.tel?`<span style="color:var(--secondary);">· ${clientLie.tel}</span>`:''}
+      </div>`:''}
+      <div class="grid2" style="margin-top:12px;">
+        <div class="field"><label>📅 Date de début</label><input type="date" id="fac-d1" value="${factCourante.dateDebut||''}" oninput="factCourante.dateDebut=this.value;factCourante.matDateDebut=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>📅 Date de fin</label><input type="date" id="fac-d2" value="${factCourante.dateFin||''}" oninput="factCourante.dateFin=this.value;factCourante.matDateFin=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?`<div style="background:#f0f0f0;border-radius:var(--radius-sm);padding:6px 10px;font-size:11px;color:var(--secondary);margin-top:-4px;">
+        Les heures, factures SST et matériaux facturables pour <strong>${factCourante.chantier}</strong> entre ces dates sont chargés automatiquement ci-dessous.
+      </div>`:''}
     </div>
 
     <div class="card">
       <div class="facture-section-title">👷 MAIN D'ŒUVRE</div>
-      <div class="grid2" style="margin-bottom:10px;">
-        <div class="field"><label>Date début</label><input type="date" id="fac-d1" value="${factCourante.dateDebut||''}" oninput="factCourante.dateDebut=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
-        <div class="field"><label>Date fin</label><input type="date" id="fac-d2" value="${factCourante.dateFin||''}" oninput="factCourante.dateFin=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
-      </div>
       ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?
         mdoHtml?`<table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="border-bottom:1px solid var(--border);">
@@ -1446,11 +1457,7 @@ function buildNouvelleFacture(){
 
     <div class="card">
       <div class="facture-section-title">🪵 MATÉRIAUX</div>
-      <div class="grid2" style="margin-bottom:10px;">
-        <div class="field"><label>Date début matériel</label><input type="date" value="${factCourante.matDateDebut||factCourante.dateDebut||''}" oninput="factCourante.matDateDebut=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
-        <div class="field"><label>Date fin matériel</label><input type="date" value="${factCourante.matDateFin||factCourante.dateFin||''}" oninput="factCourante.matDateFin=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
-      </div>
-      ${factCourante.chantier&&(factCourante.matDateDebut||factCourante.dateDebut)&&(factCourante.matDateFin||factCourante.dateFin)?
+      ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?
         matRows?`<table style="width:100%;border-collapse:collapse;font-size:13px;">
           <thead><tr style="border-bottom:1px solid var(--border);">
             <td style="padding:4px 0;font-weight:600;font-size:11px;">Date</td>
