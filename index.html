@@ -120,6 +120,7 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .sync-dot.err{background:#E24B4A;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
 .tab-heures.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+.tab-reglages.active{color:#534AB7;border-bottom-color:#534AB7;}
 .tab-facturation.active{color:#1a6b3a;border-bottom-color:#2ea15a;}
 .tab-entreprise.active{color:#6b3a1a;border-bottom-color:#a15a2e;}
 .facture-section{background:#f9f9f9;border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;border:1px solid var(--border);}
@@ -164,6 +165,7 @@ body{background:#fff;font-size:11px;}
   <button class="tab-heures active" onclick="setEmp('heures')">⏱ Heures</button>
   <button class="tab-chantiers" onclick="setEmp('chantiers')">📁 Fiches</button>
   <button class="tab-rapport" onclick="setEmp('rapport')">📊 Rapport</button>
+  <button class="tab-reglages" onclick="setEmp('reglages')">⚙️ Réglages</button>
   <button class="tab-facturation" onclick="setEmp('facturation')">🧾 Facturation</button>
   
 </nav>
@@ -186,6 +188,14 @@ body{background:#fff;font-size:11px;}
 <div id="page-denis" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('denis','cal')">📅 Calendrier</button><button onclick="setSub('denis','liste')">📋 Liste</button><button onclick="setSub('denis','rapport')">📈 Rapport</button></nav><div class="content" id="content-denis"></div></div>
 <div id="page-chantiers" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('chantiers','clients')">👤 Clients</button><button onclick="setSub('chantiers','chantiersList')">🏗 Chantiers</button><button onclick="setSub('chantiers','employes')">👷 Employés</button><button onclick="setSub('chantiers','sstraitants_fiches')">🔧 Sous-traitants</button><button onclick="setSub('chantiers','fournisseurs_fiches')">🏪 Fournisseurs</button><button onclick="setSub('chantiers','entreprise_fiche')">🏢 Entreprise</button><button onclick="setSub('chantiers','listes')">✅ Tâches</button></nav><div class="content" id="content-chantiers"></div></div>
 <div id="page-rapport" class="page"><div class="content" id="content-rapport"></div></div>
+<div id="page-reglages" class="page">
+  <nav class="sub-nav" id="reglages-subnav">
+    <button class="active" onclick="setReglagesSub('backup')">💾 Sauvegarde</button>
+    <button onclick="setReglagesSub('problemes')">🐛 Problèmes</button>
+    <button onclick="setReglagesSub('suggestions')">💡 Suggestions</button>
+  </nav>
+  <div class="content" id="content-reglages"></div>
+</div>
 
 <div id="page-facturation" class="page">
   <nav class="sub-nav">
@@ -228,6 +238,10 @@ let state = {
   clients:[],
   clientId:0,
   empInfos:{},
+  tickets:[],
+  ticketId:0,
+  suggestions:[],
+  suggestionId:0,
   entreprise:{nom:'',adresse:'',telephone:'',courriel:'',siteWeb:'',noTPS:'',noTVQ:'',logo:''},
   sstraitants:[],
   fournisseurs:[],
@@ -334,7 +348,7 @@ async function saveToCloud(){
 }
 
 function getCloudPayload(){
-  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},
+  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,
   entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
 }
 
@@ -353,6 +367,14 @@ function loadLocal(andRender){
       if(d.clients)state.clients=d.clients;
       if(d.clientId)state.clientId=d.clientId;
       if(d.empInfos)state.empInfos=d.empInfos;
+      if(d.tickets)state.tickets=d.tickets;
+      if(d.ticketId)state.ticketId=d.ticketId;
+      if(d.suggestions)state.suggestions=d.suggestions;
+      if(d.suggestionId)state.suggestionId=d.suggestionId;
+    if(d.tickets)state.tickets=d.tickets;
+    if(d.ticketId)state.ticketId=d.ticketId;
+    if(d.suggestions)state.suggestions=d.suggestions;
+    if(d.suggestionId)state.suggestionId=d.suggestionId;
       if(d.entreprise)state.entreprise=d.entreprise;
       if(d.sstraitants)state.sstraitants=d.sstraitants;
       if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
@@ -504,6 +526,8 @@ function renderCurrent(){
   const emp=state.currentEmp;
   if(emp==='rapport'){renderRapportPeriode();return;}
   if(emp==='entreprise'){renderEntreprise();return;}
+  if(emp==='reglages'){renderReglages();return;}
+  if(emp==='reglages'){renderReglages();return;}
   const sub=state.currentSub[emp],c=document.getElementById('content-'+emp);
   if(!c)return;
   if(emp==='chantiers'){
@@ -2537,6 +2561,277 @@ function buildFournisseursFiches(){
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+}
+
+
+// ─── RÉGLAGES ─────────────────────────────────────────────
+function setReglagesSub(sub){
+  window._reglagesSub=sub;
+  const btns=document.querySelectorAll('#reglages-subnav button');
+  const subs=['backup','problemes','suggestions'];
+  btns.forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
+  renderReglages();
+}
+
+function renderReglages(){
+  const c=document.getElementById('content-reglages');
+  if(!c)return;
+  const sub=window._reglagesSub||'backup';
+  if(sub==='problemes'){c.innerHTML=buildProblemes();return;}
+  if(sub==='suggestions'){c.innerHTML=buildSuggestions();return;}
+  const lastBackup=localStorage.getItem('sh_last_backup')||'Jamais';
+  c.innerHTML=`
+    <div class="card">
+      <div class="card-title">💾 Sauvegarde & Restauration</div>
+      <p style="font-size:13px;color:var(--secondary);margin:0 0 16px;line-height:1.5;">Exporte toutes tes données dans un fichier que tu peux conserver sur Google Drive, iCloud ou par courriel. En cas de problème, importe le fichier pour tout restaurer.</p>
+
+      <div style="background:#EAF3DE;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;border:1px solid #C0DD97;">
+        <div style="font-size:12px;font-weight:600;color:#27500A;margin-bottom:4px;">✅ Protection actuelle</div>
+        <div style="font-size:12px;color:#3B6D11;">• Supabase — base de données en ligne avec backup automatique</div>
+        <div style="font-size:12px;color:#3B6D11;">• LocalStorage — copie sur chaque appareil</div>
+        <div style="font-size:12px;color:#3B6D11;">• Dernier export manuel : <strong>${lastBackup}</strong></div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px;">
+        <button class="btn btn-primary" onclick="exporterDonnees()" style="background:#0C447C;">
+          📥 Exporter toutes les données
+        </button>
+        <p style="font-size:11px;color:var(--secondary);margin:0;text-align:center;">Télécharge un fichier .json avec toutes tes données</p>
+      </div>
+
+      <div style="border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">🔄 Restaurer depuis un fichier</div>
+        <p style="font-size:12px;color:var(--secondary);margin:0 0 10px;">Sélectionne un fichier exporté précédemment pour restaurer toutes tes données.</p>
+        <label style="display:block;background:#f0f0f0;border:2px dashed var(--border);border-radius:var(--radius-sm);padding:20px;text-align:center;cursor:pointer;font-size:13px;color:var(--secondary);">
+          📂 Cliquer pour choisir un fichier .json
+          <input type="file" accept=".json" onchange="importerDonnees(this)" style="display:none;"/>
+        </label>
+      </div>
+    </div>
+
+    <div class="card" style="opacity:0.6;">
+      <div class="card-title">🔮 Fonctionnalités à venir</div>
+      <div style="font-size:13px;color:var(--secondary);line-height:1.8;">
+        <div>• 📧 Envoi de factures par courriel</div>
+        <div>• 🔔 Rappels et notifications</div>
+        <div>• 📊 Tableaux de bord avancés</div>
+        <div>• 🔄 Backup automatique planifié</div>
+        <div>• 👥 Accès multi-utilisateurs avec permissions</div>
+      </div>
+    </div>`;
+}
+
+function exporterDonnees(){
+  const data={
+    version:'1.0',
+    date:new Date().toISOString(),
+    entries:state.entries,
+    chantiers:state.chantiers,
+    typesTravaux:state.typesTravaux,
+    fiches:state.fiches,
+    clients:state.clients,
+    empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,
+    entreprise:state.entreprise,
+    sstraitants:state.sstraitants,
+    fournisseurs:state.fournisseurs,
+    factures:state.factures,
+    achats:state.achats,
+    sstFactures:state.sstFactures,
+    entryId:state.entryId,
+    tickets:state.tickets,
+    suggestions:state.suggestions,
+    ticketId:state.ticketId,
+    suggestionId:state.suggestionId,
+    factureId:state.factureId,
+    achatId:state.achatId,
+    sstFactureId:state.sstFactureId
+  };
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const dateStr=new Date().toISOString().slice(0,10);
+  a.href=url;
+  a.download=`suivi-heures-backup-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  const now=new Date().toLocaleString('fr-CA',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  localStorage.setItem('sh_last_backup',now);
+  renderReglages();
+  alert('✅ Données exportées! Sauvegarde le fichier sur Google Drive ou iCloud.');
+}
+
+function importerDonnees(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.entries||!data.chantiers){alert('❌ Fichier invalide. Assure-toi d'utiliser un fichier exporté depuis cette app.');return;}
+      if(!confirm('⚠️ Cette action va remplacer TOUTES tes données actuelles par celles du fichier. Es-tu certain?'))return;
+      if(data.entries)state.entries=data.entries;
+      if(data.chantiers)state.chantiers=data.chantiers;
+      if(data.typesTravaux)state.typesTravaux=data.typesTravaux;
+      if(data.fiches)state.fiches=data.fiches;
+      if(data.clients)state.clients=data.clients;
+      if(data.empInfos)state.empInfos=data.empInfos;
+      if(data.entreprise)state.entreprise=data.entreprise;
+      if(data.sstraitants)state.sstraitants=data.sstraitants;
+      if(data.fournisseurs)state.fournisseurs=data.fournisseurs;
+      if(data.factures)state.factures=data.factures;
+      if(data.achats)state.achats=data.achats;
+      if(data.sstFactures)state.sstFactures=data.sstFactures;
+      if(data.entryId)state.entryId=data.entryId;
+      if(data.factureId)state.factureId=data.factureId;
+      if(data.achatId)state.achatId=data.achatId;
+      if(data.sstFactureId)state.sstFactureId=data.sstFactureId;
+      if(data.tickets)state.tickets=data.tickets;
+      if(data.ticketId)state.ticketId=data.ticketId;
+      if(data.suggestions)state.suggestions=data.suggestions;
+      if(data.suggestionId)state.suggestionId=data.suggestionId;
+      saveToCloud();
+      alert('✅ Données restaurées avec succès!');
+      renderReglages();
+    }catch(err){
+      alert('❌ Erreur lors de la lecture du fichier: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+
+// ─── PROBLÈMES & SUGGESTIONS ──────────────────────────────
+const EMPLOYES_LISTE=['Victor','Edouard','Denis','Gestionnaire'];
+const PRIORITES=['🔴 Urgent','🟠 Moyen','🟡 Bas'];
+
+function buildProblemes(){
+  const list=state.tickets.slice().sort((a,b)=>b.id-a.id);
+  const enCours=list.filter(t=>t.statut!=='fait');
+  const resolus=list.filter(t=>t.statut==='fait');
+  const rows=list.map(t=>`
+    <div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:3px solid ${t.statut==='fait'?'#27500A':t.priorite==='🔴 Urgent'?'#E24B4A':t.priorite==='🟠 Moyen'?'#EF9F27':'#6b6b6b'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:600;">${t.titre}</span>
+            <span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">${t.priorite||'🟡 Bas'}</span>
+            <span style="font-size:10px;color:var(--secondary);">par ${t.auteur||'—'}</span>
+          </div>
+          ${t.description?`<div style="font-size:12px;color:var(--secondary);margin-bottom:6px;">${t.description}</div>`:''}
+          <div style="font-size:10px;color:var(--secondary);">${t.date||''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
+          ${t.statut!=='fait'?`<button onclick="marquerFaitTicket(${t.id},'ticket')" style="padding:6px 10px;background:#EAF3DE;color:#27500A;border:1.5px solid #27500A;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">✅ Fait</button>`
+          :`<span style="font-size:11px;font-weight:600;color:#27500A;background:#EAF3DE;padding:4px 8px;border-radius:20px;">✅ Résolu</span>`}
+          <button class="btn-del" onclick="supprimerTicket(${t.id},'ticket')">✕</button>
+        </div>
+      </div>
+      ${t.statut==='fait'&&t.dateFait?`<div style="font-size:10px;color:#27500A;">Résolu le ${t.dateFait}</div>`:''}
+    </div>`).join('');
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${enCours.length} en cours · ${resolus.length} résolu${resolus.length>1?'s':''}</span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="ouvrirModalTicket('ticket')">+ Signaler un problème</button>
+    </div>
+    ${list.length?`<div>${rows}</div>`:'<div class="empty">Aucun problème signalé. 🎉</div>'}`;
+}
+
+function buildSuggestions(){
+  const list=state.suggestions.slice().sort((a,b)=>b.id-a.id);
+  const enCours=list.filter(s=>s.statut!=='fait');
+  const implementees=list.filter(s=>s.statut==='fait');
+  const rows=list.map(s=>`
+    <div class="card" style="padding:12px 14px;margin-bottom:8px;border-left:3px solid ${s.statut==='fait'?'#27500A':'#185FA5'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:600;">${s.titre}</span>
+            <span style="font-size:10px;color:var(--secondary);">par ${s.auteur||'—'}</span>
+          </div>
+          ${s.description?`<div style="font-size:12px;color:var(--secondary);margin-bottom:6px;">${s.description}</div>`:''}
+          <div style="font-size:10px;color:var(--secondary);">${s.date||''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
+          ${s.statut!=='fait'?`<button onclick="marquerFaitTicket(${s.id},'suggestion')" style="padding:6px 10px;background:#EAF3DE;color:#27500A;border:1.5px solid #27500A;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">✅ Ajouté</button>`
+          :`<span style="font-size:11px;font-weight:600;color:#27500A;background:#EAF3DE;padding:4px 8px;border-radius:20px;">✅ Implémenté</span>`}
+          <button class="btn-del" onclick="supprimerTicket(${s.id},'suggestion')">✕</button>
+        </div>
+      </div>
+      ${s.statut==='fait'&&s.dateFait?`<div style="font-size:10px;color:#27500A;">Implémenté le ${s.dateFait}</div>`:''}
+    </div>`).join('');
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${enCours.length} en attente · ${implementees.length} implémenté${implementees.length>1?'s':''}</span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;background:#0C447C;" onclick="ouvrirModalTicket('suggestion')">+ Ajouter une idée</button>
+    </div>
+    ${list.length?`<div>${rows}</div>`:'<div class="empty">Aucune suggestion pour l'instant. Dis-nous ce que tu voudrais améliorer! 💡</div>'}`;
+}
+
+function ouvrirModalTicket(type){
+  const isTicket=type==='ticket';
+  const empOpts=EMPLOYES_LISTE.map(e=>`<option value="${e}">${e}</option>`).join('');
+  const prioOpts=PRIORITES.map(p=>`<option value="${p}">${p}</option>`).join('');
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>${isTicket?'🐛 Signaler un problème':'💡 Suggérer une amélioration'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="field"><label>Titre</label>
+      <input type="text" id="tk-titre" placeholder="${isTicket?'Ex: Le calendrier ne charge pas...':'Ex: Ajouter un rapport hebdomadaire...'}"/>
+    </div>
+    <div class="field"><label>Description</label>
+      <textarea id="tk-desc" placeholder="${isTicket?'Décris le problème en détail...':'Décris ton idée en détail...'}" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;min-height:80px;"></textarea>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Signalé par</label>
+        <select id="tk-auteur" style="width:100%;"><option value="">-- Choisir --</option>${empOpts}</select>
+      </div>
+      ${isTicket?`<div class="field"><label>Priorité</label><select id="tk-prio" style="width:100%;">${prioOpts}</select></div>`:'<div></div>'}
+    </div>
+    <button class="btn btn-primary" onclick="sauvegarderTicket('${type}')">✓ Enregistrer</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>{const t=document.getElementById('tk-titre');if(t)t.focus();},300);
+}
+
+function sauvegarderTicket(type){
+  const titre=document.getElementById('tk-titre').value.trim();
+  if(!titre){alert('Veuillez entrer un titre.');return;}
+  const item={
+    id:type==='ticket'?++state.ticketId:++state.suggestionId,
+    titre,
+    description:document.getElementById('tk-desc').value.trim(),
+    auteur:document.getElementById('tk-auteur').value,
+    priorite:type==='ticket'?(document.getElementById('tk-prio')?document.getElementById('tk-prio').value:'🟡 Bas'):'',
+    date:new Date().toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'}),
+    statut:'ouvert',
+    dateFait:''
+  };
+  if(type==='ticket')state.tickets.push(item);
+  else state.suggestions.push(item);
+  closeModal();
+  saveToCloud();
+  window._reglagesSub=type==='ticket'?'problemes':'suggestions';
+  renderReglages();
+}
+
+function marquerFaitTicket(id,type){
+  const list=type==='ticket'?state.tickets:state.suggestions;
+  const item=list.find(t=>t.id===id);
+  if(item){
+    item.statut='fait';
+    item.dateFait=new Date().toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'});
+    saveToCloud();
+    renderReglages();
+  }
+}
+
+function supprimerTicket(id,type){
+  if(!confirm('Supprimer cet élément?'))return;
+  if(type==='ticket')state.tickets=state.tickets.filter(t=>t.id!==id);
+  else state.suggestions=state.suggestions.filter(s=>s.id!==id);
+  saveToCloud();
+  renderReglages();
 }
 
 // ─── INIT ─────────────────────────────────────────────────
