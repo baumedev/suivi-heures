@@ -162,10 +162,10 @@ body{background:#fff;font-size:11px;}
 
 <nav class="top-nav">
   <button class="tab-heures active" onclick="setEmp('heures')">⏱ Heures</button>
-  <button class="tab-chantiers" onclick="setEmp('chantiers')">🏗 Chantiers</button>
+  <button class="tab-chantiers" onclick="setEmp('chantiers')">📁 Fiches</button>
   <button class="tab-rapport" onclick="setEmp('rapport')">📊 Rapport</button>
   <button class="tab-facturation" onclick="setEmp('facturation')">🧾 Facturation</button>
-  <button class="tab-entreprise" onclick="setEmp('entreprise')">🏢 Mon entreprise</button>
+  
 </nav>
 
 <div id="page-heures" class="page active">
@@ -184,7 +184,7 @@ body{background:#fff;font-size:11px;}
 <div id="page-victor" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('victor','cal')">📅 Calendrier</button><button onclick="setSub('victor','liste')">📋 Liste</button><button onclick="setSub('victor','rapport')">📈 Rapport</button></nav><div class="content" id="content-victor"></div></div>
 <div id="page-edouard" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('edouard','cal')">📅 Calendrier</button><button onclick="setSub('edouard','liste')">📋 Liste</button><button onclick="setSub('edouard','rapport')">📈 Rapport</button></nav><div class="content" id="content-edouard"></div></div>
 <div id="page-denis" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('denis','cal')">📅 Calendrier</button><button onclick="setSub('denis','liste')">📋 Liste</button><button onclick="setSub('denis','rapport')">📈 Rapport</button></nav><div class="content" id="content-denis"></div></div>
-<div id="page-chantiers" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('chantiers','clients')">👤 Clients</button><button onclick="setSub('chantiers','chantiersList')">🏗 Chantiers</button><button onclick="setSub('chantiers','listes')">✅ Tâches</button></nav><div class="content" id="content-chantiers"></div></div>
+<div id="page-chantiers" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('chantiers','clients')">👤 Clients</button><button onclick="setSub('chantiers','chantiersList')">🏗 Chantiers</button><button onclick="setSub('chantiers','employes')">👷 Employés</button><button onclick="setSub('chantiers','sstraitants_fiches')">🔧 Sous-traitants</button><button onclick="setSub('chantiers','fournisseurs_fiches')">🏪 Fournisseurs</button><button onclick="setSub('chantiers','entreprise_fiche')">🏢 Entreprise</button><button onclick="setSub('chantiers','listes')">✅ Tâches</button></nav><div class="content" id="content-chantiers"></div></div>
 <div id="page-rapport" class="page"><div class="content" id="content-rapport"></div></div>
 
 <div id="page-facturation" class="page">
@@ -227,6 +227,7 @@ let state = {
   fiches:{},
   clients:[],
   clientId:0,
+  empInfos:{},
   entreprise:{nom:'',adresse:'',telephone:'',courriel:'',siteWeb:'',noTPS:'',noTVQ:'',logo:''},
   sstraitants:[],
   fournisseurs:[],
@@ -333,7 +334,7 @@ async function saveToCloud(){
 }
 
 function getCloudPayload(){
-  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,
+  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},
   entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
 }
 
@@ -351,6 +352,7 @@ function loadLocal(andRender){
       if(d.entryId)state.entryId=d.entryId;
       if(d.clients)state.clients=d.clients;
       if(d.clientId)state.clientId=d.clientId;
+      if(d.empInfos)state.empInfos=d.empInfos;
       if(d.entreprise)state.entreprise=d.entreprise;
       if(d.sstraitants)state.sstraitants=d.sstraitants;
       if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
@@ -442,7 +444,7 @@ function setSub(emp,sub){
   const nav=document.querySelector(`#page-${emp} .sub-nav`);
   if(nav){
     let subs;
-    if(emp==='chantiers')subs=['clients','chantiersList','listes'];
+    if(emp==='chantiers')subs=['clients','chantiersList','employes','sstraitants_fiches','fournisseurs_fiches','entreprise_fiche','listes'];
     else if(emp==='facturation')subs=['nouvelle','historique','materiaux','sstraitants','sstfactures','fournisseurs'];
     else subs=['cal','liste','rapport'];
     nav.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
@@ -466,6 +468,10 @@ function setSub(emp,sub){
   if(emp==='chantiers'){
     if(sub==='clients')sc.innerHTML=buildClients();
     else if(sub==='chantiersList')sc.innerHTML=buildChantiersSection();
+    else if(sub==='employes')sc.innerHTML=buildEmployes();
+    else if(sub==='sstraitants_fiches')sc.innerHTML=buildSstraitantsFiches();
+    else if(sub==='fournisseurs_fiches')sc.innerHTML=buildFournisseursFiches();
+    else if(sub==='entreprise_fiche'){renderEntreprise();return;}
     else if(sub==='listes')sc.innerHTML=buildGestionListes();
   } else if(emp==='facturation'){
     if(sub==='nouvelle')sc.innerHTML=buildNouvelleFacture();
@@ -503,6 +509,10 @@ function renderCurrent(){
   if(emp==='chantiers'){
     if(sub==='clients')c.innerHTML=buildClients();
     else if(sub==='chantiersList')c.innerHTML=buildChantiersSection();
+    else if(sub==='employes')c.innerHTML=buildEmployes();
+    else if(sub==='sstraitants_fiches')c.innerHTML=buildSstraitantsFiches();
+    else if(sub==='fournisseurs_fiches')c.innerHTML=buildFournisseursFiches();
+    else if(sub==='entreprise_fiche')renderEntreprise();
     else if(sub==='listes')c.innerHTML=buildGestionListes();
   }
   else if(emp==='facturation'){
@@ -1071,7 +1081,8 @@ function removeItem(kind,val){
 // ─── ENTREPRISE ───────────────────────────────────────────
 function renderEntreprise(){
   const e=state.entreprise;
-  document.getElementById('content-entreprise').innerHTML=`
+  const targetId=state.currentEmp==='chantiers'?'content-chantiers':'content-entreprise';
+  document.getElementById(targetId).innerHTML=`
     <div class="card">
       <div class="card-title">🏢 Informations de mon entreprise</div>
       <div class="field"><label>Logo (URL ou base64)</label>
@@ -1172,8 +1183,10 @@ function saveSstModal(idx){
   if(idx===-1)state.sstraitants.push(s);
   else state.sstraitants[idx]=s;
   closeModal();saveToCloud();
-  const c=document.getElementById('content-facturation');
-  if(c)c.innerHTML=buildSstraitants();
+  const cf=document.getElementById('content-facturation');
+  if(cf)cf.innerHTML=buildSstraitants();
+  const cc=document.getElementById('content-chantiers');
+  if(cc&&state.currentSub['chantiers']==='sstraitants_fiches')cc.innerHTML=buildSstraitantsFiches();
 }
 
 function removeSstModal(idx){
@@ -1250,8 +1263,10 @@ function saveFournModal(idx){
   if(idx===-1)state.fournisseurs.push(f);
   else state.fournisseurs[idx]=f;
   closeModal();saveToCloud();
-  const c=document.getElementById('content-facturation');
-  if(c)c.innerHTML=buildFournisseurs();
+  const cf=document.getElementById('content-facturation');
+  if(cf)cf.innerHTML=buildFournisseurs();
+  const cc=document.getElementById('content-chantiers');
+  if(cc&&state.currentSub['chantiers']==='fournisseurs_fiches')cc.innerHTML=buildFournisseursFiches();
 }
 
 function removeFournModal(idx){
@@ -2351,6 +2366,177 @@ function deleteSstFacture(id){
   if(!confirm('Supprimer cette facture?'))return;
   state.sstFactures=state.sstFactures.filter(a=>a.id!==id);
   saveToCloud();refreshSstFactures();
+}
+
+
+// ─── EMPLOYÉS ─────────────────────────────────────────────
+function buildEmployes(){
+  const empList=[
+    {key:'victor', label:'Victor', bg:'#E6F1FB', col:'#0C447C'},
+    {key:'edouard', label:'Edouard', bg:'#E1F5EE', col:'#085041'},
+    {key:'denis', label:'Denis', bg:'#FAEEDA', col:'#633806'}
+  ];
+  const rows=empList.map(emp=>{
+    const total=state.entries[emp.key].reduce((s,en)=>s+en.heures,0);
+    const fact=state.entries[emp.key].filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+    return`<tr onclick="openEmployeModal('${emp.key}')" style="cursor:pointer;border-bottom:0.5px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:${emp.bg};color:${emp.col};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0;">${emp.label.slice(0,2).toUpperCase()}</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${emp.label}</div>
+            <div style="font-size:11px;color:var(--secondary);">${(state.empInfos&&state.empInfos[emp.key]&&state.empInfos[emp.key].titre)||'Employé'}${(()=>{const f=state.empInfos&&state.empInfos[emp.key]&&state.empInfos[emp.key].fete;if(!f)return'';const today=new Date();const fete=new Date(f);const thisYear=new Date(today.getFullYear(),fete.getMonth(),fete.getDate());const diff=Math.ceil((thisYear-today)/(1000*60*60*24));if(diff>=0&&diff<=7)return' 🎂';return'';})()}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);">${total.toFixed(1)}h total · ${fact.toFixed(1)}h fact.</td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);">${(state.empInfos&&state.empInfos[emp.key]&&state.empInfos[emp.key].tel)||'—'}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;color:#0C447C;">›</td>
+    </tr>`;
+  }).join('');
+  return`
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f9f9f9;border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">EMPLOYÉ</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">HEURES</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TÉL</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function openEmployeModal(empKey){
+  const empLabels={victor:'Victor',edouard:'Edouard',denis:'Denis'};
+  const empBg={victor:'#E6F1FB',edouard:'#E1F5EE',denis:'#FAEEDA'};
+  const empCol={victor:'#0C447C',edouard:'#085041',denis:'#633806'};
+  if(!state.empInfos)state.empInfos={};
+  if(!state.empInfos[empKey])state.empInfos[empKey]={};
+  const info=state.empInfos[empKey];
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3><span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${empBg[empKey]};color:${empCol[empKey]};font-size:11px;font-weight:600;margin-right:6px;">${empLabels[empKey].slice(0,2).toUpperCase()}</span>${empLabels[empKey]}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Prénom</label><input type="text" id="emp-pre" value="${info.prenom||empLabels[empKey]}" placeholder="Prénom"/></div>
+      <div class="field"><label>Nom</label><input type="text" id="emp-nom" value="${info.nom||''}" placeholder="Nom"/></div>
+    </div>
+    <div class="field"><label>Titre / Poste</label><input type="text" id="emp-tit" value="${info.titre||''}" placeholder="Ex: Charpentier, Surintendant..."/></div>
+    <div class="grid2">
+      <div class="field"><label>Téléphone</label><input type="tel" id="emp-tel" value="${info.tel||''}" placeholder="514 000-0000" inputmode="tel"/></div>
+      <div class="field"><label>Courriel</label><input type="email" id="emp-cou" value="${info.courriel||''}" placeholder="email@exemple.com" inputmode="email"/></div>
+    </div>
+    <div class="field"><label>Taux horaire ($)</label><input type="number" id="emp-taux" min="0" step="0.5" value="${info.taux||''}" placeholder="Ex: 35" inputmode="decimal"/></div>
+    <div class="field"><label>Adresse domicile</label><input type="text" id="emp-adr" value="${info.adresse||''}" placeholder="123 rue Exemple, Montréal, QC"/></div>
+    <div class="field"><label>Date de fête 🎂</label><input type="date" id="emp-fete" value="${info.fete||''}" style="width:100%;color:var(--primary);"/></div>
+    <button class="btn btn-primary" onclick="saveEmployeModal('${empKey}')">💾 Sauvegarder</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveEmployeModal(empKey){
+  if(!state.empInfos)state.empInfos={};
+  state.empInfos[empKey]={
+    prenom:document.getElementById('emp-pre').value.trim(),
+    nom:document.getElementById('emp-nom').value.trim(),
+    titre:document.getElementById('emp-tit').value.trim(),
+    tel:document.getElementById('emp-tel').value.trim(),
+    courriel:document.getElementById('emp-cou').value.trim(),
+    taux:document.getElementById('emp-taux').value,
+    adresse:document.getElementById('emp-adr').value.trim(),
+    fete:document.getElementById('emp-fete').value
+  };
+  closeModal();saveToCloud();
+  const c=document.getElementById('content-chantiers');
+  if(c)c.innerHTML=buildEmployes();
+}
+
+// ─── SOUS-TRAITANTS FICHES (dans section Fiches) ──────────
+function buildSstraitantsFiches(){
+  const list=state.sstraitants;
+  if(!list.length)return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openSstModal(-1)">+ Nouveau sous-traitant</button></div><div class="empty">Aucun sous-traitant.</div>`;
+  const rows=list.map((s,i)=>{
+    const total=state.sstFactures.filter(f=>f.sst===s.nom).reduce((sum,f)=>sum+(parseFloat(f.montant)||0),0);
+    return`<tr onclick="openSstModal(${i})" style="cursor:pointer;border-bottom:0.5px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#EAF3DE;color:#27500A;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👷</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${s.nom||'—'}</div>
+            <div style="font-size:11px;color:var(--secondary);">${[s.specialite,s.rbq?'RBQ: '+s.rbq:''].filter(Boolean).join(' · ')||'—'}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);">${s.tel||'—'}</td>
+      <td style="padding:10px 8px;font-size:13px;font-weight:600;color:#0C447C;">${total>0?total.toFixed(2)+' $':'—'}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;color:#0C447C;">›</td>
+    </tr>`;
+  }).join('');
+  const grandTotal=state.sstraitants.reduce((sum,s)=>{return sum+state.sstFactures.filter(f=>f.sst===s.nom).reduce((s2,f)=>s2+(parseFloat(f.montant)||0),0);},0);
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${list.length} sous-traitant${list.length>1?'s':''} · Total: <strong style="color:#0C447C;">${grandTotal.toFixed(2)} $</strong></span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openSstModal(-1)">+ Nouveau</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f9f9f9;border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">SOUS-TRAITANT</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TÉL</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TOTAL PAYÉ</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─── FOURNISSEURS FICHES (dans section Fiches) ────────────
+function buildFournisseursFiches(){
+  const list=state.fournisseurs;
+  if(!list.length)return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openFournModal(-1)">+ Nouveau fournisseur</button></div><div class="empty">Aucun fournisseur.</div>`;
+  const rows=list.map((f,i)=>{
+    const total=state.achats.filter(a=>a.magasin===f.nom).reduce((sum,a)=>sum+(parseFloat(a.montantAvantTax)||0),0);
+    return`<tr onclick="openFournModal(${i})" style="cursor:pointer;border-bottom:0.5px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#FAEEDA;color:#633806;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">🏪</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${f.nom||'—'}</div>
+            <div style="font-size:11px;color:var(--secondary);">${f.type||'—'}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);">${f.tel||'—'}</td>
+      <td style="padding:10px 8px;font-size:13px;font-weight:600;color:#0C447C;">${total>0?total.toFixed(2)+' $':'—'}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;color:#0C447C;">›</td>
+    </tr>`;
+  }).join('');
+  const grandTotal=state.fournisseurs.reduce((sum,f)=>{return sum+state.achats.filter(a=>a.magasin===f.nom).reduce((s2,a)=>s2+(parseFloat(a.montantAvantTax)||0),0);},0);
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${list.length} fournisseur${list.length>1?'s':''} · Total: <strong style="color:#0C447C;">${grandTotal.toFixed(2)} $</strong></span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openFournModal(-1)">+ Nouveau</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f9f9f9;border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">FOURNISSEUR</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TÉL</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TOTAL ACHATS</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 // ─── INIT ─────────────────────────────────────────────────
