@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Suivi Heures">
+<meta name="theme-color" content="#ffffff">
+<title>Suivi des heures</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:#f5f5f5;color:#1a1a1a;font-size:15px;}
+:root{--primary:#1a1a1a;--secondary:#6b6b6b;--border:#e0e0e0;--radius:10px;--radius-sm:6px;}
+.top-nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:0;z-index:100;}
+.top-nav::-webkit-scrollbar{display:none;}
+.top-nav button{background:none;border:none;border-bottom:3px solid transparent;padding:14px 16px;font-size:13px;font-weight:500;color:var(--secondary);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;}
+.top-nav button.active{color:var(--primary);border-bottom-color:var(--primary);}
+.top-nav button.tab-victor.active{color:#0C447C;border-bottom-color:#185FA5;}
+.top-nav button.tab-edouard.active{color:#085041;border-bottom-color:#0F6E56;}
+.top-nav button.tab-denis.active{color:#633806;border-bottom-color:#854F0B;}
+.top-nav button.tab-rapport.active{color:#3C3489;border-bottom-color:#534AB7;}
+.avatar{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;}
+.av-v{background:#E6F1FB;color:#0C447C;}
+.av-e{background:#E1F5EE;color:#085041;}
+.av-d{background:#FAEEDA;color:#633806;}
+.sub-nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.sub-nav::-webkit-scrollbar{display:none;}
+.sub-nav button{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;font-size:12px;color:var(--secondary);white-space:nowrap;cursor:pointer;}
+.sub-nav button.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:500;}
+.page{display:none;}.page.active{display:block;}
+.content{padding:16px;max-width:700px;margin:0 auto;padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+.card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:16px;margin-bottom:12px;}
+.card-title{font-size:14px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:6px;}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.stats-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
+.stat-box{background:#f9f9f9;border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--border);}
+.stat-box .label{font-size:10px;color:var(--secondary);margin:0 0 3px;}
+.stat-box .value{font-size:16px;font-weight:600;margin:0;}
+.stat-fact{background:#EAF3DE;border-color:#C0DD97;}.stat-fact .label{color:#3B6D11;}.stat-fact .value{color:#27500A;}
+.stat-nf{background:#FCEBEB;border-color:#F09595;}.stat-nf .label{color:#A32D2D;}.stat-nf .value{color:#791F1F;}
+.stat-money{background:#E6F1FB;border-color:#85B7EB;}.stat-money .label{color:#185FA5;}.stat-money .value{color:#0C447C;}
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.cal-header h2{font-size:16px;font-weight:600;margin:0;}
+.cal-nav button{background:#f0f0f0;border:none;border-radius:var(--radius-sm);width:36px;height:36px;font-size:16px;cursor:pointer;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-day-name{text-align:center;font-size:10px;font-weight:600;color:var(--secondary);padding:4px 0;}
+.cal-cell{border:1px solid var(--border);border-radius:6px;padding:4px 3px;min-height:52px;cursor:pointer;text-align:center;background:#fff;}
+.cal-cell:active{background:#f0f0f0;}
+.cal-cell.empty{background:none;border-color:transparent;cursor:default;}
+.cal-cell.today{background:#f0f4ff;}
+.cal-cell.has-data{border-width:2px;}
+.day-num{font-size:12px;font-weight:600;}
+.day-h{font-size:10px;font-weight:600;margin-top:2px;}
+.day-f{font-size:9px;margin-top:1px;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;overflow-y:auto;}
+.modal-overlay.open{display:flex;align-items:flex-end;justify-content:center;}
+.modal-box{background:#fff;border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
+@media(min-width:500px){.modal-overlay.open{align-items:center;}.modal-box{border-radius:18px;margin:16px;}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-header h3{font-size:15px;font-weight:600;margin:0;text-transform:capitalize;}
+.modal-close{background:none;border:none;font-size:22px;color:var(--secondary);cursor:pointer;padding:0;}
+.entry-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
+.entry-item:last-child{border-bottom:none;}
+.entry-h{font-size:13px;font-weight:700;min-width:34px;}
+.entry-info{flex:1;overflow:hidden;}
+.entry-info .e1{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.entry-info .e2{font-size:11px;color:var(--secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.btn-del{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:4px;}
+.btn-del:active{color:#e24b4a;}
+.btn-edit{background:none;border:none;color:#888;font-size:14px;cursor:pointer;padding:4px;}
+.btn-edit:active{color:#185FA5;}
+.fbadge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;}
+.fb-y{background:#EAF3DE;color:#27500A;}
+.fb-n{background:#FCEBEB;color:#791F1F;}
+.form-section{border-top:1px solid var(--border);padding-top:14px;margin-top:4px;}
+.form-section h4{font-size:12px;font-weight:600;color:var(--secondary);letter-spacing:.05em;margin:0 0 12px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;color:var(--secondary);margin-bottom:4px;font-weight:500;}
+.field input,.field select{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;background:#fff;color:var(--primary);-webkit-appearance:none;}
+.field input:focus,.field select:focus{outline:none;border-color:#888;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.toggle-group{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:12px;}
+.toggle-group button{flex:1;padding:10px;font-size:13px;font-weight:500;border:none;background:#fff;color:var(--secondary);cursor:pointer;}
+.toggle-group button.on-f{background:#EAF3DE;color:#27500A;}
+.toggle-group button.on-nf{background:#FCEBEC;color:#791F1F;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 20px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:600;cursor:pointer;}
+.btn-primary{background:#1a1a1a;color:#fff;width:100%;}
+.btn-sm{padding:8px 14px;font-size:12px;background:#f0f0f0;color:var(--primary);border:1px solid var(--border);cursor:pointer;border-radius:var(--radius-sm);}
+.btn-pdf{background:#0C447C;color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+.list-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);}
+.list-item:last-child{border-bottom:none;}
+.li-date{font-size:11px;color:var(--secondary);min-width:70px;}
+.li-h{font-size:13px;font-weight:700;min-width:34px;}
+.li-info{flex:1;overflow:hidden;}
+.li-info .t1{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.li-info .t2{font-size:11px;color:var(--secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rp-result-header{background:#f0f0f0;border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;}
+.emp-result-card{border-left:4px solid #ddd;padding-left:12px;margin-bottom:14px;}
+.emp-result-card.ev{border-left-color:#185FA5;}
+.emp-result-card.ee{border-left-color:#0F6E56;}
+.emp-result-card.ed{border-left-color:#854F0B;}
+.mini-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;}
+.mini-table td{padding:4px 0;border-bottom:1px solid var(--border);}
+.mini-table td:last-child{text-align:right;}
+.mini-table tr:last-child td{border-bottom:none;}
+.section-label{font-size:10px;font-weight:600;color:var(--secondary);letter-spacing:.05em;margin:10px 0 6px;}
+details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px 0;}
+.tag{display:inline-flex;align-items:center;gap:5px;background:#f0f0f0;border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;margin:3px;}
+.tag button{background:none;border:none;cursor:pointer;color:var(--secondary);font-size:13px;padding:0;}
+.fiche-section{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;}
+.empty{text-align:center;padding:40px 20px;color:var(--secondary);font-size:13px;}
+.total-facture-bar{background:#0C447C;color:#fff;border-radius:var(--radius-sm);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.total-facture-bar .tf-label{font-size:13px;font-weight:500;opacity:0.85;}
+.total-facture-bar .tf-value{font-size:22px;font-weight:700;}
+.sync-bar{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;font-size:11px;background:#f0f0f0;border-bottom:1px solid var(--border);}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;}
+.sync-dot.syncing{background:#EF9F27;animation:pulse 1s infinite;}
+.sync-dot.ok{background:#639922;}
+.sync-dot.err{background:#E24B4A;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.tab-heures.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+.tab-facturation.active{color:#1a6b3a;border-bottom-color:#2ea15a;}
+.tab-entreprise.active{color:#6b3a1a;border-bottom-color:#a15a2e;}
+.facture-section{background:#f9f9f9;border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;border:1px solid var(--border);}
+.facture-section-title{font-size:12px;font-weight:700;color:var(--secondary);letter-spacing:.05em;margin:0 0 10px;display:flex;align-items:center;gap:6px;}
+.facture-line{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
+.facture-line:last-child{border-bottom:none;}
+.facture-total-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;}
+.facture-total-row.grand{font-size:16px;font-weight:700;border-top:2px solid var(--primary);margin-top:6px;padding-top:10px;}
+.facture-grand-total{background:#0C447C;color:#fff;border-radius:var(--radius-sm);padding:16px;display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
+.historique-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.historique-item:last-child{border-bottom:none;}
+.hist-num{font-size:11px;font-weight:700;color:#0C447C;min-width:50px;}
+.hist-info{flex:1;}
+.hist-info .h1{font-size:13px;font-weight:500;}
+.hist-info .h2{font-size:11px;color:var(--secondary);}
+.hist-montant{font-size:14px;font-weight:700;color:#0C447C;}
+.statut-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.statut-brouillon{background:#f0f0f0;color:#666;}
+.statut-envoye{background:#E6F1FB;color:#0C447C;}
+.statut-paye{background:#EAF3DE;color:#27500A;}
+.logo-preview{width:100px;height:60px;object-fit:contain;border-radius:6px;border:1px solid var(--border);}
+@media print{
+.top-nav,.sub-nav,.sync-bar,.no-print{display:none!important;}
+body{background:#fff;font-size:11px;}
+.page{display:block!important;}
+.content{padding:0;max-width:100%;}
+.card{break-inside:avoid;border:none;padding:8px 0;}
+.btn-pdf,.btn-del,.btn-edit{display:none!important;}
+.facture-grand-total{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+@media print{.top-nav,.sub-nav,.sync-bar,.no-print{display:none!important;}body{background:#fff;}.page{display:block!important;}.content{padding:0;max-width:100%;}.card{break-inside:avoid;margin-bottom:8px;}.btn-pdf{display:none!important;}details{open:true;}}
+</style>
+</head>
+<body>
+
+<div class="sync-bar" id="syncBar">
+  <div class="sync-dot syncing" id="syncDot"></div>
+  <span id="syncText">Connexion à Supabase...</span>
+</div>
+
+<nav class="top-nav">
+  <button class="tab-heures active" onclick="setEmp('heures')">⏱ Heures</button>
+  <button class="tab-chantiers" onclick="setEmp('chantiers')">🏗 Chantiers</button>
+  <button class="tab-rapport" onclick="setEmp('rapport')">📊 Rapport</button>
+  <button class="tab-facturation" onclick="setEmp('facturation')">🧾 Facturation</button>
+  <button class="tab-entreprise" onclick="setEmp('entreprise')">🏢 Mon entreprise</button>
+</nav>
+
+<div id="page-heures" class="page active">
+  <nav class="sub-nav" id="heures-subnav">
+    <button class="active" onclick="setHeuresEmp('victor')"><span class="avatar av-v" style="width:20px;height:20px;font-size:9px;margin-right:4px;">VI</span>Victor</button>
+    <button onclick="setHeuresEmp('edouard')"><span class="avatar av-e" style="width:20px;height:20px;font-size:9px;margin-right:4px;">ED</span>Edouard</button>
+    <button onclick="setHeuresEmp('denis')"><span class="avatar av-d" style="width:20px;height:20px;font-size:9px;margin-right:4px;">DE</span>Denis</button>
+  </nav>
+  <nav class="sub-nav" id="heures-sub2nav">
+    <button class="active" onclick="setSub(currentHeuresEmp,'cal')">📅 Calendrier</button>
+    <button onclick="setSub(currentHeuresEmp,'liste')">📋 Liste</button>
+    <button onclick="setSub(currentHeuresEmp,'rapport')">📈 Rapport</button>
+  </nav>
+  <div class="content" id="content-heures"></div>
+</div>
+<div id="page-victor" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('victor','cal')">📅 Calendrier</button><button onclick="setSub('victor','liste')">📋 Liste</button><button onclick="setSub('victor','rapport')">📈 Rapport</button></nav><div class="content" id="content-victor"></div></div>
+<div id="page-edouard" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('edouard','cal')">📅 Calendrier</button><button onclick="setSub('edouard','liste')">📋 Liste</button><button onclick="setSub('edouard','rapport')">📈 Rapport</button></nav><div class="content" id="content-edouard"></div></div>
+<div id="page-denis" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('denis','cal')">📅 Calendrier</button><button onclick="setSub('denis','liste')">📋 Liste</button><button onclick="setSub('denis','rapport')">📈 Rapport</button></nav><div class="content" id="content-denis"></div></div>
+<div id="page-chantiers" class="page"><nav class="sub-nav"><button class="active" onclick="setSub('chantiers','clients')">👤 Clients</button><button onclick="setSub('chantiers','chantiersList')">🏗 Chantiers</button><button onclick="setSub('chantiers','listes')">⚙️ Listes</button></nav><div class="content" id="content-chantiers"></div></div>
+<div id="page-rapport" class="page"><div class="content" id="content-rapport"></div></div>
+
+<div id="page-facturation" class="page">
+  <nav class="sub-nav">
+    <button class="active" onclick="setSub('facturation','nouvelle')">➕ Facture</button>
+    <button onclick="setSub('facturation','historique')">📋 Historique</button>
+    <button onclick="setSub('facturation','materiaux')">🛒 Matériel</button>
+    <button onclick="setSub('facturation','sstraitants')">👷 Sous-traitants</button>
+    <button onclick="setSub('facturation','sstfactures')">🧾 Fact. SST</button>
+    <button onclick="setSub('facturation','fournisseurs')">🏪 Fournisseurs</button>
+  </nav>
+  <div class="content" id="content-facturation"></div>
+</div>
+<div id="page-entreprise" class="page">
+  <div class="content" id="content-entreprise"></div>
+</div>
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal-box" id="modalBox"></div>
+</div>
+
+<script>
+// ─── SUPABASE CONFIG ──────────────────────────────────────
+const SB_URL = 'https://vlagqxkyvzoerpuajgcn.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsYWdxeGt5dnpvZXJwdWFqZ2NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNjAxMzcsImV4cCI6MjA5MzgzNjEzN30.CGgfjqUzH3mXP9wxHfQnrariJL61VheXU6_kVO7E4VQ';
+const SB_HEADERS = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+const ROW_ID = 1;
+
+// ─── STATE ────────────────────────────────────────────────
+let state = {
+  currentEmp:'victor',
+  currentSub:{victor:'cal',edouard:'cal',denis:'cal',chantiers:'clients',facturation:'nouvelle'},
+  currentHeuresEmp:'victor',
+  calMonth:{victor:new Date().getMonth(),edouard:new Date().getMonth(),denis:new Date().getMonth()},
+  calYear:{victor:new Date().getFullYear(),edouard:new Date().getFullYear(),denis:new Date().getFullYear()},
+  entries:{victor:[],edouard:[],denis:[]},
+  entryId:0,
+  pendingFacturable:true,
+  chantiers:['Ardennes','Bullion','Cadzow','Des Carrières','Desrochers','Garnier','McDougall','Upper Edison'],
+  typesTravaux:['Charpente','Démolition','Finition','Gestion de projets','Implantation','Ménage','Menuiserie','Ouvrage de béton','Protection','Surintendance'],
+  fiches:{},
+  clients:[],
+  clientId:0,
+  entreprise:{nom:'',adresse:'',telephone:'',courriel:'',siteWeb:'',noTPS:'',noTVQ:'',logo:''},
+  sstraitants:[],
+  fournisseurs:[],
+  factures:[],
+  factureId:0,
+  achats:[],
+  achatId:0,
+  sstFactures:[],
+  sstFactureId:0
+};
+let currentHeuresEmp='victor';
+
+function setHeuresEmp(emp){
+  currentHeuresEmp=emp;
+  state.currentEmp=emp;
+  // Update employee sub-nav
+  const btns=document.querySelectorAll('#heures-subnav button');
+  const emps=['victor','edouard','denis'];
+  btns.forEach((b,i)=>b.classList.toggle('active',emps[i]===emp));
+  // Update action sub-nav
+  const sub=state.currentSub[emp]||'cal';
+  const btns2=document.querySelectorAll('#heures-sub2nav button');
+  const subs=['cal','liste','rapport'];
+  btns2.forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
+  // Render content
+  const c=document.getElementById('content-heures');
+  if(!c)return;
+  if(sub==='cal')c.innerHTML=buildCal(emp);
+  else if(sub==='liste')c.innerHTML=buildListe(emp);
+  else c.innerHTML=buildRapportEmp(emp);
+}
+
+const EMPS={victor:{label:'Victor',bg:'#E6F1FB',col:'#0C447C',border:'#185FA5',cls:'ev'},edouard:{label:'Edouard',bg:'#E1F5EE',col:'#085041',border:'#0F6E56',cls:'ee'},denis:{label:'Denis',bg:'#FAEEDA',col:'#633806',border:'#854F0B',cls:'ed'}};
+const today=new Date(),todayStr=fmtDate(today);
+let isSaving=false,pendingSave=false;
+
+// ─── SYNC STATUS ─────────────────────────────────────────
+function setSyncStatus(s,msg){
+  document.getElementById('syncDot').className='sync-dot '+s;
+  document.getElementById('syncText').textContent=msg;
+}
+
+// ─── SUPABASE LOAD ────────────────────────────────────────
+async function loadFromCloud(){
+  try{
+    setSyncStatus('syncing','Chargement...');
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    const r=await fetch(`${SB_URL}/rest/v1/donnees?id=eq.${ROW_ID}&select=data`,{
+      headers:SB_HEADERS,
+      signal:controller.signal
+    });
+    clearTimeout(timeout);
+    if(!r.ok){
+      const errText=await r.text();
+      throw new Error('HTTP '+r.status+': '+errText);
+    }
+    const rows=await r.json();
+    if(rows.length>0&&rows[0].data){
+      const d=rows[0].data;
+      if(d.entries)state.entries=d.entries;
+      if(d.chantiers)state.chantiers=d.chantiers;
+      if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
+      if(d.fiches)state.fiches=d.fiches;
+      if(d.entryId)state.entryId=d.entryId;
+    } else {
+      // First time — insert empty row
+      await fetch(`${SB_URL}/rest/v1/donnees`,{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({id:ROW_ID,data:getCloudPayload()})});
+    }
+    state.chantiers.forEach(c=>{if(!state.fiches[c])state.fiches[c]={};});
+    saveLocal();
+    const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
+    setSyncStatus('ok',`Synchronisé à ${t}`);
+    // NEVER re-render from background sync — only update data silently
+  }catch(e){
+    console.error('Supabase load error:',e.message||e);
+    setSyncStatus('err','Erreur: '+(e.message||'connexion').slice(0,50));
+    loadLocal(false);
+  }
+}
+
+// ─── SUPABASE SAVE ────────────────────────────────────────
+let _bgSync=false;
+async function saveToCloud(){
+  if(isSaving){pendingSave=true;return;}
+  isSaving=true;
+  saveLocal();
+  setSyncStatus('syncing','Sauvegarde...');
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/donnees?id=eq.${ROW_ID}`,{
+      method:'PATCH',
+      headers:{...SB_HEADERS,'Prefer':'return=minimal'},
+      body:JSON.stringify({data:getCloudPayload()})
+    });
+    if(!r.ok)throw new Error('save failed');
+    const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
+    setSyncStatus('ok',`Synchronisé à ${t}`);
+  }catch(e){
+    setSyncStatus('err','Erreur sync — sauvegardé localement');
+  }finally{
+    isSaving=false;
+    if(pendingSave){pendingSave=false;saveToCloud();}
+  }
+}
+
+function getCloudPayload(){
+  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,
+  entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
+}
+
+// ─── LOCAL BACKUP ─────────────────────────────────────────
+function saveLocal(){try{localStorage.setItem('sh_v3',JSON.stringify(getCloudPayload()));}catch(e){}}
+function loadLocal(andRender){
+  try{
+    const s=localStorage.getItem('sh_v3');
+    if(s){
+      const d=JSON.parse(s);
+      if(d.entries)state.entries=d.entries;
+      if(d.chantiers)state.chantiers=d.chantiers;
+      if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
+      if(d.fiches)state.fiches=d.fiches;
+      if(d.entryId)state.entryId=d.entryId;
+      if(d.clients)state.clients=d.clients;
+      if(d.clientId)state.clientId=d.clientId;
+      if(d.entreprise)state.entreprise=d.entreprise;
+      if(d.sstraitants)state.sstraitants=d.sstraitants;
+      if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
+      if(d.factures)state.factures=d.factures;
+      if(d.factureId)state.factureId=d.factureId;
+      if(d.achats)state.achats=d.achats;
+      if(d.achatId)state.achatId=d.achatId;
+      if(d.sstFactures)state.sstFactures=d.sstFactures;
+      if(d.sstFactureId)state.sstFactureId=d.sstFactureId;
+      state.chantiers.forEach(c=>{if(!state.fiches[c])state.fiches[c]={};});
+    }
+    if(andRender)renderCurrent();
+  }catch(e){console.error('loadLocal error',e);}
+}
+
+// Auto-refresh toutes les 30s — ne pas ecraser le rapport si affiche
+setInterval(async()=>{
+  if(isSaving)return;
+  // Silently fetch data - NEVER touch the UI
+  try{
+    const ctrl=new AbortController();
+    const tmt=setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(`${SB_URL}/rest/v1/donnees?id=eq.${ROW_ID}&select=data`,{headers:SB_HEADERS,signal:ctrl.signal});
+    clearTimeout(tmt);
+    if(!r.ok)return;
+    const rows=await r.json();
+    if(rows.length>0&&rows[0].data){
+      const d=rows[0].data;
+      if(d.entries)state.entries=d.entries;
+      if(d.chantiers)state.chantiers=d.chantiers;
+      if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
+      if(d.fiches)state.fiches=d.fiches;
+      if(d.entryId)state.entryId=d.entryId;
+      if(d.clients)state.clients=d.clients;
+      if(d.factures)state.factures=d.factures;
+      if(d.achats)state.achats=d.achats;
+      if(d.sstFactures)state.sstFactures=d.sstFactures;
+      if(d.entreprise)state.entreprise=d.entreprise;
+      if(d.sstraitants)state.sstraitants=d.sstraitants;
+      if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
+      saveLocal();
+      const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
+      setSyncStatus('ok','Sync '+t);
+    }
+  }catch(e){}
+},30000);
+
+// ─── UTILS ────────────────────────────────────────────────
+function fmtDate(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmtDateFr(s){if(!s)return'';return new Date(s+'T12:00:00').toLocaleDateString('fr-CA',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+function fmtDateShort(s){if(!s)return'';return new Date(s+'T12:00:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'});}
+function esc(s){return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
+function selOpts(list,sel='',ph='-- Choisir --'){return`<option value="">${ph}</option>`+list.map(i=>`<option value="${esc(i)}"${i===sel?' selected':''}>${i}</option>`).join('');}
+function calcMontant(hFact,ch){const f=state.fiches[ch]||{};const t=parseFloat(f.taux)||0,fg=parseFloat(f.fraisGestion)||0;if(!t)return null;return hFact*t*(1+fg/100);}
+function fmtMoney(v){return v!=null?v.toFixed(2)+' $':'—';}
+
+// ─── NAV ──────────────────────────────────────────────────
+function setEmp(emp){
+  state.currentEmp=emp;
+  document.querySelectorAll('.top-nav button').forEach(b=>b.classList.remove('active'));
+  const tabBtn=document.querySelector(`.tab-${emp}`);
+  if(tabBtn)tabBtn.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+    document.getElementById('page-heures').classList.add('active');
+    document.querySelector('.tab-heures').classList.add('active');
+    currentHeuresEmp=emp;
+    setHeuresEmp(emp);
+    return;
+  }
+  const page=document.getElementById('page-'+emp);
+  if(page)page.classList.add('active');
+  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+    setHeuresEmp(emp);
+  } else {
+    // Trigger setSub to render correct content
+    setSub(emp, state.currentSub[emp]||'clients');
+  }
+}
+
+function setEmpHeures(emp){
+  setEmp('heures');
+  setHeuresEmp(emp);
+}
+function setSub(emp,sub){
+  // If emp is a variable reference (currentHeuresEmp), resolve it
+  if(emp==='currentHeuresEmp')emp=currentHeuresEmp;
+  state.currentSub[emp]=sub;
+  const nav=document.querySelector(`#page-${emp} .sub-nav`);
+  if(nav){
+    let subs;
+    if(emp==='chantiers')subs=['clients','chantiersList','listes'];
+    else if(emp==='facturation')subs=['nouvelle','historique','materiaux','sstraitants','sstfactures','fournisseurs'];
+    else subs=['cal','liste','rapport'];
+    nav.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
+  }
+  // Update heures sub2nav and render content
+  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+    const btns2=document.querySelectorAll('#heures-sub2nav button');
+    const subs2=['cal','liste','rapport'];
+    btns2.forEach((b,i)=>b.classList.toggle('active',subs2[i]===sub));
+    const c=document.getElementById('content-heures');
+    if(c){
+      if(sub==='cal')c.innerHTML=buildCal(emp);
+      else if(sub==='liste')c.innerHTML=buildListe(emp);
+      else if(sub==='rapport')c.innerHTML=buildRapportEmp(emp);
+    }
+    return;
+  }
+  // Direct render in the correct container
+  const sc=document.getElementById('content-'+emp);
+  if(!sc)return;
+  if(emp==='chantiers'){
+    if(sub==='clients')sc.innerHTML=buildClients();
+    else if(sub==='chantiersList')sc.innerHTML=buildChantiersSection();
+    else if(sub==='listes')sc.innerHTML=buildGestionListes();
+  } else if(emp==='facturation'){
+    if(sub==='nouvelle')sc.innerHTML=buildNouvelleFacture();
+    else if(sub==='historique')sc.innerHTML=buildHistoriqueFactures();
+    else if(sub==='materiaux')sc.innerHTML=buildMateriaux();
+    else if(sub==='sstraitants')sc.innerHTML=buildSstraitants();
+    else if(sub==='sstfactures')sc.innerHTML=buildSstFactures();
+    else if(sub==='fournisseurs')sc.innerHTML=buildFournisseurs();
+  } else if(emp==='rapport'){
+    renderRapportPeriode();
+  } else if(emp==='entreprise'){
+    renderEntreprise();
+  }
+}
+function smartRender(){
+  const emp=state.currentEmp;
+  const sub=state.currentSub[emp]||'';
+  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+    const c=document.getElementById('content-heures');
+    if(!c)return;
+    if(sub==='cal')c.innerHTML=buildCal(emp);
+    else if(sub==='liste')c.innerHTML=buildListe(emp);
+    else if(sub==='rapport')c.innerHTML=buildRapportEmp(emp);
+  } else {
+    // Direct render for non-heures pages
+    setSub(state.currentEmp, state.currentSub[state.currentEmp]||'');
+  }
+}
+function renderCurrent(){
+  const emp=state.currentEmp;
+  if(emp==='rapport'){renderRapportPeriode();return;}
+  if(emp==='entreprise'){renderEntreprise();return;}
+  const sub=state.currentSub[emp],c=document.getElementById('content-'+emp);
+  if(!c)return;
+  if(emp==='chantiers'){
+    if(sub==='clients')c.innerHTML=buildClients();
+    else if(sub==='chantiersList')c.innerHTML=buildChantiersSection();
+    else if(sub==='listes')c.innerHTML=buildGestionListes();
+  }
+  else if(emp==='facturation'){
+    if(sub==='nouvelle')c.innerHTML=buildNouvelleFacture();
+    else if(sub==='historique')c.innerHTML=buildHistoriqueFactures();
+    else if(sub==='materiaux')c.innerHTML=buildMateriaux();
+    else if(sub==='sstraitants')c.innerHTML=buildSstraitants();
+    else if(sub==='sstfactures')c.innerHTML=buildSstFactures();
+    else if(sub==='fournisseurs')c.innerHTML=buildFournisseurs();
+  }
+  else if(sub==='cal')c.innerHTML=buildCal(emp);
+  else if(sub==='liste')c.innerHTML=buildListe(emp);
+  else c.innerHTML=buildRapportEmp(emp);
+}
+
+// ─── CALENDAR ─────────────────────────────────────────────
+function buildCal(emp){
+  const e=EMPS[emp],m=state.calMonth[emp],y=state.calYear[emp];
+  const mN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const dN=['L','M','M','J','V','S','D'];
+  const offset=(new Date(y,m,1).getDay()||7)-1;
+  const dim=new Date(y,m+1,0).getDate();
+  const dm={};
+  state.entries[emp].forEach(en=>{if(!dm[en.date])dm[en.date]={total:0,fact:0};dm[en.date].total+=en.heures;if(en.facturable)dm[en.date].fact+=en.heures;});
+  let tm=0,fm=0;
+  Object.entries(dm).forEach(([d,v])=>{const dd=new Date(d+'T12:00:00');if(dd.getMonth()===m&&dd.getFullYear()===y){tm+=v.total;fm+=v.fact;}});
+  let h=`<div class="cal-header"><div class="cal-nav" style="display:flex;gap:8px;"><button onclick="prevMonth('${emp}')">‹</button><button onclick="nextMonth('${emp}')">›</button></div><h2>${mN[m]} ${y}</h2></div>
+  <div class="stats-row" style="margin-bottom:12px;">
+    <div class="stat-box"><div class="label">Total mois</div><div class="value">${tm.toFixed(1)}h</div></div>
+    <div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${fm.toFixed(1)}h</div></div>
+    <div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(tm-fm).toFixed(1)}h</div></div>
+  </div><div class="cal-grid">`;
+  dN.forEach(d=>h+=`<div class="cal-day-name">${d}</div>`);
+  for(let i=0;i<offset;i++)h+=`<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=dim;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const v=dm[ds],it=ds===todayStr;
+    let fH='';
+    if(v&&v.fact>0&&v.fact<v.total)fH=`<div class="day-f" style="color:#888;">F+NF</div>`;
+    else if(v&&v.fact>0)fH=`<div class="day-f" style="color:#27500A;">F</div>`;
+    else if(v&&v.total>0)fH=`<div class="day-f" style="color:#791F1F;">NF</div>`;
+    h+=`<div class="cal-cell${it?' today':''}${v?' has-data':''}" style="${v?'border-color:'+e.border+';':''}" onclick="openModal('${ds}','${emp}')">
+      <div class="day-num" style="${it?'color:'+e.col+';':''}">${d}</div>
+      ${v?`<div class="day-h" style="color:${e.col};">${v.total.toFixed(1)}h</div>`:''}${fH}
+    </div>`;
+  }
+  return h+'</div>';
+}
+function prevMonth(emp){
+  if(state.calMonth[emp]===0){state.calMonth[emp]=11;state.calYear[emp]--;}else state.calMonth[emp]--;
+  const c=document.getElementById('content-heures');
+  if(c)c.innerHTML=buildCal(emp);
+}
+function nextMonth(emp){
+  if(state.calMonth[emp]===11){state.calMonth[emp]=0;state.calYear[emp]++;}else state.calMonth[emp]++;
+  const c=document.getElementById('content-heures');
+  if(c)c.innerHTML=buildCal(emp);
+}
+
+// ─── MODAL ────────────────────────────────────────────────
+function openModal(date,emp){
+  if(!emp)emp=currentHeuresEmp;
+  const e=EMPS[emp],de=state.entries[emp].filter(en=>en.date===date),fs=state.pendingFacturable;
+  let ex=de.map(en=>`<div class="entry-item"><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.facturable?'F':'NF'}</span><span class="entry-h" style="color:${e.col};">${en.heures}h</span><div class="entry-info"><div class="e1">${en.chantier||'—'}</div><div class="e2">${[en.type,en.desc].filter(Boolean).join(' · ')||'—'}</div></div><button class="btn-edit" onclick="editEntry(${en.id},'${emp}','${date}')">✏️</button><button class="btn-del" onclick="delEntry(${en.id},'${emp}','${date}')">✕</button></div>`).join('');
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header"><h3>${fmtDateFr(date)}</h3><button class="modal-close" onclick="closeModal()">×</button></div>
+    ${ex?`<div style="margin-bottom:14px;">${ex}</div>`:''}
+    <div class="form-section">
+      <h4>AJOUTER UNE ENTRÉE</h4>
+      <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable</label>
+      <div class="toggle-group"><button id="btn-f" class="${fs?'on-f':''}" onclick="setFact(true)">✓ Facturable</button><button id="btn-nf" class="${!fs?'on-nf':''}" onclick="setFact(false)">✕ Non facturable</button></div>
+      <div class="grid2">
+        <div class="field"><label>Heures</label><input type="number" id="m-h" min="0" step="0.25" placeholder="7.5" inputmode="decimal"/></div>
+        <div class="field"><label>Chantier</label><select id="m-ch">${selOpts(state.chantiers)}</select></div>
+      </div>
+      <div class="field"><label>Type de travaux</label><select id="m-ty">${selOpts(state.typesTravaux)}</select></div>
+      <div class="field"><label>Description</label><input type="text" id="m-de" placeholder="Description du travail"/></div>
+      <button class="btn btn-primary" onclick="saveEntry('${emp}','${date}')">✓ Enregistrer</button>
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>{const h=document.getElementById('m-h');if(h)h.focus();},300);
+}
+function setFact(v){state.pendingFacturable=v;const bf=document.getElementById('btn-f'),bn=document.getElementById('btn-nf');if(bf&&bn){bf.className=v?'on-f':'';bn.className=!v?'on-nf':'';}}
+function saveEntry(emp,date){
+  const h=parseFloat(document.getElementById('m-h').value)||0;
+  if(h<=0){document.getElementById('m-h').focus();return;}
+  state.entries[emp].push({id:++state.entryId,date,heures:h,chantier:document.getElementById('m-ch').value,type:document.getElementById('m-ty').value,desc:document.getElementById('m-de').value.trim(),facturable:state.pendingFacturable});
+  closeModal();
+  const _c=document.getElementById('content-heures');
+  if(_c)_c.innerHTML=buildCal(emp);
+  saveToCloud();
+}
+function delEntry(id,emp,date){if(!confirm('Supprimer?'))return;state.entries[emp]=state.entries[emp].filter(e=>e.id!==id);closeModal();
+  const _cd=document.getElementById('content-heures');
+  if(_cd)_cd.innerHTML=buildCal(emp);
+  saveToCloud();}
+function editEntry(id,emp,date){
+  const en=state.entries[emp].find(e=>e.id===id);
+  if(!en)return;
+  state.pendingFacturable=en.facturable;
+  const chOpts=selOpts(state.chantiers,en.chantier);
+  const tyOpts=selOpts(state.typesTravaux,en.type);
+  document.getElementById('modalBox').innerHTML=
+    '<div class="modal-header"><h3>Modifier une entree</h3><button class="modal-close" onclick="cancelEdit(\'' +date+ '\',\'' +emp+ '\')">×</button></div>'+
+    '<div style="background:#fff3cd;border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:12px;color:#856404;">✏️ '+fmtDateFr(date)+'</div>'+
+    '<label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable</label>'+
+    '<div class="toggle-group"><button id="btn-f" class="'+(en.facturable?'on-f':'')+'" onclick="setFact(true)">✓ Facturable</button><button id="btn-nf" class="'+(!en.facturable?'on-nf':'')+'" onclick="setFact(false)">✕ Non facturable</button></div>'+
+    '<div class="grid2"><div class="field"><label>Heures</label><input type="number" id="m-h" min="0" step="0.25" value="'+en.heures+'" inputmode="decimal"/></div>'+
+    '<div class="field"><label>Chantier</label><select id="m-ch">'+chOpts+'</select></div></div>'+
+    '<div class="field"><label>Type de travaux</label><select id="m-ty">'+tyOpts+'</select></div>'+
+    '<div class="field"><label>Description</label><input type="text" id="m-de" value="'+(en.desc||'')+'"/></div>'+
+    '<div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" onclick="saveEdit('+id+',\'' +emp+ '\',\'' +date+ '\')">✓ Enregistrer</button>'+
+    '<button class="btn btn-sm" onclick="cancelEdit(\'' +date+ '\',\'' +emp+ '\')">Annuler</button></div>';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveEdit(id,emp,date){
+  const h=parseFloat(document.getElementById('m-h').value)||0;
+  if(h<=0){document.getElementById('m-h').focus();return;}
+  const idx=state.entries[emp].findIndex(e=>e.id===id);
+  if(idx===-1)return;
+  state.entries[emp][idx]={
+    id:id,date:date,
+    heures:h,
+    chantier:document.getElementById('m-ch').value,
+    type:document.getElementById('m-ty').value,
+    desc:document.getElementById('m-de').value.trim(),
+    facturable:state.pendingFacturable
+  };
+  closeModal();
+  const _ce=document.getElementById('content-heures');
+  if(_ce)_ce.innerHTML=buildCal(emp);
+  saveToCloud();
+}
+
+function cancelEdit(date,emp){openModal(date,emp);}
+
+function editFromList(id,emp){
+  const en=state.entries[emp].find(e=>e.id===id);
+  if(en)editEntry(id,emp,en.date);
+}
+
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+
+// ─── LISTE ────────────────────────────────────────────────
+function buildListe(emp){
+  const e=EMPS[emp],list=state.entries[emp].slice().sort((a,b)=>b.date.localeCompare(a.date));
+  if(!list.length)return`<div class="empty">Aucune entrée pour ${e.label}.</div>`;
+  const total=list.reduce((s,en)=>s+en.heures,0),fact=list.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+  return`<div class="stats-row"><div class="stat-box"><div class="label">Total</div><div class="value">${total.toFixed(1)}h</div></div><div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${fact.toFixed(1)}h</div></div><div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(total-fact).toFixed(1)}h</div></div></div>
+  <div class="card">${list.map(en=>`<div class="list-item"><div class="li-date">${fmtDateShort(en.date)}</div><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.facturable?'F':'NF'}</span><span class="li-h" style="color:${e.col};">${en.heures}h</span><div class="li-info"><div class="t1">${en.chantier||'—'}</div><div class="t2">${[en.type,en.desc].filter(Boolean).join(' · ')||'—'}</div></div><button class="btn-edit" onclick="editFromList(${en.id},'${emp}')">✏️</button><button class="btn-del" onclick="delList(${en.id},'${emp}')">✕</button></div>`).join('')}</div>`;
+}
+function delList(id,emp){if(!confirm('Supprimer?'))return;state.entries[emp]=state.entries[emp].filter(e=>e.id!==id);
+  const _cl=document.getElementById('content-heures');
+  const _sub=state.currentSub[emp]||'cal';
+  if(_cl){if(_sub==='liste')_cl.innerHTML=buildListe(emp);else _cl.innerHTML=buildCal(emp);}
+  saveToCloud();}
+
+// ─── RAPPORT EMP ──────────────────────────────────────────
+function buildRapportEmp(emp){
+  const e=EMPS[emp],list=state.entries[emp].filter(en=>en.heures>0);
+  if(!list.length)return`<div class="empty">Aucune entrée pour ${e.label}.</div>`;
+  const total=list.reduce((s,en)=>s+en.heures,0),fact=list.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+  const byCh={},byTy={};
+  list.forEach(en=>{
+    if(en.chantier){if(!byCh[en.chantier])byCh[en.chantier]={total:0,fact:0};byCh[en.chantier].total+=en.heures;if(en.facturable)byCh[en.chantier].fact+=en.heures;}
+    if(en.type){if(!byTy[en.type])byTy[en.type]={total:0,fact:0};byTy[en.type].total+=en.heures;if(en.facturable)byTy[en.type].fact+=en.heures;}
+  });
+  const chR=Object.entries(byCh).sort((a,b)=>b[1].total-a[1].total).map(([ch,v])=>{const m=calcMontant(v.fact,ch);return`<tr><td>${ch}</td><td>${v.total.toFixed(1)}h</td><td><span class="fbadge fb-y">${v.fact.toFixed(1)}h</span></td><td style="font-weight:600;color:#0C447C;">${fmtMoney(m)}</td></tr>`;}).join('');
+  const tyR=Object.entries(byTy).sort((a,b)=>b[1].total-a[1].total).map(([t,v])=>`<tr><td>${t}</td><td>${v.total.toFixed(1)}h</td><td><span class="fbadge fb-y">${v.fact.toFixed(1)}h</span></td><td></td></tr>`).join('');
+  return`<div class="stats-row"><div class="stat-box"><div class="label">Total</div><div class="value" style="color:${e.col};">${total.toFixed(1)}h</div></div><div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${fact.toFixed(1)}h</div></div><div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(total-fact).toFixed(1)}h</div></div></div>
+  <div class="card"><div class="section-label">PAR CHANTIER</div><table class="mini-table"><thead><tr><td><b>Chantier</b></td><td style="text-align:right;"><b>Total</b></td><td style="text-align:right;"><b>Fact.</b></td><td style="text-align:right;"><b>Montant</b></td></tr></thead><tbody>${chR||'<tr><td colspan="4" style="color:var(--secondary);">—</td></tr>'}</tbody></table>
+  <div class="section-label" style="margin-top:12px;">PAR TYPE DE TRAVAUX</div><table class="mini-table"><tbody>${tyR||'<tr><td colspan="4">—</td></tr>'}</tbody></table>
+  <p style="font-size:10px;color:var(--secondary);margin:8px 0 0;">* Montant = heures fact. × taux × (1 + frais gestion %)</p></div>`;
+}
+
+
+// ─── RAPPORT COMPLET ──────────────────────────────────────
+function renderRapportPeriode(){
+  document.getElementById('content-rapport').innerHTML=`
+    <div class="card">
+      <div class="card-title">📊 Rapports</div>
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:14px;">
+        <button id="rtype-chantier" class="toggle-group" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;cursor:pointer;background:#1a1a1a;color:#fff;" onclick="setRapportType('chantier')">🏗 Par chantier</button>
+        <button id="rtype-date" class="toggle-group" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;cursor:pointer;background:#fff;color:var(--secondary);" onclick="setRapportType('date')">📅 Par période</button>
+        <button id="rtype-depense" class="toggle-group" style="flex:1;padding:10px;font-size:12px;font-weight:500;border:none;cursor:pointer;background:#fff;color:var(--secondary);" onclick="setRapportType('depense')">🏷 Par type</button>
+      </div>
+      <div id="rapport-filters"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="genRapport()">🔍 Générer</button>
+        <button class="btn btn-sm" onclick="resetRapport()">↺</button>
+      </div>
+    </div>
+    <div id="rp-result"></div>`;
+  window._rapportType='chantier';
+  buildRapportFilters('chantier');
+}
+
+function setRapportType(type){
+  window._rapportType=type;
+  ['chantier','date','depense'].forEach(t=>{
+    const btn=document.getElementById('rtype-'+t);
+    if(btn){btn.style.background=t===type?'#1a1a1a':'#fff';btn.style.color=t===type?'#fff':'var(--secondary)';}
+  });
+  buildRapportFilters(type);
+  document.getElementById('rp-result').innerHTML='';
+}
+
+function buildRapportFilters(type){
+  const c=document.getElementById('rapport-filters');
+  if(!c)return;
+  const chOpts=selOpts(state.chantiers,'','-- Tous les chantiers --');
+  const tyOpts='<option value="">-- Tous les types --</option>'+state.typesTravaux.map(t=>`<option value="${esc(t)}">${t}</option>`).join('');
+  const empOpts='<option value="">-- Tous les employés --</option>'+Object.entries(EMPS).map(([k,e])=>`<option value="${k}">${e.label}</option>`).join('');
+  if(type==='chantier'){
+    c.innerHTML=`
+      <div class="field"><label>Chantier</label><select id="rf-ch" style="width:100%;">${chOpts}</select></div>
+      <div class="grid2">
+        <div class="field"><label>Date début</label><input type="date" id="rf-d1" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>Date fin</label><input type="date" id="rf-d2" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      <div class="field"><label>Employé</label><select id="rf-emp" style="width:100%;">${empOpts}</select></div>`;
+  } else if(type==='date'){
+    c.innerHTML=`
+      <div class="grid2">
+        <div class="field"><label>Date début</label><input type="date" id="rf-d1" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>Date fin</label><input type="date" id="rf-d2" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      <div class="field"><label>Chantier</label><select id="rf-ch" style="width:100%;">${chOpts}</select></div>
+      <div class="field"><label>Employé</label><select id="rf-emp" style="width:100%;">${empOpts}</select></div>`;
+  } else {
+    const allDepTypes=['Perso Victor','Perso Edouard','Perso Denis','Camion','Petits outils','Gros outils',...state.chantiers.map(ch=>'Chantier: '+ch)];
+    const depOpts='<option value="">-- Tous les types --</option>'+allDepTypes.map(t=>`<option value="${esc(t)}">${t}</option>`).join('');
+    c.innerHTML=`
+      <div class="field"><label>Type de dépense</label><select id="rf-dep" style="width:100%;">${depOpts}</select></div>
+      <div class="grid2">
+        <div class="field"><label>Date début</label><input type="date" id="rf-d1" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>Date fin</label><input type="date" id="rf-d2" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      <div class="field"><label>Carte</label>
+        <select id="rf-carte" style="width:100%;">
+          <option value="">-- Toutes les cartes --</option>
+          <option value="Victor">Victor</option>
+          <option value="Edouard">Edouard</option>
+          <option value="Denis">Denis</option>
+        </select>
+      </div>`;
+  }
+}
+
+function getFilterVals(){
+  return{
+    ch: document.getElementById('rf-ch')?document.getElementById('rf-ch').value:'',
+    d1: document.getElementById('rf-d1')?document.getElementById('rf-d1').value:'',
+    d2: document.getElementById('rf-d2')?document.getElementById('rf-d2').value:'',
+    emp: document.getElementById('rf-emp')?document.getElementById('rf-emp').value:'',
+    ty: document.getElementById('rf-ty')?document.getElementById('rf-ty').value:'',
+    dep: document.getElementById('rf-dep')?document.getElementById('rf-dep').value:'',
+    carte: document.getElementById('rf-carte')?document.getElementById('rf-carte').value:''
+  };
+}
+
+function filterEntries(f){
+  const d1=f.d1?new Date(f.d1+'T00:00:00'):null;
+  const d2=f.d2?new Date(f.d2+'T23:59:59'):null;
+  const empKeys=f.emp?[f.emp]:Object.keys(EMPS);
+  let all=[];
+  empKeys.forEach(empKey=>{
+    state.entries[empKey].filter(en=>{
+      if(!en.heures)return false;
+      if(f.ch&&en.chantier!==f.ch)return false;
+      if(f.ty&&en.type!==f.ty)return false;
+      if(d1&&new Date(en.date+'T12:00:00')<d1)return false;
+      if(d2&&new Date(en.date+'T12:00:00')>d2)return false;
+      return true;
+    }).forEach(en=>all.push({...en,empKey}));
+  });
+  return all;
+}
+
+function genRapport(){
+  const f=getFilterVals();
+  const type=window._rapportType||'chantier';
+  if(!f.d1&&!f.d2&&!f.ch&&!f.emp&&!f.ty){
+    alert('Veuillez entrer au moins un filtre.');return;
+  }
+  const entries=filterEntries(f);
+  if(!entries.length){
+    document.getElementById('rp-result').innerHTML='<div class="empty">Aucune heure trouvée pour ces critères.</div>';
+    return;
+  }
+
+  const totalH=entries.reduce((s,en)=>s+en.heures,0);
+  const factH=entries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+
+  // Grand total montant
+  let grandMontant=0;
+  const hParChantier={};
+  entries.filter(en=>en.facturable).forEach(en=>{
+    if(!hParChantier[en.chantier])hParChantier[en.chantier]=0;
+    hParChantier[en.chantier]+=en.heures;
+  });
+  Object.entries(hParChantier).forEach(([ch,h])=>{const m=calcMontant(h,ch);if(m)grandMontant+=m;});
+
+  let html=`
+    <div class="stats-row${grandMontant>0?'-4':''}">
+      <div class="stat-box"><div class="label">Total heures</div><div class="value">${totalH.toFixed(1)}h</div></div>
+      <div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${factH.toFixed(1)}h</div></div>
+      <div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(totalH-factH).toFixed(1)}h</div></div>
+      ${grandMontant>0?`<div class="stat-box stat-money"><div class="label">💰 Montant</div><div class="value">${grandMontant.toFixed(0)} $</div></div>`:''}
+    </div>`;
+
+  if(type==='chantier'){
+    // Group by chantier
+    const byCh={};
+    entries.forEach(en=>{
+      if(!byCh[en.chantier||'—'])byCh[en.chantier||'—']={total:0,fact:0,emps:{},types:{}};
+      const c=byCh[en.chantier||'—'];
+      c.total+=en.heures;if(en.facturable)c.fact+=en.heures;
+      if(!c.emps[en.empKey])c.emps[en.empKey]=0;c.emps[en.empKey]+=en.heures;
+      if(!c.types[en.type||'—'])c.types[en.type||'—']=0;c.types[en.type||'—']+=en.heures;
+    });
+    Object.entries(byCh).sort((a,b)=>b[1].total-a[1].total).forEach(([ch,d])=>{
+      const m=calcMontant(d.fact,ch);
+      const empRows=Object.entries(d.emps).map(([ek,h])=>`<tr><td style="padding:3px 0;"><span class="emp-badge ${EMPS[ek]?'':''}">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:${EMPS[ek]?EMPS[ek].bg:'#eee'};color:${EMPS[ek]?EMPS[ek].col:'#666'};font-size:9px;font-weight:600;margin-right:4px;">${EMPS[ek]?EMPS[ek].label.slice(0,2).toUpperCase():'?'}</span>${EMPS[ek]?EMPS[ek].label:ek}</span></td><td style="text-align:right;">${h.toFixed(1)}h</td></tr>`).join('');
+      const typeRows=Object.entries(d.types).sort((a,b)=>b[1]-a[1]).map(([t,h])=>`<tr><td style="padding:2px 0;font-size:11px;color:var(--secondary);">${t}</td><td style="text-align:right;font-size:11px;">${h.toFixed(1)}h</td></tr>`).join('');
+      html+=`<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div><div style="font-size:14px;font-weight:600;">🏗 ${ch}</div>${m?`<div style="font-size:12px;color:#0C447C;font-weight:600;">💰 ${m.toFixed(2)} $</div>`:''}</div>
+          <div style="text-align:right;"><div style="font-size:18px;font-weight:700;">${d.total.toFixed(1)}h</div>
+          <div style="display:flex;gap:4px;justify-content:flex-end;"><span class="fbadge fb-y">F ${d.fact.toFixed(1)}h</span><span class="fbadge fb-n">NF ${(d.total-d.fact).toFixed(1)}h</span></div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div><div class="section-label">PAR EMPLOYÉ</div><table class="mini-table"><tbody>${empRows}</tbody></table></div>
+          <div><div class="section-label">PAR TYPE</div><table class="mini-table"><tbody>${typeRows}</tbody></table></div>
+        </div>
+      </div>`;
+    });
+  } else if(type==='date'){
+    // Group by employee then by week
+    Object.entries(EMPS).forEach(([empKey,e])=>{
+      const empEntries=entries.filter(en=>en.empKey===empKey);
+      if(!empEntries.length)return;
+      const total=empEntries.reduce((s,en)=>s+en.heures,0);
+      const fact=empEntries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+      const byCh={};
+      empEntries.forEach(en=>{if(!byCh[en.chantier||'—'])byCh[en.chantier||'—']=0;byCh[en.chantier||'—']+=en.heures;});
+      const chRows=Object.entries(byCh).sort((a,b)=>b[1]-a[1]).map(([ch,h])=>`<tr><td style="padding:4px 0;">${ch}</td><td style="text-align:right;">${h.toFixed(1)}h</td></tr>`).join('');
+      const detRows=empEntries.sort((a,b)=>a.date.localeCompare(b.date)).map(en=>`
+        <tr style="border-bottom:0.5px solid var(--border);">
+          <td style="padding:4px 0;font-size:11px;color:var(--secondary);">${en.date}</td>
+          <td style="padding:4px 0;font-size:12px;">${en.chantier||'—'}</td>
+          <td style="padding:4px 0;font-size:11px;color:var(--secondary);">${en.type||'—'}</td>
+          <td style="padding:4px 0;text-align:right;"><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.heures}h</span></td>
+        </tr>`).join('');
+      html+=`<div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:${e.bg};color:${e.col};display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;">${e.label.slice(0,2).toUpperCase()}</div>
+            <span style="font-size:15px;font-weight:600;color:${e.col};">${e.label}</span>
+          </div>
+          <div style="text-align:right;"><div style="font-size:18px;font-weight:700;">${total.toFixed(1)}h</div>
+          <div style="display:flex;gap:4px;justify-content:flex-end;"><span class="fbadge fb-y">F ${fact.toFixed(1)}h</span><span class="fbadge fb-n">NF ${(total-fact).toFixed(1)}h</span></div></div>
+        </div>
+        <div class="section-label">PAR CHANTIER</div>
+        <table class="mini-table" style="margin-bottom:10px;"><tbody>${chRows}</tbody></table>
+        <details><summary>Voir le détail (${empEntries.length} entrée${empEntries.length>1?'s':''})</summary>
+          <table class="mini-table" style="margin-top:6px;">
+            <thead><tr><td style="font-size:10px;font-weight:600;">Date</td><td style="font-size:10px;font-weight:600;">Chantier</td><td style="font-size:10px;font-weight:600;">Type</td><td style="text-align:right;font-size:10px;font-weight:600;">H</td></tr></thead>
+            <tbody>${detRows}</tbody>
+          </table>
+        </details>
+      </div>`;
+    });
+  } else {
+    // Group achats by type de depense
+    const d1dep=f.d1?new Date(f.d1+'T00:00:00'):null;
+    const d2dep=f.d2?new Date(f.d2+'T23:59:59'):null;
+    const achatsFiltered=state.achats.filter(a=>{
+      if(f.dep&&a.typeDepense!==f.dep)return false;
+      if(f.carte&&a.carte!==f.carte)return false;
+      if(d1dep&&new Date(a.date+'T12:00:00')<d1dep)return false;
+      if(d2dep&&new Date(a.date+'T12:00:00')>d2dep)return false;
+      return true;
+    });
+    if(!achatsFiltered.length){
+      html+='<div class="empty">Aucune dépense trouvée pour ces critères.</div>';
+    } else {
+      const totalDep=achatsFiltered.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+      const totalAvecTax=achatsFiltered.reduce((s,a)=>s+(parseFloat(a.montantAvecTax)||0),0);
+      const parCarte={Victor:0,Edouard:0,Denis:0};
+      achatsFiltered.forEach(a=>{if(parCarte[a.carte]!==undefined)parCarte[a.carte]+=(parseFloat(a.montantAvantTax)||0);});
+      // Replace stats row with money stats
+      html=`<div class="stats-row-4">
+        <div class="stat-box"><div class="label">Total avant taxes</div><div class="value">${totalDep.toFixed(2)} $</div></div>
+        <div class="stat-box" style="background:#E6F1FB;"><div class="label">💳 Victor</div><div class="value" style="color:#0C447C;">${parCarte.Victor.toFixed(2)} $</div></div>
+        <div class="stat-box" style="background:#E1F5EE;"><div class="label">💳 Edouard</div><div class="value" style="color:#085041;">${parCarte.Edouard.toFixed(2)} $</div></div>
+        <div class="stat-box" style="background:#FAEEDA;"><div class="label">💳 Denis</div><div class="value" style="color:#633806;">${parCarte.Denis.toFixed(2)} $</div></div>
+      </div>`;
+      const byDep={};
+      achatsFiltered.forEach(a=>{
+        const t=a.typeDepense||'—';
+        if(!byDep[t])byDep[t]={total:0,items:[],parCarte:{Victor:0,Edouard:0,Denis:0}};
+        byDep[t].total+=(parseFloat(a.montantAvantTax)||0);
+        byDep[t].items.push(a);
+        if(byDep[t].parCarte[a.carte]!==undefined)byDep[t].parCarte[a.carte]+=(parseFloat(a.montantAvantTax)||0);
+      });
+      Object.entries(byDep).sort((a,b)=>b[1].total-a[1].total).forEach(([dep,d])=>{
+        const carteRows=Object.entries(d.parCarte).filter(([c,v])=>v>0).map(([c,v])=>`<tr><td style="padding:3px 0;font-size:12px;">💳 ${c}</td><td style="text-align:right;">${v.toFixed(2)} $</td></tr>`).join('');
+        const detRows=d.items.sort((a,b)=>a.date.localeCompare(b.date)).map(a=>`
+          <tr style="border-bottom:0.5px solid var(--border);">
+            <td style="padding:4px 0;font-size:11px;color:var(--secondary);">${a.date}</td>
+            <td style="padding:4px 0;font-size:12px;">${a.magasin||'—'}</td>
+            <td style="padding:4px 0;font-size:11px;color:var(--secondary);">${a.description||'—'}</td>
+            <td style="padding:4px 0;"><span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:2px 6px;border-radius:20px;">💳 ${a.carte}</span></td>
+            <td style="padding:4px 0;text-align:right;font-weight:600;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td>
+          </tr>`).join('');
+        html+=`<div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:600;">🏷 ${dep}</div>
+            <div style="font-size:18px;font-weight:700;">${d.total.toFixed(2)} $</div>
+          </div>
+          <div class="section-label">PAR CARTE</div>
+          <table class="mini-table" style="margin-bottom:10px;"><tbody>${carteRows}</tbody></table>
+          <details><summary>Voir le détail (${d.items.length} achat${d.items.length>1?'s':''})</summary>
+            <table class="mini-table" style="margin-top:6px;">
+              <thead><tr><td style="font-size:10px;font-weight:600;">Date</td><td style="font-size:10px;font-weight:600;">Magasin</td><td style="font-size:10px;font-weight:600;">Description</td><td style="font-size:10px;font-weight:600;">Carte</td><td style="text-align:right;font-size:10px;font-weight:600;">Montant</td></tr></thead>
+              <tbody>${detRows}</tbody>
+            </table>
+          </details>
+        </div>`;
+      });
+    }
+  }
+
+  html+=`<div style="display:flex;gap:8px;margin-top:4px;" class="no-print">
+    <button class="btn-pdf" onclick="exportRapportPDF()">📄 Exporter PDF</button>
+    <button class="btn btn-sm" onclick="resetRapport()">↺ Réinitialiser</button>
+  </div>`;
+  document.getElementById('rp-result').innerHTML=html;
+}
+
+function exportRapportPDF(){
+  const orig=document.title;
+  document.title='Rapport_'+new Date().toISOString().slice(0,10);
+  document.querySelectorAll('details').forEach(d=>d.open=true);
+  window.print();
+  setTimeout(()=>document.title=orig,1000);
+}
+
+function resetRapport(){
+  document.getElementById('rp-result').innerHTML='';
+  buildRapportFilters(window._rapportType||'chantier');
+}
+
+// ─── FICHES ───────────────────────────────────────────────
+function buildFiches(){
+  if(!state.chantiers.length)return`<div class="empty">Aucun chantier configuré.</div>`;
+  return state.chantiers.map(ch=>{const f=state.fiches[ch]||{};return`<div class="card"><div class="card-title">🏗 ${ch}</div>
+    <div class="grid2"><div class="field"><label>Prénom</label><input type="text" value="${f.prenom||''}" oninput="sf('${esc(ch)}','prenom',this.value)" placeholder="Prénom"/></div><div class="field"><label>Nom</label><input type="text" value="${f.nom||''}" oninput="sf('${esc(ch)}','nom',this.value)" placeholder="Nom"/></div></div>
+    <div class="field"><label>Téléphone</label><input type="tel" value="${f.tel||''}" oninput="sf('${esc(ch)}','tel',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
+    <div class="field"><label>Courriel</label><input type="email" value="${f.courriel||''}" oninput="sf('${esc(ch)}','courriel',this.value)" placeholder="client@example.com" inputmode="email"/></div>
+    <div class="field"><label>Adresse</label><input type="text" value="${f.adresse||''}" oninput="sf('${esc(ch)}','adresse',this.value)" placeholder="123 rue Exemple, Montréal"/></div>
+    <div class="fiche-section"><div class="grid2">
+      <div class="field"><label>💰 Taux horaire ($)</label><input type="number" min="0" step="0.5" value="${f.taux||''}" oninput="sf('${esc(ch)}','taux',this.value)" placeholder="85" inputmode="decimal"/></div>
+      <div class="field"><label>% Frais de gestion</label><input type="number" min="0" step="0.5" value="${f.fraisGestion||''}" oninput="sf('${esc(ch)}','fraisGestion',this.value)" placeholder="15" inputmode="decimal"/></div>
+    </div></div></div>`;}).join('');
+}
+function sf(ch,field,val){if(!state.fiches[ch])state.fiches[ch]={};state.fiches[ch][field]=val;saveToCloud();}
+
+// ─── GESTION LISTES ───────────────────────────────────────
+function buildGestionListes(){
+  return`<div class="card"><div class="card-title">🏗 Chantiers</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;"><input type="text" id="newCh" placeholder="Nouveau chantier" style="flex:1;" onkeydown="if(event.key==='Enter')addItem('chantier')"/><button class="btn btn-sm" onclick="addItem('chantier')">+</button></div>
+    <div>${state.chantiers.map(c=>`<span class="tag">${c}<button onclick="removeItem('chantier','${esc(c)}')">✕</button></span>`).join('')}</div></div>
+  <div class="card"><div class="card-title">🏷 Types de travaux</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;"><input type="text" id="newTy" placeholder="Nouveau type" style="flex:1;" onkeydown="if(event.key==='Enter')addItem('type')"/><button class="btn btn-sm" onclick="addItem('type')">+</button></div>
+    <div>${state.typesTravaux.map(t=>`<span class="tag">${t}<button onclick="removeItem('type','${esc(t)}')">✕</button></span>`).join('')}</div></div>`;
+}
+function addItem(kind){
+  const id=kind==='chantier'?'newCh':'newTy',val=document.getElementById(id).value.trim();
+  if(!val)return;
+  if(kind==='chantier'){if(!state.chantiers.includes(val)){state.chantiers.push(val);state.chantiers.sort();if(!state.fiches[val])state.fiches[val]={};}}
+  else if(!state.typesTravaux.includes(val)){state.typesTravaux.push(val);state.typesTravaux.sort();}
+  smartRender();saveToCloud();
+}
+function removeItem(kind,val){
+  if(!confirm(`Supprimer "${val}"?`))return;
+  if(kind==='chantier')state.chantiers=state.chantiers.filter(c=>c!==val);
+  else state.typesTravaux=state.typesTravaux.filter(t=>t!==val);
+  smartRender();saveToCloud();
+}
+
+
+// ─── ENTREPRISE ───────────────────────────────────────────
+function renderEntreprise(){
+  const e=state.entreprise;
+  document.getElementById('content-entreprise').innerHTML=`
+    <div class="card">
+      <div class="card-title">🏢 Informations de mon entreprise</div>
+      <div class="field"><label>Logo (URL ou base64)</label>
+        ${e.logo?`<div style="margin-bottom:8px;"><img src="${e.logo}" class="logo-preview" onerror="this.style.display='none'"/></div>`:''}
+        <input type="text" value="${e.logo||''}" oninput="se('logo',this.value)" placeholder="Colle l'URL de ton logo ici"/>
+        <p style="font-size:10px;color:var(--secondary);margin:4px 0 0;">Astuce: upload ton logo sur imgur.com et colle le lien</p>
+      </div>
+      <div class="field"><label>Nom de l'entreprise</label><input type="text" value="${e.nom||''}" oninput="se('nom',this.value)" placeholder="Ex: Construction ABC Inc."/></div>
+      <div class="grid2">
+        <div class="field"><label>Téléphone</label><input type="tel" value="${e.telephone||''}" oninput="se('telephone',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
+        <div class="field"><label>Courriel</label><input type="email" value="${e.courriel||''}" oninput="se('courriel',this.value)" placeholder="info@entreprise.com" inputmode="email"/></div>
+      </div>
+      <div class="field"><label>Adresse</label><input type="text" value="${e.adresse||''}" oninput="se('adresse',this.value)" placeholder="123 rue Exemple, Montréal, QC"/></div>
+      <div class="field"><label>Site web</label><input type="text" value="${e.siteWeb||''}" oninput="se('siteWeb',this.value)" placeholder="www.entreprise.com"/></div>
+      <div class="grid2">
+        <div class="field"><label>No. TPS</label><input type="text" value="${e.noTPS||''}" oninput="se('noTPS',this.value)" placeholder="123456789 RT0001"/></div>
+        <div class="field"><label>No. TVQ</label><input type="text" value="${e.noTVQ||''}" oninput="se('noTVQ',this.value)" placeholder="1234567890 TQ0001"/></div>
+      </div>
+      <button class="btn btn-primary" onclick="saveToCloud()">💾 Sauvegarder</button>
+    </div>`;
+}
+function se(field,val){state.entreprise[field]=val;}
+
+// ─── SOUS-TRAITANTS ───────────────────────────────────────
+function buildSstraitants(){
+  const list=state.sstraitants;
+  if(!list.length)return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="addSst()">+ Ajouter un sous-traitant</button></div><div class="empty">Aucun sous-traitant.</div>`;
+  const cards=list.map((s,i)=>`
+    <div class="card" style="padding:10px 14px;">
+      <details>
+        <summary style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;padding:2px 0;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;border-radius:50%;background:#EAF3DE;color:#27500A;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex-shrink:0;">👷</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;">${s.nom||'Nouveau sous-traitant'}</div>
+              <div style="font-size:11px;color:var(--secondary);">${[s.specialite,s.tel].filter(Boolean).join(' · ')||'—'}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:18px;color:var(--secondary);">›</span>
+            <button class="btn-del" onclick="event.preventDefault();event.stopPropagation();removeSst(${i})">✕</button>
+          </div>
+        </summary>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+          <div class="grid2">
+            <div class="field"><label>Nom / Compagnie</label><input type="text" value="${s.nom||''}" oninput="updateSst(${i},'nom',this.value)" placeholder="Nom"/></div>
+            <div class="field"><label>Contact</label><input type="text" value="${s.contact||''}" oninput="updateSst(${i},'contact',this.value)" placeholder="Prénom Nom"/></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Téléphone</label><input type="tel" value="${s.tel||''}" oninput="updateSst(${i},'tel',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
+            <div class="field"><label>Courriel</label><input type="email" value="${s.courriel||''}" oninput="updateSst(${i},'courriel',this.value)" placeholder="email@exemple.com" inputmode="email"/></div>
+          </div>
+          <div class="field"><label>Spécialité</label><input type="text" value="${s.specialite||''}" oninput="updateSst(${i},'specialite',this.value)" placeholder="Ex: Électricité, Plomberie..."/></div>
+          <button class="btn btn-sm" onclick="saveToCloud()">💾 Sauvegarder</button>
+        </div>
+      </details>
+    </div>`).join('');
+  return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="addSst()">+ Ajouter un sous-traitant</button></div>${cards}`;
+}
+function addSst(){state.sstraitants.push({nom:'',contact:'',tel:'',courriel:'',specialite:''});smartRender();}
+function removeSst(i){if(!confirm('Supprimer ce sous-traitant?'))return;state.sstraitants.splice(i,1);smartRender();saveToCloud();}
+function updateSst(i,field,val){state.sstraitants[i][field]=val;}
+
+// ─── FOURNISSEURS ─────────────────────────────────────────
+function buildFournisseurs(){
+  const list=state.fournisseurs;
+  if(!list.length)return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="addFourn()">+ Ajouter un fournisseur</button></div><div class="empty">Aucun fournisseur.</div>`;
+  const cards=list.map((f,i)=>`
+    <div class="card" style="padding:10px 14px;">
+      <details>
+        <summary style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;padding:2px 0;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;border-radius:50%;background:#FAEEDA;color:#633806;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🏪</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;">${f.nom||'Nouveau fournisseur'}</div>
+              <div style="font-size:11px;color:var(--secondary);">${[f.type,f.tel].filter(Boolean).join(' · ')||'—'}</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:18px;color:var(--secondary);">›</span>
+            <button class="btn-del" onclick="event.preventDefault();event.stopPropagation();removeFourn(${i})">✕</button>
+          </div>
+        </summary>
+        <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+          <div class="grid2">
+            <div class="field"><label>Nom / Compagnie</label><input type="text" value="${f.nom||''}" oninput="updateFourn(${i},'nom',this.value)" placeholder="Nom"/></div>
+            <div class="field"><label>Contact</label><input type="text" value="${f.contact||''}" oninput="updateFourn(${i},'contact',this.value)" placeholder="Prénom Nom"/></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label>Téléphone</label><input type="tel" value="${f.tel||''}" oninput="updateFourn(${i},'tel',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
+            <div class="field"><label>Courriel</label><input type="email" value="${f.courriel||''}" oninput="updateFourn(${i},'courriel',this.value)" placeholder="email@exemple.com" inputmode="email"/></div>
+          </div>
+          <div class="field"><label>Type de matériaux</label><input type="text" value="${f.type||''}" oninput="updateFourn(${i},'type',this.value)" placeholder="Ex: Bois, Béton, Quincaillerie..."/></div>
+          <button class="btn btn-sm" onclick="saveToCloud()">💾 Sauvegarder</button>
+        </div>
+      </details>
+    </div>`).join('');
+  return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="addFourn()">+ Ajouter un fournisseur</button></div>${cards}`;
+}
+function addFourn(){state.fournisseurs.push({nom:'',contact:'',tel:'',courriel:'',type:''});smartRender();}
+function removeFourn(i){if(!confirm('Supprimer ce fournisseur?'))return;state.fournisseurs.splice(i,1);smartRender();saveToCloud();}
+function updateFourn(i,field,val){state.fournisseurs[i][field]=val;}
+
+// ─── NOUVELLE FACTURE ─────────────────────────────────────
+let factCourante={
+  chantier:'',dateDebut:'',dateFin:'',
+  lignesSst:[],lignesMat:[],
+  fraisGestion:0,tpsTaux:5,tvqTaux:9.975,
+  appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,
+  notes:'',numeroFacture:''
+};
+
+function buildNouvelleFacture(){
+  const chOpts=selOpts(state.chantiers,factCourante.chantier,'-- Choisir un chantier --');
+  const sstOpts='<option value="">-- Choisir --</option>'+state.sstraitants.map(s=>`<option value="${esc(s.nom)}">${s.nom}${s.specialite?' ('+s.specialite+')':''}</option>`).join('');
+  const fournOpts='<option value="">-- Choisir --</option>'+state.fournisseurs.map(f=>`<option value="${esc(f.nom)}">${f.nom}</option>`).join('');
+  const fiche=factCourante.chantier?state.fiches[factCourante.chantier]||{}:{};
+  const fg=parseFloat(fiche.fraisGestion)||0;
+
+  // Main d'oeuvre section
+  let mdoHtml='';
+  let mdoTotal=0;
+  if(factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin){
+    const d1=new Date(factCourante.dateDebut+'T00:00:00'),d2=new Date(factCourante.dateFin+'T23:59:59');
+    const taux=parseFloat(fiche.taux)||0;
+    Object.entries(EMPS).forEach(([empKey,e])=>{
+      const filtered=state.entries[empKey].filter(en=>{
+        const d=new Date(en.date+'T12:00:00');
+        return en.chantier===factCourante.chantier&&d>=d1&&d<=d2&&en.heures>0&&en.facturable;
+      });
+      if(!filtered.length)return;
+      const byType={};
+      filtered.forEach(en=>{if(!byType[en.type||'Général'])byType[en.type||'Général']=0;byType[en.type||'Général']+=en.heures;});
+      const totalEmp=filtered.reduce((s,en)=>s+en.heures,0);
+      const montantEmp=taux>0?totalEmp*taux:0;
+      mdoTotal+=montantEmp;
+      const typeRows=Object.entries(byType).map(([t,h])=>`<tr><td style="padding:3px 0 3px 12px;font-size:11px;color:var(--secondary);">${t}</td><td style="text-align:right;font-size:11px;">${h.toFixed(2)}h</td><td></td></tr>`).join('');
+      mdoHtml+=`<tr><td style="padding:5px 0;font-weight:500;">${e.label}</td><td style="text-align:right;">${totalEmp.toFixed(2)}h${taux>0?' × '+taux+' $':''}</td><td style="text-align:right;font-weight:600;color:#0C447C;">${taux>0?montantEmp.toFixed(2)+' $':'—'}</td></tr>${typeRows}`;
+    });
+  }
+
+  // Sous-traitants lines
+  const sstLines=factCourante.lignesSst.map((l,i)=>`
+    <div class="facture-line">
+      <select onchange="updateLigneSst(${i},'sst',this.value)" style="flex:1;font-size:12px;">${sstOpts.replace('value="'+esc(l.sst)+'"','value="'+esc(l.sst)+'" selected')}</select>
+      <input type="text" value="${l.desc||''}" oninput="updateLigneSst(${i},'desc',this.value)" placeholder="Description" style="flex:1;font-size:12px;"/>
+      <input type="number" value="${l.montant||''}" oninput="updateLigneSst(${i},'montant',this.value)" placeholder="Montant $" style="width:100px;font-size:12px;" inputmode="decimal"/>
+      <button class="btn-del" onclick="removeLigneSst(${i})">✕</button>
+    </div>`).join('');
+  let sstTotal=0;
+  if(factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin){
+    const ss1=new Date(factCourante.dateDebut+'T00:00:00'),ss2=new Date(factCourante.dateFin+'T23:59:59');
+    sstTotal=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&a.facturable===true&&d>=ss1&&d<=ss2;}).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  }
+
+  // Matériaux — auto-pull from achats for chantier + period
+  let matRows='', matTotal=0;
+  const matDateDebut=factCourante.matDateDebut||factCourante.dateDebut||'';
+  const matDateFin=factCourante.matDateFin||factCourante.dateFin||'';
+  if(factCourante.chantier&&matDateDebut&&matDateFin){
+    const md1=new Date(matDateDebut+'T00:00:00'), md2=new Date(matDateFin+'T23:59:59');
+    const achatsFacturables=state.achats.filter(a=>{
+      const d=new Date(a.date+'T12:00:00');
+      return a.chantier===factCourante.chantier && a.facturable===true && d>=md1 && d<=md2;
+    });
+    if(achatsFacturables.length){
+      matRows=achatsFacturables.map(a=>`
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:5px 0;font-size:12px;">${a.date}</td>
+          <td style="padding:5px 0;font-size:12px;">${a.magasin||'—'}</td>
+          <td style="padding:5px 0;font-size:12px;color:var(--secondary);">${a.description||'—'}</td>
+          <td style="padding:5px 0;font-size:11px;text-align:center;"><span style="background:#E6F1FB;color:#0C447C;padding:2px 6px;border-radius:20px;font-size:10px;">💳 ${a.carte}</span></td>
+          <td style="padding:5px 0;text-align:right;font-weight:600;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td>
+        </tr>`).join('');
+      matTotal=achatsFacturables.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    }
+  }
+
+  // Totaux
+  const soustotal=mdoTotal+sstTotal+matTotal;
+  const montantFG=factCourante.appliquerFG&&fg>0?soustotal*(fg/100):0;
+  const avantTaxes=soustotal+montantFG;
+  const tps=factCourante.appliquerTPS?avantTaxes*0.05:0;
+  const tvq=factCourante.appliquerTVQ?avantTaxes*0.09975:0;
+  const grandTotal=avantTaxes+tps+tvq;
+
+  return`
+    <div class="card">
+      <div class="card-title">🧾 Nouvelle facture</div>
+      <div class="grid2">
+        <div class="field"><label>No. de facture</label><input type="text" id="fac-num" value="${factCourante.numeroFacture||''}" oninput="factCourante.numeroFacture=this.value" placeholder="Ex: 2024-001"/></div>
+        <div class="field"><label>Chantier / Client</label><select id="fac-ch" onchange="factCourante.chantier=this.value;refreshFacture()">${chOpts}</select></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="facture-section-title">👷 MAIN D'ŒUVRE</div>
+      <div class="grid2" style="margin-bottom:10px;">
+        <div class="field"><label>Date début</label><input type="date" id="fac-d1" value="${factCourante.dateDebut||''}" oninput="factCourante.dateDebut=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>Date fin</label><input type="date" id="fac-d2" value="${factCourante.dateFin||''}" oninput="factCourante.dateFin=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?
+        mdoHtml?`<table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:4px 0;font-weight:600;">Employé</td>
+            <td style="text-align:right;font-weight:600;">Heures</td>
+            <td style="text-align:right;font-weight:600;">Montant</td>
+          </tr></thead>
+          <tbody>${mdoHtml}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border);">
+            <td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total main d'œuvre</td>
+            <td style="text-align:right;font-weight:700;color:#0C447C;">${mdoTotal.toFixed(2)} $</td>
+          </tr></tfoot>
+        </table>`:
+        '<div class="empty" style="padding:16px;">Aucune heure facturable trouvée pour cette période sur ce chantier.</div>':
+        '<div class="empty" style="padding:16px;">Choisis un chantier et une période pour voir les heures.</div>'}
+    </div>
+
+    <div class="card">
+      <div class="facture-section-title">🔨 SOUS-TRAITANTS</div>
+      <p style="font-size:12px;color:var(--secondary);margin:0 0 10px;">Basé sur les factures SST facturables pour ce chantier et cette période.</p>
+      ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?(()=>{
+        const sd1=new Date(factCourante.dateDebut+'T00:00:00'),sd2=new Date(factCourante.dateFin+'T23:59:59');
+        const sstFacts=state.sstFactures.filter(a=>{
+          const d=new Date(a.date+'T12:00:00');
+          return a.chantier===factCourante.chantier&&a.facturable===true&&d>=sd1&&d<=sd2;
+        });
+        if(!sstFacts.length)return '<div style="font-size:12px;color:var(--secondary);padding:8px 0;">Aucune facture SST facturable trouvée pour ce chantier sur cette période.</div>';
+        const parSst={};
+        sstFacts.forEach(a=>{if(!parSst[a.sst])parSst[a.sst]={total:0,items:[]};parSst[a.sst].total+=(parseFloat(a.montant)||0);parSst[a.sst].items.push(a);});
+        const sstTotal=sstFacts.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+        const rows=Object.entries(parSst).map(([sst,d])=>`
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:6px 0;font-size:13px;font-weight:500;">${sst}</td>
+            <td style="padding:6px 0;font-size:12px;color:var(--secondary);">${d.items.length} facture${d.items.length>1?'s':''}</td>
+            <td style="padding:6px 0;text-align:right;font-weight:600;">${d.total.toFixed(2)} $</td>
+          </tr>`).join('');
+        return `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="border-bottom:1px solid var(--border);"><td style="padding:4px 0;font-weight:600;">Sous-traitant</td><td style="padding:4px 0;font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border);"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total sous-traitants</td><td style="text-align:right;font-weight:700;color:#0C447C;">${sstTotal.toFixed(2)} $</td></tr></tfoot>
+        </table>`;
+      })():'<div style="font-size:12px;color:var(--secondary);padding:8px 0;">Choisis un chantier et une période pour voir les factures SST.</div>'}
+    </div>
+
+    <div class="card">
+      <div class="facture-section-title">🪵 MATÉRIAUX</div>
+      <div class="grid2" style="margin-bottom:10px;">
+        <div class="field"><label>Date début matériel</label><input type="date" value="${factCourante.matDateDebut||factCourante.dateDebut||''}" oninput="factCourante.matDateDebut=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
+        <div class="field"><label>Date fin matériel</label><input type="date" value="${factCourante.matDateFin||factCourante.dateFin||''}" oninput="factCourante.matDateFin=this.value;refreshFacture()" style="width:100%;color:var(--primary);"/></div>
+      </div>
+      ${factCourante.chantier&&(factCourante.matDateDebut||factCourante.dateDebut)&&(factCourante.matDateFin||factCourante.dateFin)?
+        matRows?`<table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead><tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:4px 0;font-weight:600;font-size:11px;">Date</td>
+            <td style="padding:4px 0;font-weight:600;font-size:11px;">Magasin</td>
+            <td style="padding:4px 0;font-weight:600;font-size:11px;">Description</td>
+            <td style="padding:4px 0;font-weight:600;font-size:11px;text-align:center;">Carte</td>
+            <td style="padding:4px 0;font-weight:600;font-size:11px;text-align:right;">Montant</td>
+          </tr></thead>
+          <tbody>${matRows}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border);">
+            <td colspan="4" style="padding:6px 0;font-weight:700;">Sous-total matériaux</td>
+            <td style="text-align:right;font-weight:700;color:#0C447C;">${matTotal.toFixed(2)} $</td>
+          </tr></tfoot>
+        </table>`:
+        '<div style="font-size:12px;color:var(--secondary);padding:8px 0;">Aucun achat facturable trouvé pour ce chantier sur cette période.<br><small>Assure-toi d&#39;avoir entré tes achats dans 🛒 Matériel avec le bon chantier et marqués Facturable.</small></div>':
+        '<div style="font-size:12px;color:var(--secondary);padding:8px 0;">Choisis un chantier et une période pour voir les achats facturables.</div>'}
+    </div>
+
+    <div class="card">
+      <div class="facture-section-title">💰 TOTAUX & TAXES</div>
+      <div class="facture-total-row"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
+      <div class="facture-total-row" style="align-items:center;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" ${factCourante.appliquerFG?'checked':''} onchange="factCourante.appliquerFG=this.checked;refreshFacture()"/>
+          Frais de gestion ${fg>0?'('+fg+'%)':'— configurer dans la fiche chantier'}
+        </label>
+        <span>${montantFG>0?montantFG.toFixed(2)+' $':'—'}</span>
+      </div>
+      <div class="facture-total-row"><span style="font-weight:600;">Avant taxes</span><span style="font-weight:600;">${avantTaxes.toFixed(2)} $</span></div>
+      <div class="facture-total-row" style="align-items:center;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" ${factCourante.appliquerTPS?'checked':''} onchange="factCourante.appliquerTPS=this.checked;refreshFacture()"/> TPS (5%)
+        </label>
+        <span>${tps.toFixed(2)} $</span>
+      </div>
+      <div class="facture-total-row" style="align-items:center;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" ${factCourante.appliquerTVQ?'checked':''} onchange="factCourante.appliquerTVQ=this.checked;refreshFacture()"/> TVQ (9.975%)
+        </label>
+        <span>${tvq.toFixed(2)} $</span>
+      </div>
+      <div class="facture-total-row grand"><span>TOTAL</span><span>${grandTotal.toFixed(2)} $</span></div>
+    </div>
+
+    <div class="card">
+      <div class="field"><label>Notes / Conditions de paiement</label>
+        <textarea id="fac-notes" oninput="factCourante.notes=this.value" placeholder="Ex: Paiement dû dans 30 jours..." style="width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;min-height:80px;">${factCourante.notes||''}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;" class="no-print">
+        <button class="btn-pdf" onclick="previewFacture()">👁 Aperçu PDF</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderFacture()">💾 Sauvegarder la facture</button>
+        <button class="btn btn-sm" onclick="resetFacture()">↺ Réinitialiser</button>
+      </div>
+    </div>`;
+}
+
+function refreshFacture(){
+  const c=document.getElementById('content-facturation');
+  if(c&&state.currentSub['facturation']==='nouvelle')c.innerHTML=buildNouvelleFacture();
+}
+function addLigneSst(){factCourante.lignesSst.push({sst:'',desc:'',montant:''});refreshFacture();}
+function removeLigneSst(i){factCourante.lignesSst.splice(i,1);refreshFacture();}
+function updateLigneSst(i,f,v){factCourante.lignesSst[i][f]=v;if(f!=='desc')refreshFacture();}
+function addLigneMat(){factCourante.lignesMat.push({fourn:'',desc:'',montant:''});refreshFacture();}
+function removeLigneMat(i){factCourante.lignesMat.splice(i,1);refreshFacture();}
+function updateLigneMat(i,f,v){factCourante.lignesMat[i][f]=v;if(f!=='desc')refreshFacture();}
+function resetFacture(){factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:''};refreshFacture();}
+
+function sauvegarderFacture(){
+  if(!factCourante.chantier){alert('Veuillez choisir un chantier.');return;}
+  if(!factCourante.numeroFacture){alert('Veuillez entrer un numéro de facture.');return;}
+  const fiche=state.fiches[factCourante.chantier]||{};
+  const fg=parseFloat(fiche.fraisGestion)||0;
+  const taux=parseFloat(fiche.taux)||0;
+  const d1=factCourante.dateDebut?new Date(factCourante.dateDebut+'T00:00:00'):null;
+  const d2=factCourante.dateFin?new Date(factCourante.dateFin+'T23:59:59'):null;
+  let mdoTotal=0;
+  Object.keys(EMPS).forEach(empKey=>{
+    if(!d1||!d2)return;
+    const filtered=state.entries[empKey].filter(en=>{const d=new Date(en.date+'T12:00:00');return en.chantier===factCourante.chantier&&d>=d1&&d<=d2&&en.heures>0&&en.facturable;});
+    const total=filtered.reduce((s,en)=>s+en.heures,0);
+    mdoTotal+=taux>0?total*taux:0;
+  });
+  let sstTotal=0;
+  if(factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin){
+    const ss1=new Date(factCourante.dateDebut+'T00:00:00'),ss2=new Date(factCourante.dateFin+'T23:59:59');
+    sstTotal=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&a.facturable===true&&d>=ss1&&d<=ss2;}).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  }
+  const md1f=factCourante.matDateDebut||factCourante.dateDebut;
+  const md2f=factCourante.matDateFin||factCourante.dateFin;
+  let matTotal=0;
+  if(factCourante.chantier&&md1f&&md2f){
+    const md1=new Date(md1f+'T00:00:00'),md2=new Date(md2f+'T23:59:59');
+    matTotal=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&a.facturable===true&&d>=md1&&d<=md2;}).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  }
+  const soustotal=mdoTotal+sstTotal+matTotal;
+  const montantFG=factCourante.appliquerFG&&fg>0?soustotal*(fg/100):0;
+  const avantTaxes=soustotal+montantFG;
+  const tps=factCourante.appliquerTPS?avantTaxes*0.05:0;
+  const tvq=factCourante.appliquerTVQ?avantTaxes*0.09975:0;
+  const grandTotal=avantTaxes+tps+tvq;
+  const facture={
+    id:++state.factureId,
+    numero:factCourante.numeroFacture,
+    chantier:factCourante.chantier,
+    dateDebut:factCourante.dateDebut,
+    dateFin:factCourante.dateFin,
+    dateCreation:new Date().toISOString().slice(0,10),
+    lignesSst:JSON.parse(JSON.stringify(factCourante.lignesSst)),
+    matDateDebut:factCourante.matDateDebut||factCourante.dateDebut,
+    matDateFin:factCourante.matDateFin||factCourante.dateFin,
+    appliquerTPS:factCourante.appliquerTPS,
+    appliquerTVQ:factCourante.appliquerTVQ,
+    appliquerFG:factCourante.appliquerFG,
+    notes:factCourante.notes,
+    grandTotal:grandTotal,
+    statut:'brouillon'
+  };
+  state.factures.unshift(facture);
+  saveToCloud();
+  alert('Facture #'+facture.numero+' sauvegardée!');
+  setSub('facturation','historique');
+}
+
+// ─── HISTORIQUE FACTURES ──────────────────────────────────
+function buildHistoriqueFactures(){
+  if(!state.factures.length)return`<div class="empty">Aucune facture sauvegardée.<br><br><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="setSub('facturation','nouvelle')">➕ Créer une facture</button></div>`;
+  const statutLabels={brouillon:'Brouillon',envoye:'Envoyée',paye:'Payée'};
+  const rows=state.factures.map(f=>`
+    <div class="card" style="padding:12px 14px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;" onclick="voirFacture(${f.id})" style="cursor:pointer;">
+        <div style="flex:1;cursor:pointer;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:13px;font-weight:700;color:#0C447C;">#${f.numero}</span>
+            <span style="font-size:13px;font-weight:600;">${f.chantier}</span>
+            <span class="statut-badge statut-${f.statut}">${f.statut==='brouillon'?'Brouillon':f.statut==='envoye'?'Envoyée':'Payée'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--secondary);margin-top:3px;">${f.dateCreation}${f.dateDebut?' · '+f.dateDebut+' → '+f.dateFin:''}</div>
+        </div>
+        <div style="font-size:16px;font-weight:700;color:#0C447C;flex-shrink:0;">${f.grandTotal.toFixed(2)} $</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        ${f.statut==='brouillon'?`
+          <button onclick="changerStatutFacture(${f.id},'envoye')" style="flex:1;padding:8px;border:1.5px solid #185FA5;background:#E6F1FB;color:#0C447C;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;">
+            📤 Marquer envoyée
+          </button>
+          <button onclick="voirFacture(${f.id})" style="flex:1;padding:8px;border:1px solid var(--border);background:#f9f9f9;color:var(--secondary);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
+            👁 Voir
+          </button>`:''}
+        ${f.statut==='envoye'?`
+          <button onclick="changerStatutFacture(${f.id},'paye')" style="flex:1;padding:8px;border:1.5px solid #27500A;background:#EAF3DE;color:#27500A;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">
+            ✅ Marquer payée
+          </button>
+          <button onclick="voirFacture(${f.id})" style="flex:1;padding:8px;border:1px solid var(--border);background:#f9f9f9;color:var(--secondary);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
+            👁 Voir
+          </button>`:''}
+        ${f.statut==='paye'?`
+          <div style="flex:1;padding:8px;background:#EAF3DE;border-radius:var(--radius-sm);font-size:12px;font-weight:600;color:#27500A;text-align:center;">
+            ✅ Payée
+          </div>
+          <button onclick="voirFacture(${f.id})" style="flex:1;padding:8px;border:1px solid var(--border);background:#f9f9f9;color:var(--secondary);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
+            👁 Voir
+          </button>
+          <button onclick="changerStatutFacture(${f.id},'brouillon')" style="padding:8px 10px;border:1px solid var(--border);background:#fff;color:var(--secondary);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;">
+            ↺
+          </button>`:''}
+      </div>
+    </div>`).join('');
+  const totalPaye=state.factures.filter(f=>f.statut==='paye').reduce((s,f)=>s+f.grandTotal,0);
+  const totalEnAttente=state.factures.filter(f=>f.statut!=='paye').reduce((s,f)=>s+f.grandTotal,0);
+  return`
+    <div class="stats-row">
+      <div class="stat-box stat-fact"><div class="label">Payées</div><div class="value">${totalPaye.toFixed(0)} $</div></div>
+      <div class="stat-box stat-nf"><div class="label">En attente</div><div class="value">${totalEnAttente.toFixed(0)} $</div></div>
+      <div class="stat-box stat-money"><div class="label">Total</div><div class="value">${(totalPaye+totalEnAttente).toFixed(0)} $</div></div>
+    </div>
+    <div class="card">${rows}</div>`;
+}
+
+function changerStatutFacture(id,statut){
+  const f=state.factures.find(f=>f.id===id);
+  if(f){
+    f.statut=statut;
+    saveToCloud();
+    // Refresh historique view
+    const c=document.getElementById('content-facturation');
+    if(c&&state.currentSub['facturation']==='historique')c.innerHTML=buildHistoriqueFactures();
+  }
+}
+
+function voirFacture(id){
+  const f=state.factures.find(f=>f.id===id);
+  if(!f)return;
+  const fiche=state.fiches[f.chantier]||{};
+  const e=state.entreprise;
+  const fg=parseFloat(fiche.fraisGestion)||0;
+  const taux=parseFloat(fiche.taux)||0;
+  const d1=f.dateDebut?new Date(f.dateDebut+'T00:00:00'):null;
+  const d2=f.dateFin?new Date(f.dateFin+'T23:59:59'):null;
+  let mdoHtml='',mdoTotal=0;
+  Object.entries(EMPS).forEach(([empKey,emp])=>{
+    if(!d1||!d2)return;
+    const filtered=state.entries[empKey].filter(en=>{const d=new Date(en.date+'T12:00:00');return en.chantier===f.chantier&&d>=d1&&d<=d2&&en.heures>0&&en.facturable;});
+    if(!filtered.length)return;
+    const total=filtered.reduce((s,en)=>s+en.heures,0);
+    const montant=taux>0?total*taux:0;
+    mdoTotal+=montant;
+    const byType={};
+    filtered.forEach(en=>{if(!byType[en.type||'Général'])byType[en.type||'Général']=0;byType[en.type||'Général']+=en.heures;});
+    const typeRows=Object.entries(byType).map(([t,h])=>`<tr><td style="padding:2px 0 2px 16px;font-size:11px;color:#666;">${t}</td><td style="text-align:right;font-size:11px;">${h.toFixed(2)}h</td><td></td></tr>`).join('');
+    mdoHtml+=`<tr><td style="padding:5px 0;">${emp.label}</td><td style="text-align:right;">${total.toFixed(2)}h${taux>0?' × '+taux+' $':''}</td><td style="text-align:right;font-weight:600;">${taux>0?montant.toFixed(2)+' $':'—'}</td></tr>${typeRows}`;
+  });
+  let sstTotal=0;
+  if(f.chantier&&f.dateDebut&&f.dateFin){
+    const vss1=new Date(f.dateDebut+'T00:00:00'),vss2=new Date(f.dateFin+'T23:59:59');
+    sstTotal=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=vss1&&d<=vss2;}).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  }
+  const mvd1=f.matDateDebut||f.dateDebut;const mvd2=f.matDateFin||f.dateFin;
+  let matTotal=0;
+  if(f.chantier&&mvd1&&mvd2){
+    const mv1=new Date(mvd1+'T00:00:00'),mv2=new Date(mvd2+'T23:59:59');
+    matTotal=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=mv1&&d<=mv2;}).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  }
+  const soustotal=mdoTotal+sstTotal+matTotal;
+  const montantFG=f.appliquerFG&&fg>0?soustotal*(fg/100):0;
+  const avantTaxes=soustotal+montantFG;
+  const tps=f.appliquerTPS?avantTaxes*0.05:0;
+  const tvq=f.appliquerTVQ?avantTaxes*0.09975:0;
+  const grandTotal=avantTaxes+tps+tvq;
+  const clientIdx=fiche.clientIdx!==undefined&&fiche.clientIdx!==''?parseInt(fiche.clientIdx):-1;
+  const client=clientIdx>=0&&state.clients[clientIdx]?state.clients[clientIdx]:null;
+  const clientNom=client?[client.prenom,client.nom].filter(Boolean).join(' '):([fiche.prenom,fiche.nom].filter(Boolean).join(' '));
+  const clientTel=client?client.tel:fiche.tel;
+  const clientCourriel=client?client.courriel:fiche.courriel;
+  const clientAdresse=client?client.adresse:fiche.adresse;
+  document.getElementById('content-facturation').innerHTML=`
+    <div id="facture-print">
+      <div class="card" style="border:none;padding:0;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <div>
+            ${e.logo?`<img src="${e.logo}" style="height:60px;object-fit:contain;margin-bottom:8px;display:block;" onerror="this.style.display='none'"/>`:'' }
+            <div style="font-size:18px;font-weight:700;">${e.nom||'Mon entreprise'}</div>
+            ${e.adresse?`<div style="font-size:12px;color:#666;">${e.adresse}</div>`:''}
+            ${e.telephone?`<div style="font-size:12px;color:#666;">${e.telephone}</div>`:''}
+            ${e.courriel?`<div style="font-size:12px;color:#666;">${e.courriel}</div>`:''}
+            ${e.noTPS?`<div style="font-size:11px;color:#888;">TPS: ${e.noTPS}</div>`:''}
+            ${e.noTVQ?`<div style="font-size:11px;color:#888;">TVQ: ${e.noTVQ}</div>`:''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:22px;font-weight:700;color:#0C447C;">FACTURE</div>
+            <div style="font-size:14px;font-weight:600;">#${f.numero}</div>
+            <div style="font-size:12px;color:#666;">Date: ${f.dateCreation}</div>
+            ${f.dateDebut?`<div style="font-size:12px;color:#666;">Période: ${f.dateDebut} → ${f.dateFin}</div>`:''}
+          </div>
+        </div>
+        <div style="background:#f5f5f5;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;">
+          <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px;">FACTURER À</div>
+          <div style="font-weight:600;">${clientNom||f.chantier}</div>
+          ${clientAdresse?`<div style="font-size:12px;">${clientAdresse}</div>`:''}
+          ${clientTel?`<div style="font-size:12px;">${clientTel}</div>`:''}
+          ${clientCourriel?`<div style="font-size:12px;">${clientCourriel}</div>`:''}
+          <div style="font-size:12px;color:#666;margin-top:4px;">Chantier: ${f.chantier}</div>
+        </div>
+        ${mdoHtml?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MAIN D'ŒUVRE</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Employé</td><td style="text-align:right;font-weight:600;">Heures</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${mdoHtml}</tbody>
+          <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${mdoTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+        ${sstTotal>0?(()=>{
+          const vs1=new Date((f.dateDebut||'')+'T00:00:00'),vs2=new Date((f.dateFin||'')+'T23:59:59');
+          const sstF=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=vs1&&d<=vs2;});
+          const parSst={};sstF.forEach(a=>{if(!parSst[a.sst])parSst[a.sst]={total:0,items:[]};parSst[a.sst].total+=(parseFloat(a.montant)||0);parSst[a.sst].items.push(a);});
+          return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">SOUS-TRAITANTS</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
+            <tbody>${Object.entries(parSst).map(([sst,d])=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;font-weight:500;">${sst}</td><td style="font-size:12px;color:#666;">${d.items.length} facture${d.items.length>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('')}</tbody>
+            <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${sstTotal.toFixed(2)} $</td></tr></tfoot>
+          </table></div>`;
+        })():''}
+        ${matTotal>0?(()=>{
+          const mv1b=new Date((f.matDateDebut||f.dateDebut)+'T00:00:00'),mv2b=new Date((f.matDateFin||f.dateFin)+'T23:59:59');
+          const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=mv1b&&d<=mv2b;});
+          return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MATÉRIAUX</div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Date</td><td style="font-weight:600;">Magasin</td><td style="font-weight:600;">Carte</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
+          <tbody>${achF.map(a=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;font-size:11px;">${a.date}</td><td style="padding:5px 0;">${a.magasin}</td><td style="padding:5px 0;font-size:11px;color:#666;">${a.carte}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('')}</tbody>
+          <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="3" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`;
+        })():''}
+        <div style="border-top:2px solid #1a1a1a;padding-top:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
+          ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Frais de gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;font-weight:600;"><span>Avant taxes</span><span>${avantTaxes.toFixed(2)} $</span></div>
+          ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)</span><span>${tps.toFixed(2)} $</span></div>`:''}
+          ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)</span><span>${tvq.toFixed(2)} $</span></div>`:''}
+          <div style="display:flex;justify-content:space-between;background:#0C447C;color:#fff;padding:12px;border-radius:var(--radius-sm);margin-top:8px;font-size:16px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+            <span>TOTAL</span><span>${grandTotal.toFixed(2)} $</span>
+          </div>
+        </div>
+        ${f.notes?`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);font-size:12px;color:#666;">${f.notes}</div>`:''}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;" class="no-print">
+      <button class="btn-pdf" onclick="imprimerFacture()">📄 Imprimer / PDF</button>
+      <button class="btn btn-sm" onclick="setSub('facturation','historique')">← Retour</button>
+      <button class="btn btn-sm btn-danger" onclick="supprimerFacture(${f.id})" style="background:#FCEBEB;color:#791F1F;border:1px solid #F09595;">🗑 Supprimer</button>
+    </div>`;
+}
+
+function imprimerFacture(){document.querySelectorAll('details').forEach(d=>d.open=true);window.print();}
+function supprimerFacture(id){if(!confirm('Supprimer cette facture?'))return;state.factures=state.factures.filter(f=>f.id!==id);saveToCloud();setSub('facturation','historique');}
+function previewFacture(){sauvegarderFacture();}
+
+
+// ─── CLIENTS ──────────────────────────────────────────────
+function buildClients(){
+  const list=state.clients;
+  const rows=list.length?list.map((cl,i)=>`
+    <tr onclick="openClientModal(${i})" style="cursor:pointer;border-bottom:0.5px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#E6F1FB;color:#0C447C;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:11px;flex-shrink:0;">${((cl.prenom||'?').charAt(0)+(cl.nom||'').charAt(0)).toUpperCase()}</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${[cl.prenom,cl.nom].filter(Boolean).join(' ')||'Sans nom'}</div>
+            <div style="font-size:11px;color:var(--secondary);">${cl.entreprise||'—'}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);">${cl.tel||'—'}</td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cl.courriel||'—'}</td>
+      <td style="padding:10px 8px;text-align:right;">
+        <span style="font-size:12px;color:#0C447C;">›</span>
+      </td>
+    </tr>`).join('')
+  :'<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--secondary);font-size:13px;">Aucun client.</td></tr>';
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${list.length} client${list.length>1?'s':''}</span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openClientModal(-1)">+ Nouveau client</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f9f9f9;border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">NOM</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TÉL</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">COURRIEL</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function openClientModal(idx){
+  const isNew = idx===-1;
+  const cl = isNew ? {prenom:'',nom:'',entreprise:'',tel:'',courriel:'',adresse:'',notes:''} : state.clients[idx];
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>${isNew?'Nouveau client':'Modifier le client'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Prénom</label><input type="text" id="cl-pre" value="${cl.prenom||''}" placeholder="Prénom"/></div>
+      <div class="field"><label>Nom</label><input type="text" id="cl-nom" value="${cl.nom||''}" placeholder="Nom"/></div>
+    </div>
+    <div class="field"><label>Entreprise</label><input type="text" id="cl-ent" value="${cl.entreprise||''}" placeholder="Nom de l'entreprise"/></div>
+    <div class="grid2">
+      <div class="field"><label>Téléphone</label><input type="tel" id="cl-tel" value="${cl.tel||''}" placeholder="514 000-0000" inputmode="tel"/></div>
+      <div class="field"><label>Courriel</label><input type="email" id="cl-cou" value="${cl.courriel||''}" placeholder="client@example.com" inputmode="email"/></div>
+    </div>
+    <div class="field"><label>Adresse</label><input type="text" id="cl-adr" value="${cl.adresse||''}" placeholder="123 rue Exemple, Montréal"/></div>
+    <div class="field"><label>Notes</label><input type="text" id="cl-not" value="${cl.notes||''}" placeholder="Notes..."/></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveClientModal(${idx})">💾 Sauvegarder</button>
+      ${!isNew?`<button class="btn btn-sm btn-danger" onclick="removeClientModal(${idx})">🗑 Supprimer</button>`:''}
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveClientModal(idx){
+  const cl={
+    id: idx===-1?++state.clientId:(state.clients[idx].id||idx),
+    prenom:document.getElementById('cl-pre').value.trim(),
+    nom:document.getElementById('cl-nom').value.trim(),
+    entreprise:document.getElementById('cl-ent').value.trim(),
+    tel:document.getElementById('cl-tel').value.trim(),
+    courriel:document.getElementById('cl-cou').value.trim(),
+    adresse:document.getElementById('cl-adr').value.trim(),
+    notes:document.getElementById('cl-not').value.trim()
+  };
+  if(idx===-1)state.clients.push(cl);
+  else state.clients[idx]=cl;
+  closeModal();
+  saveToCloud();
+  const c=document.getElementById('content-chantiers');
+  if(c)c.innerHTML=buildClients();
+}
+
+function removeClientModal(idx){
+  if(!confirm('Supprimer ce client?'))return;
+  state.clients.splice(idx,1);
+  closeModal();
+  saveToCloud();
+  const c=document.getElementById('content-chantiers');
+  if(c)c.innerHTML=buildClients();
+}
+
+function addClient(){openClientModal(-1);}
+function removeClient(i){removeClientModal(i);}
+function updateClient(i,field,val){state.clients[i][field]=val;}
+
+// ─── CHANTIERS SECTION ────────────────────────────────────
+function buildChantiersSection(){
+  const list=state.chantiers;
+  if(!list.length)return`<div class="empty">Aucun chantier. Va dans <b>⚙️ Listes</b> pour en ajouter.</div>`;
+  const rows=list.map(ch=>{
+    const f=state.fiches[ch]||{};
+    const client=f.clientIdx!==undefined&&f.clientIdx!==''?state.clients[parseInt(f.clientIdx)]:null;
+    return`<tr onclick="openChantierModal('${esc(ch)}')" style="cursor:pointer;border-bottom:0.5px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#EAF3DE;color:#27500A;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">🏗</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${ch}</div>
+            <div style="font-size:11px;color:var(--secondary);">${f.numeroChantier?'#'+f.numeroChantier+' · ':''}${client?client.prenom+' '+client.nom:'Aucun client lié'}</div>
+          </div>
+        </div>
+      </td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);">${f.taux?f.taux+' $/h':'—'}</td>
+      <td style="padding:10px 8px;font-size:12px;color:var(--secondary);">${f.adresseChantier||'—'}</td>
+      <td style="padding:10px 8px;text-align:right;font-size:12px;color:#0C447C;">›</td>
+    </tr>`;
+  }).join('');
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${list.length} chantier${list.length>1?'s':''}</span>
+      <span style="font-size:11px;color:var(--secondary);">Pour ajouter/supprimer → ⚙️ Listes</span>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f9f9f9;border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">CHANTIER</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TAUX</th>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">ADRESSE</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function openChantierModal(ch){
+  const f=state.fiches[ch]||{};
+  const clientOpts='<option value="">-- Aucun client lié --</option>'+state.clients.map((cl,i)=>`<option value="${i}" ${String(f.clientIdx)===String(i)?'selected':''}>${cl.prenom} ${cl.nom}${cl.entreprise?' ('+cl.entreprise+')':''}</option>`).join('');
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>🏗 ${ch}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="field"><label>Numéro de chantier</label>
+      <input type="text" id="ch-num" value="${f.numeroChantier||''}" placeholder="Ex: 2024-001"/>
+    </div>
+    <div class="field"><label>Client associé</label>
+      <select id="ch-client" style="width:100%;">${clientOpts}</select>
+    </div>
+    <div class="field"><label>Adresse du chantier</label>
+      <input type="text" id="ch-adr" value="${f.adresseChantier||''}" placeholder="Adresse des travaux"/>
+    </div>
+    <div class="field"><label>Description / Notes</label>
+      <input type="text" id="ch-desc" value="${f.descChantier||''}" placeholder="Description du projet..."/>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>💰 Taux horaire ($)</label>
+        <input type="number" id="ch-taux" min="0" step="0.5" value="${f.taux||''}" placeholder="85" inputmode="decimal"/>
+      </div>
+      <div class="field"><label>% Frais de gestion</label>
+        <input type="number" id="ch-fg" min="0" step="0.5" value="${f.fraisGestion||''}" placeholder="15" inputmode="decimal"/>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Date de début</label>
+        <input type="date" id="ch-d1" value="${f.dateDebut||''}" style="width:100%;color:var(--primary);"/>
+      </div>
+      <div class="field"><label>Date de fin prévue</label>
+        <input type="date" id="ch-d2" value="${f.dateFin||''}" style="width:100%;color:var(--primary);"/>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveChantierModal('${esc(ch)}')">💾 Sauvegarder</button>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveChantierModal(ch){
+  if(!state.fiches[ch])state.fiches[ch]={};
+  state.fiches[ch].numeroChantier=document.getElementById('ch-num').value.trim();
+  state.fiches[ch].clientIdx=document.getElementById('ch-client').value;
+  state.fiches[ch].adresseChantier=document.getElementById('ch-adr').value.trim();
+  state.fiches[ch].descChantier=document.getElementById('ch-desc').value.trim();
+  state.fiches[ch].taux=document.getElementById('ch-taux').value;
+  state.fiches[ch].fraisGestion=document.getElementById('ch-fg').value;
+  state.fiches[ch].dateDebut=document.getElementById('ch-d1').value;
+  state.fiches[ch].dateFin=document.getElementById('ch-d2').value;
+  closeModal();
+  saveToCloud();
+  const c=document.getElementById('content-chantiers');
+  if(c)c.innerHTML=buildChantiersSection();
+}
+
+function updateFicheChantier(ch,field,val){
+  if(!state.fiches[ch])state.fiches[ch]={};
+  state.fiches[ch][field]=val;
+  if(field==='clientIdx')smartRender();
+}
+
+// Override old buildFiches to redirect to new structure
+function buildFiches(){return buildChantiersSection();}
+
+
+// ─── TYPES DE DÉPENSE ─────────────────────────────────────
+const TYPES_DEPENSE_FIXES=['Perso Victor','Perso Edouard','Perso Denis','Camion','Petits outils','Gros outils'];
+const CARTES=['Victor','Edouard','Denis'];
+const TPS=0.05, TVQ=0.09975;
+
+// ─── MATÉRIEL / ACHATS ────────────────────────────────────
+function buildMateriaux(){
+  const list=state.achats.slice().sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Stats
+  const total=list.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  const totalAvecTax=list.reduce((s,a)=>s+(parseFloat(a.montantAvecTax)||0),0);
+  const parCarte={Victor:0,Edouard:0,Denis:0};
+  list.forEach(a=>{if(parCarte[a.carte]!==undefined)parCarte[a.carte]+=(parseFloat(a.montantAvantTax)||0);});
+
+  // Filters
+  const filtreCarteVal=window._filtreCarteAchats||'';
+  const filtreTypeVal=window._filtreTypeAchats||'';
+  const filtreMoisVal=window._filtreMoisAchats||'';
+  
+  const filtered=list.filter(a=>{
+    if(filtreCarteVal&&a.carte!==filtreCarteVal)return false;
+    if(filtreTypeVal&&a.typeDepense!==filtreTypeVal)return false;
+    if(filtreMoisVal&&!a.date.startsWith(filtreMoisVal))return false;
+    return true;
+  });
+
+  const chOpts='<option value="">-- Aucun (dépense générale) --</option>'+state.chantiers.map(ch=>`<option value="${esc(ch)}">${ch}</option>`).join('');
+  const allTypes=[...TYPES_DEPENSE_FIXES,...state.chantiers.map(ch=>'Chantier: '+ch)];
+
+  const rows=filtered.map(a=>{
+    const estChantier=a.typeDepense&&a.typeDepense.startsWith('Chantier: ');
+    return`<div class="card" style="padding:12px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:600;">${a.magasin||'—'}</span>
+            <span style="font-size:11px;color:var(--secondary);">${a.date}</span>
+            <span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:2px 7px;border-radius:20px;font-weight:600;">💳 ${a.carte}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">${a.typeDepense||'—'}</span>
+            ${estChantier&&a.facturable!==undefined?`<span class="fbadge ${a.facturable?'fb-y':'fb-n'}">${a.facturable?'Facturable':'Non-fact.'}</span>`:''}
+          </div>
+          ${a.description?`<div style="font-size:11px;color:var(--secondary);">${a.description}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${(parseFloat(a.montantAvantTax)||0).toFixed(2)} $</div>
+          <div style="font-size:10px;color:var(--secondary);">avec taxes: ${(parseFloat(a.montantAvecTax)||0).toFixed(2)} $</div>
+          <button class="btn-edit" onclick="editAchat(${a.id})" style="font-size:12px;">✏️</button>
+          <button class="btn-del" onclick="deleteAchat(${a.id})">✕</button>
+        </div>
+      </div>
+    </div>`;}).join('');
+
+  return`
+    <div class="card">
+      <div class="card-title">🛒 Matériel & Dépenses</div>
+      <div class="stats-row-4" style="margin-bottom:10px;">
+        <div class="stat-box"><div class="label">Total avant taxes</div><div class="value">${total.toFixed(2)} $</div></div>
+        <div class="stat-box" style="background:#E6F1FB;"><div class="label">💳 Victor</div><div class="value" style="color:#0C447C;">${parCarte.Victor.toFixed(2)} $</div></div>
+        <div class="stat-box" style="background:#E1F5EE;"><div class="label">💳 Edouard</div><div class="value" style="color:#085041;">${parCarte.Edouard.toFixed(2)} $</div></div>
+        <div class="stat-box" style="background:#FAEEDA;"><div class="label">💳 Denis</div><div class="value" style="color:#633806;">${parCarte.Denis.toFixed(2)} $</div></div>
+      </div>
+      <button class="btn btn-primary" style="margin-bottom:12px;" onclick="openModalAchat()">+ Ajouter une dépense</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <select style="flex:1;font-size:12px;" onchange="window._filtreCarteAchats=this.value;refreshMateriaux()">
+          <option value="">Toutes les cartes</option>
+          ${CARTES.map(c=>`<option value="${c}" ${filtreCarteVal===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+        <select style="flex:1;font-size:12px;" onchange="window._filtreTypeAchats=this.value;refreshMateriaux()">
+          <option value="">Tous les types</option>
+          ${TYPES_DEPENSE_FIXES.map(t=>`<option value="${t}" ${filtreTypeVal===t?'selected':''}>${t}</option>`).join('')}
+          <optgroup label="Chantiers">${state.chantiers.map(ch=>`<option value="Chantier: ${ch}" ${'Chantier: '+ch===filtreTypeVal?'selected':''}>Chantier: ${ch}</option>`).join('')}</optgroup>
+        </select>
+        <input type="month" value="${filtreMoisVal}" onchange="window._filtreMoisAchats=this.value;refreshMateriaux()" style="flex:1;font-size:12px;color:var(--primary);"/>
+        <button class="btn btn-sm" onclick="window._filtreCarteAchats='';window._filtreTypeAchats='';window._filtreMoisAchats='';refreshMateriaux()">↺</button>
+      </div>
+    </div>
+    ${filtered.length?rows:`<div class="empty">Aucune dépense trouvée.</div>`}
+    <div id="modal-achat-area"></div>`;
+}
+
+function refreshMateriaux(){
+  const c=document.getElementById('content-facturation');
+  if(c&&state.currentSub['facturation']==='materiaux')c.innerHTML=buildMateriaux();
+}
+
+function openModalAchat(editId){
+  const existing=editId?state.achats.find(a=>a.id===editId):null;
+  const a=existing||{date:'',magasin:'',montantAvantTax:'',carte:'Victor',typeDepense:'',description:'',facturable:true};
+  const chOpts=state.chantiers.map(ch=>`<option value="Chantier: ${esc(ch)}" ${'Chantier: '+ch===a.typeDepense?'selected':''}>Chantier: ${ch}</option>`).join('');
+  const estChantier=a.typeDepense&&a.typeDepense.startsWith('Chantier: ');
+  const montantAvec=a.montantAvantTax?((parseFloat(a.montantAvantTax)||0)*(1+TPS+TVQ)).toFixed(2):'';
+
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>${editId?'Modifier la dépense':'Nouvelle dépense'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Date</label><input type="date" id="a-date" value="${a.date}" style="width:100%;color:var(--primary);"/></div>
+      <div class="field"><label>Magasin / Fournisseur</label><select id="a-mag" style="width:100%;font-size:14px;" onchange="const ai=document.getElementById('a-mag-autre');if(ai)ai.style.display=this.value==='_autre'?'block':'none';">
+        <option value="">-- Choisir ou taper --</option>
+        ${state.fournisseurs.map(f=>`<option value="${esc(f.nom)}" ${f.nom===a.magasin?'selected':''}>${f.nom}</option>`).join('')}
+        <option value="_autre">Autre...</option>
+      </select>
+      <input type="text" id="a-mag-autre" placeholder="Nom du magasin..." style="width:100%;margin-top:6px;display:${state.fournisseurs.some(f=>f.nom===a.magasin)||!a.magasin?'none':'block'};"/></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Montant avant taxes ($)</label>
+        <input type="number" id="a-mont" min="0" step="0.01" value="${a.montantAvantTax||''}" placeholder="0.00" inputmode="decimal" oninput="calcTaxesAchat(this.value)"/>
+      </div>
+      <div class="field"><label>Montant avec taxes (calculé)</label>
+        <input type="number" id="a-montTax" value="${montantAvec}" placeholder="0.00" style="background:#f5f5f5;" readonly/>
+      </div>
+    </div>
+    <div class="field"><label>Carte utilisée</label>
+      <div class="toggle-group">
+        <button id="carte-v" class="${a.carte==='Victor'?'on-f':''}" onclick="setCarteAchat('Victor')" style="font-size:12px;">💳 Victor</button>
+        <button id="carte-e" class="${a.carte==='Edouard'?'on-f':''}" onclick="setCarteAchat('Edouard')" style="font-size:12px;">💳 Edouard</button>
+        <button id="carte-d" class="${a.carte==='Denis'?'on-f':''}" onclick="setCarteAchat('Denis')" style="font-size:12px;">💳 Denis</button>
+      </div>
+    </div>
+    <div class="field"><label>Type de dépense</label>
+      <select id="a-type" onchange="onTypeDepenseChange(this.value)" style="width:100%;">
+        <option value="">-- Choisir --</option>
+        <optgroup label="Dépenses personnelles / équipement">
+          ${TYPES_DEPENSE_FIXES.map(t=>`<option value="${t}" ${t===a.typeDepense?'selected':''}>${t}</option>`).join('')}
+        </optgroup>
+        <optgroup label="Associé à un chantier">${chOpts}</optgroup>
+      </select>
+    </div>
+    <div id="facturable-section" style="${estChantier?'':'display:none;'}">
+      <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable au client?</label>
+      <div class="toggle-group">
+        <button id="fact-y" class="${a.facturable?'on-f':''}" onclick="setFactAchat(true)">✓ Facturable</button>
+        <button id="fact-n" class="${!a.facturable?'on-nf':''}" onclick="setFactAchat(false)">✕ Non facturable</button>
+      </div>
+    </div>
+    <div class="field"><label>Description / Notes</label>
+      <input type="text" id="a-desc" value="${a.description||''}" placeholder="Description optionnelle..."/>
+    </div>
+    <button class="btn btn-primary" onclick="saveAchat(${editId||0})">${editId?'✓ Modifier':'✓ Enregistrer'}</button>`;
+
+  window._achatCarte=a.carte||'Victor';
+  window._achatFacturable=a.facturable!==false;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function calcTaxesAchat(val){
+  const montant=parseFloat(val)||0;
+  const avec=(montant*(1+TPS+TVQ)).toFixed(2);
+  const el=document.getElementById('a-montTax');
+  if(el)el.value=avec;
+}
+
+function setCarteAchat(carte){
+  window._achatCarte=carte;
+  ['Victor','Edouard','Denis'].forEach(c=>{
+    const btn=document.getElementById('carte-'+c.charAt(0).toLowerCase());
+    if(btn)btn.className=c===carte?'on-f':'';
+  });
+}
+
+function setFactAchat(val){
+  window._achatFacturable=val;
+  const by=document.getElementById('fact-y'),bn=document.getElementById('fact-n');
+  if(by&&bn){by.className=val?'on-f':'';bn.className=!val?'on-nf':'';}
+}
+
+function onTypeDepenseChange(val){
+  const section=document.getElementById('facturable-section');
+  if(section)section.style.display=val.startsWith('Chantier: ')?'':'none';
+}
+
+function saveAchat(editId){
+  const date=document.getElementById('a-date').value;
+  const magSel=document.getElementById('a-mag').value;
+  const magAutre=document.getElementById('a-mag-autre');
+  const magasin=magSel==='_autre'?(magAutre?magAutre.value.trim():''):magSel;
+  const montantAvantTax=parseFloat(document.getElementById('a-mont').value)||0;
+  const typeDepense=document.getElementById('a-type').value;
+  const description=document.getElementById('a-desc').value.trim();
+  if(!date){alert('Veuillez entrer une date.');return;}
+  if(!montantAvantTax){alert('Veuillez entrer un montant.');return;}
+  const montantAvecTax=(montantAvantTax*(1+TPS+TVQ)).toFixed(2);
+  const estChantier=typeDepense.startsWith('Chantier: ');
+  const chantierAssoc=estChantier?typeDepense.replace('Chantier: ',''):'';
+  const achat={
+    id:editId?editId:++state.achatId,
+    date,magasin,
+    montantAvantTax:montantAvantTax.toFixed(2),
+    montantAvecTax,
+    carte:window._achatCarte||'Victor',
+    typeDepense,
+    chantier:chantierAssoc,
+    facturable:estChantier?window._achatFacturable:null,
+    description
+  };
+  if(editId){
+    const idx=state.achats.findIndex(a=>a.id===editId);
+    if(idx>=0)state.achats[idx]=achat;
+  } else {
+    state.achats.push(achat);
+  }
+  closeModal();
+  saveToCloud();
+  refreshMateriaux();
+}
+
+function editAchat(id){openModalAchat(id);}
+
+function deleteAchat(id){
+  if(!confirm('Supprimer cette dépense?'))return;
+  state.achats=state.achats.filter(a=>a.id!==id);
+  saveToCloud();
+  refreshMateriaux();
+}
+
+
+// ─── FACTURES SOUS-TRAITANTS ──────────────────────────────
+function buildSstFactures(){
+  const list=state.sstFactures.slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const total=list.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  const parSst={};
+  list.forEach(a=>{if(!parSst[a.sst])parSst[a.sst]=0;parSst[a.sst]+=(parseFloat(a.montant)||0);});
+
+  const filtreChVal=window._filtreSstCh||'';
+  const filtreSstVal=window._filtreSst||'';
+  const filtreMoisVal=window._filtreSstMois||'';
+  const filtered=list.filter(a=>{
+    if(filtreChVal&&a.chantier!==filtreChVal)return false;
+    if(filtreSstVal&&a.sst!==filtreSstVal)return false;
+    if(filtreMoisVal&&!a.date.startsWith(filtreMoisVal))return false;
+    return true;
+  });
+
+  const sstOpts='<option value="">-- Tous --</option>'+state.sstraitants.map(s=>`<option value="${esc(s.nom)}">${s.nom}</option>`).join('');
+  const chOpts='<option value="">-- Tous les chantiers --</option>'+state.chantiers.map(c=>`<option value="${esc(c)}">${c}</option>`).join('');
+
+  const rows=filtered.map(a=>`
+    <div class="card" style="padding:10px 14px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:600;">${a.sst||'—'}</span>
+            <span style="font-size:11px;color:var(--secondary);">${a.date}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">🏗 ${a.chantier||'—'}</span>
+            <span class="fbadge ${a.facturable?'fb-y':'fb-n'}">${a.facturable?'Facturable':'Non-fact.'}</span>
+          </div>
+          ${a.description?`<div style="font-size:11px;color:var(--secondary);">${a.description}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:15px;font-weight:700;">${(parseFloat(a.montant)||0).toFixed(2)} $</div>
+          <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:4px;">
+            <button class="btn-edit" onclick="editSstFacture(${a.id})">✏️</button>
+            <button class="btn-del" onclick="deleteSstFacture(${a.id})">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  return`
+    <div class="card">
+      <div class="card-title">🧾 Factures sous-traitants</div>
+      <div class="stats-row" style="margin-bottom:10px;">
+        <div class="stat-box"><div class="label">Total</div><div class="value">${total.toFixed(2)} $</div></div>
+        <div class="stat-box stat-fact"><div class="label">Factures</div><div class="value">${list.length}</div></div>
+        <div class="stat-box stat-money"><div class="label">Filtrées</div><div class="value">${filtered.length}</div></div>
+      </div>
+      <button class="btn btn-primary" style="margin-bottom:12px;" onclick="openSstFactureModal()">+ Ajouter une facture SST</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <select style="flex:1;font-size:12px;" onchange="window._filtreSst=this.value;refreshSstFactures()">${sstOpts.replace('value="'+esc(filtreSstVal)+'"','value="'+esc(filtreSstVal)+'" selected')}</select>
+        <select style="flex:1;font-size:12px;" onchange="window._filtreSstCh=this.value;refreshSstFactures()">${chOpts.replace('value="'+esc(filtreChVal)+'"','value="'+esc(filtreChVal)+'" selected')}</select>
+        <input type="month" value="${filtreMoisVal}" onchange="window._filtreSstMois=this.value;refreshSstFactures()" style="flex:1;font-size:12px;color:var(--primary);"/>
+        <button class="btn btn-sm" onclick="window._filtreSst='';window._filtreSstCh='';window._filtreSstMois='';refreshSstFactures()">↺</button>
+      </div>
+    </div>
+    ${filtered.length?rows:'<div class="empty">Aucune facture trouvée.</div>'}`;
+}
+
+function refreshSstFactures(){
+  const c=document.getElementById('content-facturation');
+  if(c&&state.currentSub['facturation']==='sstfactures')c.innerHTML=buildSstFactures();
+}
+
+function openSstFactureModal(editId){
+  const existing=editId?state.sstFactures.find(a=>a.id===editId):null;
+  const a=existing||{date:'',sst:'',chantier:'',montant:'',description:'',facturable:true,noFacture:''};
+  const sstOpts=state.sstraitants.map(s=>`<option value="${esc(s.nom)}"${s.nom===a.sst?' selected':''}>${s.nom}</option>`).join('');
+  const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}"${ch===a.chantier?' selected':''}>${ch}</option>`).join('');
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>${editId?'Modifier la facture SST':'Nouvelle facture SST'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Date</label><input type="date" id="sf-date" value="${a.date}" style="width:100%;color:var(--primary);"/></div>
+      <div class="field"><label>No. de facture</label><input type="text" id="sf-no" value="${a.noFacture||''}" placeholder="Ex: SST-2024-001"/></div>
+    </div>
+    <div class="field"><label>Sous-traitant</label>
+      <select id="sf-sst" style="width:100%;"><option value="">-- Choisir --</option>${sstOpts}</select>
+    </div>
+    <div class="field"><label>Chantier</label>
+      <select id="sf-ch" style="width:100%;"><option value="">-- Choisir --</option>${chOpts}</select>
+    </div>
+    <div class="field"><label>Montant ($)</label>
+      <input type="number" id="sf-mont" min="0" step="0.01" value="${a.montant||''}" placeholder="0.00" inputmode="decimal"/>
+    </div>
+    <div class="field"><label>Description / Travaux effectués</label>
+      <input type="text" id="sf-desc" value="${a.description||''}" placeholder="Description des travaux..."/>
+    </div>
+    <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable au client?</label>
+    <div class="toggle-group" style="margin-bottom:12px;">
+      <button id="sf-fy" class="${a.facturable?'on-f':''}" onclick="setSfFact(true)">✓ Facturable</button>
+      <button id="sf-fn" class="${!a.facturable?'on-nf':''}" onclick="setSfFact(false)">✕ Non facturable</button>
+    </div>
+    <button class="btn btn-primary" onclick="saveSstFacture(${editId||0})">✓ Enregistrer</button>`;
+  window._sfFacturable=a.facturable!==false;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function setSfFact(val){
+  window._sfFacturable=val;
+  const fy=document.getElementById('sf-fy'),fn=document.getElementById('sf-fn');
+  if(fy&&fn){fy.className=val?'on-f':'';fn.className=!val?'on-nf':'';}
+}
+
+function saveSstFacture(editId){
+  const date=document.getElementById('sf-date').value;
+  const sst=document.getElementById('sf-sst').value;
+  const chantier=document.getElementById('sf-ch').value;
+  const montant=parseFloat(document.getElementById('sf-mont').value)||0;
+  if(!date){alert('Veuillez entrer une date.');return;}
+  if(!sst){alert('Veuillez choisir un sous-traitant.');return;}
+  if(!montant){alert('Veuillez entrer un montant.');return;}
+  const facture={
+    id:editId?editId:++state.sstFactureId,
+    date,sst,chantier,
+    montant:montant.toFixed(2),
+    description:document.getElementById('sf-desc').value.trim(),
+    noFacture:document.getElementById('sf-no').value.trim(),
+    facturable:window._sfFacturable
+  };
+  if(editId){const idx=state.sstFactures.findIndex(a=>a.id===editId);if(idx>=0)state.sstFactures[idx]=facture;}
+  else state.sstFactures.push(facture);
+  closeModal();saveToCloud();refreshSstFactures();
+}
+
+function editSstFacture(id){openSstFactureModal(id);}
+function deleteSstFacture(id){
+  if(!confirm('Supprimer cette facture?'))return;
+  state.sstFactures=state.sstFactures.filter(a=>a.id!==id);
+  saveToCloud();refreshSstFactures();
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function(){
+  // 1. Show heures page immediately
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const hp=document.getElementById('page-heures');
+  if(hp)hp.classList.add('active');
+  
+  // 2. Load local data only (no render yet, setHeuresEmp will render)
+  loadLocal(false);
+  setTimeout(()=>setHeuresEmp('victor'),50);
+  
+  // 3. Sync with Supabase once in background — only update state, never re-render
+  setTimeout(async()=>{
+    try{
+      const ctrl=new AbortController();
+      setTimeout(()=>ctrl.abort(),8000);
+      const r=await fetch(`${SB_URL}/rest/v1/donnees?id=eq.${ROW_ID}&select=data`,{headers:SB_HEADERS,signal:ctrl.signal});
+      if(!r.ok)return;
+      const rows=await r.json();
+      if(rows.length>0&&rows[0].data){
+        const d=rows[0].data;
+        if(d.entries)state.entries=d.entries;
+        if(d.chantiers)state.chantiers=d.chantiers;
+        if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
+        if(d.fiches)state.fiches=d.fiches;
+        if(d.entryId)state.entryId=d.entryId;
+        if(d.clients)state.clients=d.clients;
+        if(d.factures)state.factures=d.factures;
+        if(d.achats)state.achats=d.achats;
+        if(d.factureId)state.factureId=d.factureId;
+        if(d.achatId)state.achatId=d.achatId;
+        if(d.entreprise)state.entreprise=d.entreprise;
+        if(d.sstraitants)state.sstraitants=d.sstraitants;
+        if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
+        saveLocal();
+        const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
+        setSyncStatus('ok',`Synchronisé à ${t}`);
+      }
+    }catch(e){setSyncStatus('err','Hors ligne');}
+  },1000);
+});
+</script>
+</body>
+</html>
