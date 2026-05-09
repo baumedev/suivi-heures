@@ -977,24 +977,93 @@ function sf(ch,field,val){if(!state.fiches[ch])state.fiches[ch]={};state.fiches[
 
 // ─── GESTION LISTES ───────────────────────────────────────
 function buildGestionListes(){
-  return`<div class="card"><div class="card-title">🏗 Chantiers</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;"><input type="text" id="newCh" placeholder="Nouveau chantier" style="flex:1;" onkeydown="if(event.key==='Enter')addItem('chantier')"/><button class="btn btn-sm" onclick="addItem('chantier')">+</button></div>
-    <div>${state.chantiers.map(c=>`<span class="tag">${c}<button onclick="removeItem('chantier','${esc(c)}')">✕</button></span>`).join('')}</div></div>
-  <div class="card"><div class="card-title">🏷 Types de travaux</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;"><input type="text" id="newTy" placeholder="Nouveau type" style="flex:1;" onkeydown="if(event.key==='Enter')addItem('type')"/><button class="btn btn-sm" onclick="addItem('type')">+</button></div>
-    <div>${state.typesTravaux.map(t=>`<span class="tag">${t}<button onclick="removeItem('type','${esc(t)}')">✕</button></span>`).join('')}</div></div>`;
+  const rows=state.typesTravaux.map((t,i)=>`
+    <tr style="border-bottom:0.5px solid var(--border);">
+      <td style="padding:10px 8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:#f0f0f0;color:var(--secondary);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">🏷</div>
+          <span style="font-size:13px;font-weight:500;">${t}</span>
+        </div>
+      </td>
+      <td style="padding:10px 8px;text-align:right;">
+        <button class="btn-edit" onclick="openTypeModal(${i})" style="font-size:13px;">✏️</button>
+        <button class="btn-del" onclick="removeItem('type','${esc(t)}')">✕</button>
+      </td>
+    </tr>`).join('');
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${state.typesTravaux.length} type${state.typesTravaux.length>1?'s':''} de travaux</span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="openTypeModal(-1)">+ Nouveau type</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;">
+        <thead style="background:#f9f9f9;border-bottom:1px solid var(--border);">
+          <tr>
+            <th style="padding:8px;text-align:left;font-size:11px;font-weight:600;color:var(--secondary);">TYPE DE TRAVAUX</th>
+            <th style="padding:8px;text-align:right;font-size:11px;font-weight:600;color:var(--secondary);">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>${rows.length?rows:'<tr><td colspan="2" style="padding:20px;text-align:center;color:var(--secondary);font-size:13px;">Aucun type de travaux.</td></tr>'}</tbody>
+      </table>
+    </div>`;
 }
-function addItem(kind){
-  const id=kind==='chantier'?'newCh':'newTy',val=document.getElementById(id).value.trim();
-  if(!val)return;
-  if(kind==='chantier'){if(!state.chantiers.includes(val)){state.chantiers.push(val);state.chantiers.sort();if(!state.fiches[val])state.fiches[val]={};}}
-  else if(!state.typesTravaux.includes(val)){state.typesTravaux.push(val);state.typesTravaux.sort();}
-  smartRender();saveToCloud();
+
+function openTypeModal(idx){
+  const isNew=idx===-1;
+  const val=isNew?'':state.typesTravaux[idx];
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>${isNew?'Nouveau type de travaux':'Modifier le type'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="field"><label>Nom du type de travaux</label>
+      <input type="text" id="ty-nom" value="${val}" placeholder="Ex: Charpente, Béton..."/>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="saveTypeModal(${idx})">💾 Sauvegarder</button>
+      ${!isNew?`<button class="btn btn-sm btn-danger" onclick="removeTypeModal(${idx})">🗑 Supprimer</button>`:''}
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>{const n=document.getElementById('ty-nom');if(n){n.focus();n.select();}},200);
+}
+
+function saveTypeModal(idx){
+  const val=document.getElementById('ty-nom').value.trim();
+  if(!val){alert('Veuillez entrer un nom.');return;}
+  if(idx===-1){
+    if(state.typesTravaux.includes(val)){alert('Ce type existe déjà.');return;}
+    state.typesTravaux.push(val);
+    state.typesTravaux.sort();
+  } else {
+    state.typesTravaux[idx]=val;
+    state.typesTravaux.sort();
+  }
+  closeModal();
+  saveToCloud();
+  const c=document.getElementById('content-chantiers');
+  if(c)c.innerHTML=buildGestionListes();
+}
+
+function removeTypeModal(idx){
+  if(!confirm('Supprimer ce type de travaux?'))return;
+  state.typesTravaux.splice(idx,1);
+  closeModal();
+  saveToCloud();
+  const c=document.getElementById('content-chantiers');
+  if(c)c.innerHTML=buildGestionListes();
+}
+function addItem(kind,val){
+  if(kind==='chantier'){
+    if(!val){const el=document.getElementById('newCh');if(el)val=el.value.trim();}
+    if(!val)return;
+    if(!state.chantiers.includes(val)){state.chantiers.push(val);state.chantiers.sort();if(!state.fiches[val])state.fiches[val]={};}
+    smartRender();saveToCloud();
+  }
 }
 function removeItem(kind,val){
   if(!confirm(`Supprimer "${val}"?`))return;
   if(kind==='chantier')state.chantiers=state.chantiers.filter(c=>c!==val);
-  else state.typesTravaux=state.typesTravaux.filter(t=>t!==val);
+  else{state.typesTravaux=state.typesTravaux.filter(t=>t!==val);saveToCloud();const c=document.getElementById('content-chantiers');if(c)c.innerHTML=buildGestionListes();return;}
   smartRender();saveToCloud();
 }
 
@@ -1633,8 +1702,8 @@ function voirFacture(id){
           <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
           ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Frais de gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
           <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;font-weight:600;"><span>Avant taxes</span><span>${avantTaxes.toFixed(2)} $</span></div>
-          ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)</span><span>${tps.toFixed(2)} $</span></div>`:''}
-          ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)</span><span>${tvq.toFixed(2)} $</span></div>`:''}
+          ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>`:''}
+          ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>`:''}
           <div style="display:flex;justify-content:space-between;background:#0C447C;color:#fff;padding:12px;border-radius:var(--radius-sm);margin-top:8px;font-size:16px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
             <span>TOTAL</span><span>${grandTotal.toFixed(2)} $</span>
           </div>
