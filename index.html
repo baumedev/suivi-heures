@@ -1007,24 +1007,33 @@ function renderEntreprise(){
       <div class="card-title">🏢 Informations de mon entreprise</div>
       <div class="field"><label>Logo (URL ou base64)</label>
         ${e.logo?`<div style="margin-bottom:8px;"><img src="${e.logo}" class="logo-preview" onerror="this.style.display='none'"/></div>`:''}
-        <input type="text" value="${e.logo||''}" oninput="se('logo',this.value)" placeholder="Colle l'URL de ton logo ici"/>
+        <input type="text" id="ent-logo" value="${e.logo||''}" oninput="se('logo',this.value)" placeholder="Colle l'URL de ton logo ici"/>
         <p style="font-size:10px;color:var(--secondary);margin:4px 0 0;">Astuce: upload ton logo sur imgur.com et colle le lien</p>
       </div>
-      <div class="field"><label>Nom de l'entreprise</label><input type="text" value="${e.nom||''}" oninput="se('nom',this.value)" placeholder="Ex: Construction ABC Inc."/></div>
+      <div class="field"><label>Nom de l'entreprise</label><input type="text" id="ent-nom" value="${e.nom||''}" oninput="se('nom',this.value)" placeholder="Ex: Construction ABC Inc."/></div>
       <div class="grid2">
-        <div class="field"><label>Téléphone</label><input type="tel" value="${e.telephone||''}" oninput="se('telephone',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
-        <div class="field"><label>Courriel</label><input type="email" value="${e.courriel||''}" oninput="se('courriel',this.value)" placeholder="info@entreprise.com" inputmode="email"/></div>
+        <div class="field"><label>Téléphone</label><input type="tel" id="ent-tel" value="${e.telephone||''}" oninput="se('telephone',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
+        <div class="field"><label>Courriel</label><input type="email" id="ent-cou" value="${e.courriel||''}" oninput="se('courriel',this.value)" placeholder="info@entreprise.com" inputmode="email"/></div>
       </div>
-      <div class="field"><label>Adresse</label><input type="text" value="${e.adresse||''}" oninput="se('adresse',this.value)" placeholder="123 rue Exemple, Montréal, QC"/></div>
-      <div class="field"><label>Site web</label><input type="text" value="${e.siteWeb||''}" oninput="se('siteWeb',this.value)" placeholder="www.entreprise.com"/></div>
+      <div class="field"><label>Adresse</label><input type="text" id="ent-adr" value="${e.adresse||''}" oninput="se('adresse',this.value)" placeholder="123 rue Exemple, Montréal, QC"/></div>
+      <div class="field"><label>Site web</label><input type="text" id="ent-web" value="${e.siteWeb||''}" oninput="se('siteWeb',this.value)" placeholder="www.entreprise.com"/></div>
       <div class="grid2">
-        <div class="field"><label>No. TPS</label><input type="text" value="${e.noTPS||''}" oninput="se('noTPS',this.value)" placeholder="123456789 RT0001"/></div>
-        <div class="field"><label>No. TVQ</label><input type="text" value="${e.noTVQ||''}" oninput="se('noTVQ',this.value)" placeholder="1234567890 TQ0001"/></div>
+        <div class="field"><label>No. TPS</label><input type="text" id="ent-tps" value="${e.noTPS||''}" oninput="se('noTPS',this.value)" placeholder="123456789 RT0001"/></div>
+        <div class="field"><label>No. TVQ</label><input type="text" id="ent-tvq" value="${e.noTVQ||''}" oninput="se('noTVQ',this.value)" placeholder="1234567890 TQ0001"/></div>
       </div>
-      <button class="btn btn-primary" onclick="saveToCloud()">💾 Sauvegarder</button>
+      <div class="field"><label>No. RBQ</label><input type="text" id="ent-rbq" value="${e.noRBQ||''}" oninput="se('noRBQ',this.value)" placeholder="Ex: 1234-5678-01"/></div>
+      <button class="btn btn-primary" onclick="sauvegarderEntreprise()">💾 Sauvegarder</button>
     </div>`;
 }
 function se(field,val){state.entreprise[field]=val;}
+function sauvegarderEntreprise(){
+  // Re-read all fields from DOM to make sure we have latest values
+  const fields=['nom','telephone','courriel','adresse','siteWeb','noTPS','noTVQ','noRBQ','logo'];
+  const ids=['ent-nom','ent-tel','ent-cou','ent-adr','ent-web','ent-tps','ent-tvq','ent-rbq','ent-logo'];
+  fields.forEach((f,i)=>{const el=document.getElementById(ids[i]);if(el)state.entreprise[f]=el.value;});
+  saveToCloud();
+  alert('Informations sauvegardées!');
+}
 
 // ─── SOUS-TRAITANTS ───────────────────────────────────────
 function buildSstraitants(){
@@ -1081,6 +1090,7 @@ function openSstModal(idx){
     </div>
     <div class="field"><label>Spécialité</label><input type="text" id="sst-spe" value="${s.specialite||''}" placeholder="Ex: Électricité, Plomberie..."/></div>
     <div class="field"><label>No. RBQ</label><input type="text" id="sst-rbq" value="${s.rbq||''}" placeholder="Ex: 1234-5678-01"/></div>
+    <div class="field"><label>Adresse</label><input type="text" id="sst-adr" value="${s.adresse||''}" placeholder="123 rue Exemple, Montréal"/></div>
     <div style="display:flex;gap:8px;">
       <button class="btn btn-primary" style="flex:1;" onclick="saveSstModal(${idx})">💾 Sauvegarder</button>
       ${!isNew?`<button class="btn btn-sm btn-danger" onclick="removeSstModal(${idx})">🗑 Supprimer</button>`:''}
@@ -1089,7 +1099,7 @@ function openSstModal(idx){
 }
 
 function saveSstModal(idx){
-  const s={nom:document.getElementById('sst-nom').value.trim(),contact:document.getElementById('sst-con').value.trim(),tel:document.getElementById('sst-tel').value.trim(),courriel:document.getElementById('sst-cou').value.trim(),specialite:document.getElementById('sst-spe').value.trim(),rbq:document.getElementById('sst-rbq').value.trim()};
+  const s={nom:document.getElementById('sst-nom').value.trim(),contact:document.getElementById('sst-con').value.trim(),tel:document.getElementById('sst-tel').value.trim(),courriel:document.getElementById('sst-cou').value.trim(),specialite:document.getElementById('sst-spe').value.trim(),rbq:document.getElementById('sst-rbq').value.trim(),adresse:document.getElementById('sst-adr').value.trim()};
   if(idx===-1)state.sstraitants.push(s);
   else state.sstraitants[idx]=s;
   closeModal();saveToCloud();
@@ -1580,6 +1590,7 @@ function voirFacture(id){
             ${e.courriel?`<div style="font-size:12px;color:#666;">${e.courriel}</div>`:''}
             ${e.noTPS?`<div style="font-size:11px;color:#888;">TPS: ${e.noTPS}</div>`:''}
             ${e.noTVQ?`<div style="font-size:11px;color:#888;">TVQ: ${e.noTVQ}</div>`:''}
+            ${e.noRBQ?`<div style="font-size:11px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
           </div>
           <div style="text-align:right;">
             <div style="font-size:22px;font-weight:700;color:#0C447C;">FACTURE</div>
@@ -1634,11 +1645,37 @@ function voirFacture(id){
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;" class="no-print">
       <button class="btn-pdf" onclick="imprimerFacture()">📄 Imprimer / PDF</button>
       <button class="btn btn-sm" onclick="setSub('facturation','historique')">← Retour</button>
+      <button class="btn btn-sm" onclick="modifierFacture(${f.id})" style="background:#E6F1FB;color:#0C447C;border:1px solid #85B7EB;">✏️ Modifier</button>
       <button class="btn btn-sm btn-danger" onclick="supprimerFacture(${f.id})" style="background:#FCEBEB;color:#791F1F;border:1px solid #F09595;">🗑 Supprimer</button>
     </div>`;
 }
 
 function imprimerFacture(){document.querySelectorAll('details').forEach(d=>d.open=true);window.print();}
+
+function modifierFacture(id){
+  const f=state.factures.find(f=>f.id===id);
+  if(!f)return;
+  // Load facture into factCourante
+  factCourante={
+    chantier:f.chantier||'',
+    dateDebut:f.dateDebut||'',
+    dateFin:f.dateFin||'',
+    matDateDebut:f.matDateDebut||f.dateDebut||'',
+    matDateFin:f.matDateFin||f.dateFin||'',
+    lignesSst:f.lignesSst?JSON.parse(JSON.stringify(f.lignesSst)):[],
+    lignesMat:[],
+    fraisGestion:0,
+    appliquerTPS:f.appliquerTPS!==false,
+    appliquerTVQ:f.appliquerTVQ!==false,
+    appliquerFG:f.appliquerFG!==false,
+    notes:f.notes||'',
+    numeroFacture:f.numero||'',
+    editingId:f.id
+  };
+  // Remove old facture
+  state.factures=state.factures.filter(fac=>fac.id!==id);
+  setSub('facturation','nouvelle');
+}
 function supprimerFacture(id){if(!confirm('Supprimer cette facture?'))return;state.factures=state.factures.filter(f=>f.id!==id);saveToCloud();setSub('facturation','historique');}
 function previewFacture(){sauvegarderFacture();}
 
@@ -2133,6 +2170,7 @@ function buildSstFactures(){
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
             <span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">🏗 ${a.chantier||'—'}</span>
             <span class="fbadge ${a.facturable?'fb-y':'fb-n'}">${a.facturable?'Facturable':'Non-fact.'}</span>
+            ${a.depot?'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#92400E;">💰 Dépôt</span>':''}
           </div>
           ${a.description?`<div style="font-size:11px;color:var(--secondary);">${a.description}</div>`:''}
         </div>
@@ -2196,6 +2234,10 @@ function openSstFactureModal(editId){
     <div class="field"><label>Description / Travaux effectués</label>
       <input type="text" id="sf-desc" value="${a.description||''}" placeholder="Description des travaux..."/>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);border:1px solid var(--border);">
+      <input type="checkbox" id="sf-depot" ${a.depot?'checked':''} style="width:18px;height:18px;cursor:pointer;"/>
+      <label for="sf-depot" style="font-size:13px;font-weight:500;cursor:pointer;">💰 Dépôt (acompte)</label>
+    </div>
     <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable au client?</label>
     <div class="toggle-group" style="margin-bottom:12px;">
       <button id="sf-fy" class="${a.facturable?'on-f':''}" onclick="setSfFact(true)">✓ Facturable</button>
@@ -2220,13 +2262,15 @@ function saveSstFacture(editId){
   if(!date){alert('Veuillez entrer une date.');return;}
   if(!sst){alert('Veuillez choisir un sous-traitant.');return;}
   if(!montant){alert('Veuillez entrer un montant.');return;}
+  const depotEl=document.getElementById('sf-depot');
   const facture={
     id:editId?editId:++state.sstFactureId,
     date,sst,chantier,
     montant:montant.toFixed(2),
     description:document.getElementById('sf-desc').value.trim(),
     noFacture:document.getElementById('sf-no').value.trim(),
-    facturable:window._sfFacturable
+    facturable:window._sfFacturable,
+    depot:depotEl?depotEl.checked:false
   };
   if(editId){const idx=state.sstFactures.findIndex(a=>a.id===editId);if(idx>=0)state.sstFactures[idx]=facture;}
   else state.sstFactures.push(facture);
