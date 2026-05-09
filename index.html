@@ -1110,10 +1110,10 @@ function renderEntreprise(){
       <div class="card-title">🏢 Informations de mon entreprise</div>
       <div class="field"><label>Logo (URL ou base64)</label>
         ${e.logo?`<div style="margin-bottom:8px;"><img src="${e.logo}" class="logo-preview" onerror="this.style.display='none'"/></div>`:''}
-        <input type="text" id="ent-logo" value="${e.logo||''}" oninput="se('logo',this.value)" placeholder="Colle l'URL de ton logo ici"/>
+        <input type="text" id="ent-logo" value="${e.logo||''}" oninput="se('logo',this.value)" placeholder="Colle l&#39;URL de ton logo ici"/>
         <p style="font-size:10px;color:var(--secondary);margin:4px 0 0;">Astuce: upload ton logo sur imgur.com et colle le lien</p>
       </div>
-      <div class="field"><label>Nom de l'entreprise</label><input type="text" id="ent-nom" value="${e.nom||''}" oninput="se('nom',this.value)" placeholder="Ex: Construction ABC Inc."/></div>
+      <div class="field"><label>Nom de l&#39;entreprise</label><input type="text" id="ent-nom" value="${e.nom||''}" oninput="se('nom',this.value)" placeholder="Ex: Construction ABC Inc."/></div>
       <div class="grid2">
         <div class="field"><label>Téléphone</label><input type="tel" id="ent-tel" value="${e.telephone||''}" oninput="se('telephone',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
         <div class="field"><label>Courriel</label><input type="email" id="ent-cou" value="${e.courriel||''}" oninput="se('courriel',this.value)" placeholder="info@entreprise.com" inputmode="email"/></div>
@@ -2772,7 +2772,7 @@ function buildSuggestions(){
       <span style="font-size:13px;font-weight:600;">${enCours.length} en attente · ${implementees.length} implémenté${implementees.length>1?'s':''}</span>
       <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;background:#0C447C;" onclick="ouvrirModalTicket('suggestion')">+ Ajouter une idée</button>
     </div>
-    ${list.length?`<div>${rows}</div>`:'<div class="empty">Aucune suggestion pour l'instant. Dis-nous ce que tu voudrais améliorer! 💡</div>'}`;
+    ${list.length?`<div>${rows}</div>`:'<div class="empty">Aucune suggestion pour l&#39;instant. 💡</div>'}`;
 }
 
 function ouvrirModalTicket(type){
@@ -2785,10 +2785,10 @@ function ouvrirModalTicket(type){
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div class="field"><label>Titre</label>
-      <input type="text" id="tk-titre" placeholder="${isTicket?'Ex: Le calendrier ne charge pas...':'Ex: Ajouter un rapport hebdomadaire...'}"/>
+      <input type="text" id="tk-titre" placeholder="Titre du problème ou de l&#39;idée..."/>
     </div>
     <div class="field"><label>Description</label>
-      <textarea id="tk-desc" placeholder="${isTicket?'Décris le problème en détail...':'Décris ton idée en détail...'}" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;min-height:80px;"></textarea>
+      <textarea id="tk-desc" placeholder="Décris en détail..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;min-height:80px;"></textarea>
     </div>
     <div class="grid2">
       <div class="field"><label>Signalé par</label>
