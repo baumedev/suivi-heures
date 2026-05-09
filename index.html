@@ -248,8 +248,72 @@ let state = {
   empInfos:{},
   tickets:[],
   ticketId:0,
-  suggestions:[],
-  suggestionId:0,
+  suggestions:[{
+    id:1,
+    titre:"📷 Scanner les factures avec l'appareil photo",
+    description:"Fonctionnalité proposée : Quand on clique 'Ajouter une dépense', ajouter un bouton '📷 Scanner une facture'. L'employé prend une photo de sa facture avec son téléphone et une IA (Claude Vision) analyse automatiquement la photo pour remplir les champs : date, magasin et montant.\n\nComment ça fonctionne :\n• L'employé ouvre 'Ajouter une dépense'\n• Clique sur '📷 Scanner une facture'\n• Prend une photo de la facture papier\n• L'IA lit la photo et remplit automatiquement la date, le magasin et le montant avant taxes\n• L'employé vérifie et sauvegarde\n\nCe qu'il faut pour activer ça :\n• Un compte sur console.anthropic.com\n• Une clé API (commence par sk-ant-...)\n• Coût estimé : 0.01$ à 0.03$ par scan (très faible pour notre usage)\n\nAvantages :\n• Gain de temps important pour les employés sur le chantier\n• Moins d'erreurs de saisie\n• Fonctionne directement dans l'app sans téléchargement supplémentaire\n• Déjà testé et fonctionnel techniquement",
+    auteur:"Gestionnaire",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  },{
+    id:2,
+    titre:"📧 Envoi de factures par courriel",
+    description:"Ajouter un bouton 'Envoyer par courriel' directement dans la vue d'une facture. Le PDF est généré automatiquement et envoyé au courriel du client inscrit dans sa fiche. Plus besoin de copier-coller ou d'imprimer — un seul clic et la facture est envoyée professionnellement.",
+    auteur:"Claude",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  },{
+    id:3,
+    titre:"🔔 Notifications de rappel — factures impayées",
+    description:"Envoyer une notification automatique (ou courriel) quand une facture envoyée n'a pas été marquée payée après X jours. Par exemple: rappel après 30 jours, 45 jours et 60 jours. Avec un message personnalisable pour chaque rappel. Évite d'oublier les comptes à recevoir.",
+    auteur:"Claude",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  },{
+    id:4,
+    titre:"📊 Résumé hebdomadaire automatique par courriel",
+    description:"Chaque lundi matin, recevoir automatiquement un courriel avec le résumé de la semaine précédente: heures par employé, chantiers actifs, dépenses, factures envoyées et reçues. Idéal pour garder une vue d'ensemble sans ouvrir l'app.",
+    auteur:"Claude",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  },{
+    id:5,
+    titre:"🗺 Géolocalisation des chantiers",
+    description:"Ajouter une carte interactive dans la fiche de chaque chantier pour voir l'adresse sur une carte. Permettrait aussi de calculer automatiquement les distances pour les frais de déplacement et de regrouper les chantiers par secteur géographique.",
+    auteur:"Claude",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  },{
+    id:6,
+    titre:"⏱ Minuterie intégrée pour entrer les heures",
+    description:"Ajouter un bouton 'Démarrer' et 'Arrêter' dans le calendrier. L'employé démarre la minuterie au début de sa journée et l'arrête à la fin — les heures sont calculées automatiquement et prêtes à être sauvegardées. Pratique pour éviter d'avoir à se souvenir des heures exactes.",
+    auteur:"Claude",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  },{
+    id:7,
+    titre:"📋 Modèles de factures personnalisables",
+    description:"Permettre de créer des modèles de factures réutilisables par chantier ou type de projet. Par exemple un modèle 'Rénovation résidentielle' avec les sections et taux déjà configurés. Gain de temps important pour les projets récurrents.",
+    auteur:"Claude",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  },{
+    id:8,
+    titre:"📱 Application native iOS et Android",
+    description:"Convertir l'application web en vraie application native disponible sur l'App Store et Google Play. Avantages: meilleure performance, accès hors-ligne complet, notifications push, accès à l'appareil photo sans restrictions, et icône professionnelle sur l'écran d'accueil.",
+    auteur:"Claude",
+    date:"9 mai 2026",
+    statut:"ouvert",
+    dateFait:""
+  }],
+  suggestionId:8,
   entreprise:{nom:'',adresse:'',telephone:'',courriel:'',siteWeb:'',noTPS:'',noTVQ:'',logo:''},
   sstraitants:[],
   fournisseurs:[],
