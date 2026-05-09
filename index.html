@@ -628,7 +628,7 @@ function saveEntry(emp,date){
   if(_c)_c.innerHTML=buildCal(emp);
   saveToCloud();
 }
-function delEntry(id,emp,date){if(!confirm('Supprimer?'))return;state.entries[emp]=state.entries[emp].filter(e=>e.id!==id);closeModal();
+function delEntry(id,emp,date){if(!confirm("Supprimer?"))return;state.entries[emp]=state.entries[emp].filter(e=>e.id!==id);closeModal();
   const _cd=document.getElementById('content-heures');
   if(_cd)_cd.innerHTML=buildCal(emp);
   saveToCloud();}
@@ -689,7 +689,7 @@ function buildListe(emp){
   return`<div class="stats-row"><div class="stat-box"><div class="label">Total</div><div class="value">${total.toFixed(1)}h</div></div><div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${fact.toFixed(1)}h</div></div><div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(total-fact).toFixed(1)}h</div></div></div>
   <div class="card">${list.map(en=>`<div class="list-item"><div class="li-date">${fmtDateShort(en.date)}</div><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.facturable?'F':'NF'}</span><span class="li-h" style="color:${e.col};">${en.heures}h</span><div class="li-info"><div class="t1">${en.chantier||'—'}</div><div class="t2">${[en.type,en.desc].filter(Boolean).join(' · ')||'—'}</div></div><button class="btn-edit" onclick="editFromList(${en.id},'${emp}')">✏️</button><button class="btn-del" onclick="delList(${en.id},'${emp}')">✕</button></div>`).join('')}</div>`;
 }
-function delList(id,emp){if(!confirm('Supprimer?'))return;state.entries[emp]=state.entries[emp].filter(e=>e.id!==id);
+function delList(id,emp){if(!confirm("Supprimer?"))return;state.entries[emp]=state.entries[emp].filter(e=>e.id!==id);
   const _cl=document.getElementById('content-heures');
   const _sub=state.currentSub[emp]||'cal';
   if(_cl){if(_sub==='liste')_cl.innerHTML=buildListe(emp);else _cl.innerHTML=buildCal(emp);}
@@ -821,7 +821,7 @@ function genRapport(){
   const f=getFilterVals();
   const type=window._rapportType||'chantier';
   if(!f.d1&&!f.d2&&!f.ch&&!f.emp&&!f.ty){
-    alert('Veuillez entrer au moins un filtre.');return;
+    alert("Veuillez entrer au moins un filtre.");return;
   }
   const entries=filterEntries(f);
   if(!entries.length){
@@ -1062,9 +1062,9 @@ function openTypeModal(idx){
 
 function saveTypeModal(idx){
   const val=document.getElementById('ty-nom').value.trim();
-  if(!val){alert('Veuillez entrer un nom.');return;}
+  if(!val){alert("Veuillez entrer un nom.");return;}
   if(idx===-1){
-    if(state.typesTravaux.includes(val)){alert('Ce type existe déjà.');return;}
+    if(state.typesTravaux.includes(val)){alert("Ce type existe déjà.");return;}
     state.typesTravaux.push(val);
     state.typesTravaux.sort();
   } else {
@@ -1078,7 +1078,7 @@ function saveTypeModal(idx){
 }
 
 function removeTypeModal(idx){
-  if(!confirm('Supprimer ce type de travaux?'))return;
+  if(!confirm("Supprimer ce type de travaux?"))return;
   state.typesTravaux.splice(idx,1);
   closeModal();
   saveToCloud();
@@ -1094,7 +1094,7 @@ function addItem(kind,val){
   }
 }
 function removeItem(kind,val){
-  if(!confirm(`Supprimer "${val}"?`))return;
+  if(!confirm("Supprimer \""+val+"\"?"))return;
   if(kind==='chantier')state.chantiers=state.chantiers.filter(c=>c!==val);
   else{state.typesTravaux=state.typesTravaux.filter(t=>t!==val);saveToCloud();const c=document.getElementById('content-chantiers');if(c)c.innerHTML=buildGestionListes();return;}
   smartRender();saveToCloud();
@@ -1135,7 +1135,7 @@ function sauvegarderEntreprise(){
   const ids=['ent-nom','ent-tel','ent-cou','ent-adr','ent-web','ent-tps','ent-tvq','ent-rbq','ent-logo'];
   fields.forEach((f,i)=>{const el=document.getElementById(ids[i]);if(el)state.entreprise[f]=el.value;});
   saveToCloud();
-  alert('Informations sauvegardées!');
+  alert("Informations sauvegardées!");
 }
 
 // ─── SOUS-TRAITANTS ───────────────────────────────────────
@@ -1176,7 +1176,7 @@ function buildSstraitants(){
   return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="addSst()">+ Ajouter un sous-traitant</button></div>${cards}`;
 }
 function addSst(){openSstModal(-1);}
-function removeSst(i){if(!confirm('Supprimer ce sous-traitant?'))return;state.sstraitants.splice(i,1);smartRender();saveToCloud();}
+function removeSst(i){if(!confirm("Supprimer ce sous-traitant?"))return;state.sstraitants.splice(i,1);smartRender();saveToCloud();}
 
 function openSstModal(idx){
   const isNew=idx===-1;
@@ -1213,7 +1213,7 @@ function saveSstModal(idx){
 }
 
 function removeSstModal(idx){
-  if(!confirm('Supprimer ce sous-traitant?'))return;
+  if(!confirm("Supprimer ce sous-traitant?"))return;
   state.sstraitants.splice(idx,1);
   closeModal();saveToCloud();
   const c=document.getElementById('content-facturation');
@@ -1258,7 +1258,7 @@ function buildFournisseurs(){
   return`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="addFourn()">+ Ajouter un fournisseur</button></div>${cards}`;
 }
 function addFourn(){openFournModal(-1);}
-function removeFourn(i){if(!confirm('Supprimer ce fournisseur?'))return;state.fournisseurs.splice(i,1);smartRender();saveToCloud();}
+function removeFourn(i){if(!confirm("Supprimer ce fournisseur?"))return;state.fournisseurs.splice(i,1);smartRender();saveToCloud();}
 
 function openFournModal(idx){
   const isNew=idx===-1;
@@ -1293,7 +1293,7 @@ function saveFournModal(idx){
 }
 
 function removeFournModal(idx){
-  if(!confirm('Supprimer ce fournisseur?'))return;
+  if(!confirm("Supprimer ce fournisseur?"))return;
   state.fournisseurs.splice(idx,1);
   closeModal();saveToCloud();
   const c=document.getElementById('content-facturation');
@@ -1527,8 +1527,8 @@ function updateLigneMat(i,f,v){factCourante.lignesMat[i][f]=v;if(f!=='desc')refr
 function resetFacture(){factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:''};refreshFacture();}
 
 function sauvegarderFacture(){
-  if(!factCourante.chantier){alert('Veuillez choisir un chantier.');return;}
-  if(!factCourante.numeroFacture){alert('Veuillez entrer un numéro de facture.');return;}
+  if(!factCourante.chantier){alert("Veuillez choisir un chantier.");return;}
+  if(!factCourante.numeroFacture){alert("Veuillez entrer un numéro de facture.");return;}
   const fiche=state.fiches[factCourante.chantier]||{};
   const fg=parseFloat(fiche.fraisGestion)||0;
   const taux=parseFloat(fiche.taux)||0;
@@ -1578,7 +1578,7 @@ function sauvegarderFacture(){
   };
   state.factures.unshift(facture);
   saveToCloud();
-  alert('Facture #'+facture.numero+' sauvegardée!');
+  alert("Facture #"+facture.numero+" sauvegardée!");
   setSub('facturation','historique');
 }
 
@@ -1791,7 +1791,7 @@ function modifierFacture(id){
   state.factures=state.factures.filter(fac=>fac.id!==id);
   setSub('facturation','nouvelle');
 }
-function supprimerFacture(id){if(!confirm('Supprimer cette facture?'))return;state.factures=state.factures.filter(f=>f.id!==id);saveToCloud();setSub('facturation','historique');}
+function supprimerFacture(id){if(!confirm("Supprimer cette facture?"))return;state.factures=state.factures.filter(f=>f.id!==id);saveToCloud();setSub('facturation','historique');}
 function previewFacture(){sauvegarderFacture();}
 
 
@@ -1882,7 +1882,7 @@ function saveClientModal(idx){
 }
 
 function removeClientModal(idx){
-  if(!confirm('Supprimer ce client?'))return;
+  if(!confirm("Supprimer ce client?"))return;
   state.clients.splice(idx,1);
   closeModal();
   saveToCloud();
@@ -2010,8 +2010,8 @@ function openNouveauChantierModal(){
 
 function saveNouveauChantier(){
   const nom=document.getElementById('nc-nom').value.trim();
-  if(!nom){alert('Veuillez entrer un nom de chantier.');return;}
-  if(state.chantiers.includes(nom)){alert('Ce chantier existe déjà.');return;}
+  if(!nom){alert("Veuillez entrer un nom de chantier.");return;}
+  if(state.chantiers.includes(nom)){alert("Ce chantier existe déjà.");return;}
   state.chantiers.push(nom);
   state.chantiers.sort();
   if(!state.fiches[nom])state.fiches[nom]={};
@@ -2217,8 +2217,8 @@ function saveAchat(editId){
   const montantAvantTax=parseFloat(document.getElementById('a-mont').value)||0;
   const typeDepense=document.getElementById('a-type').value;
   const description=document.getElementById('a-desc').value.trim();
-  if(!date){alert('Veuillez entrer une date.');return;}
-  if(!montantAvantTax){alert('Veuillez entrer un montant.');return;}
+  if(!date){alert("Veuillez entrer une date.");return;}
+  if(!montantAvantTax){alert("Veuillez entrer un montant.");return;}
   const montantAvecTax=(montantAvantTax*(1+TPS+TVQ)).toFixed(2);
   const estChantier=typeDepense.startsWith('Chantier: ');
   const chantierAssoc=estChantier?typeDepense.replace('Chantier: ',''):'';
@@ -2247,7 +2247,7 @@ function saveAchat(editId){
 function editAchat(id){openModalAchat(id);}
 
 function deleteAchat(id){
-  if(!confirm('Supprimer cette dépense?'))return;
+  if(!confirm("Supprimer cette dépense?"))return;
   state.achats=state.achats.filter(a=>a.id!==id);
   saveToCloud();
   refreshMateriaux();
@@ -2374,9 +2374,9 @@ function saveSstFacture(editId){
   const sst=document.getElementById('sf-sst').value;
   const chantier=document.getElementById('sf-ch').value;
   const montant=parseFloat(document.getElementById('sf-mont').value)||0;
-  if(!date){alert('Veuillez entrer une date.');return;}
-  if(!sst){alert('Veuillez choisir un sous-traitant.');return;}
-  if(!montant){alert('Veuillez entrer un montant.');return;}
+  if(!date){alert("Veuillez entrer une date.");return;}
+  if(!sst){alert("Veuillez choisir un sous-traitant.");return;}
+  if(!montant){alert("Veuillez entrer un montant.");return;}
   const depotEl=document.getElementById('sf-depot');
   const facture={
     id:editId?editId:++state.sstFactureId,
@@ -2394,7 +2394,7 @@ function saveSstFacture(editId){
 
 function editSstFacture(id){openSstFactureModal(id);}
 function deleteSstFacture(id){
-  if(!confirm('Supprimer cette facture?'))return;
+  if(!confirm("Supprimer cette facture?"))return;
   state.sstFactures=state.sstFactures.filter(a=>a.id!==id);
   saveToCloud();refreshSstFactures();
 }
@@ -2665,7 +2665,7 @@ function exporterDonnees(){
   const now=new Date().toLocaleString('fr-CA',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
   localStorage.setItem('sh_last_backup',now);
   renderReglages();
-  alert('✅ Données exportées! Sauvegarde le fichier sur Google Drive ou iCloud.');
+  alert("✅ Données exportées! Sauvegarde le fichier sur Google Drive ou iCloud.");
 }
 
 function importerDonnees(input){
@@ -2675,8 +2675,8 @@ function importerDonnees(input){
   reader.onload=function(e){
     try{
       const data=JSON.parse(e.target.result);
-      if(!data.entries||!data.chantiers){alert('❌ Fichier invalide. Assure-toi d'utiliser un fichier exporté depuis cette app.');return;}
-      if(!confirm('⚠️ Cette action va remplacer TOUTES tes données actuelles par celles du fichier. Es-tu certain?'))return;
+      if(!data.entries||!data.chantiers){alert("❌ Fichier invalide. Assure-toi d'utiliser un fichier exporté depuis cette app.");return;}
+      if(!confirm("⚠️ Cette action va remplacer TOUTES tes données. Es-tu certain?"))return;
       if(data.entries)state.entries=data.entries;
       if(data.chantiers)state.chantiers=data.chantiers;
       if(data.typesTravaux)state.typesTravaux=data.typesTravaux;
@@ -2698,10 +2698,10 @@ function importerDonnees(input){
       if(data.suggestions)state.suggestions=data.suggestions;
       if(data.suggestionId)state.suggestionId=data.suggestionId;
       saveToCloud();
-      alert('✅ Données restaurées avec succès!');
+      alert("✅ Données restaurées avec succès!");
       renderReglages();
     }catch(err){
-      alert('❌ Erreur lors de la lecture du fichier: '+err.message);
+      alert("❌ Erreur lors de la lecture du fichier: "+err.message);
     }
   };
   reader.readAsText(file);
@@ -2803,7 +2803,7 @@ function ouvrirModalTicket(type){
 
 function sauvegarderTicket(type){
   const titre=document.getElementById('tk-titre').value.trim();
-  if(!titre){alert('Veuillez entrer un titre.');return;}
+  if(!titre){alert("Veuillez entrer un titre.");return;}
   const item={
     id:type==='ticket'?++state.ticketId:++state.suggestionId,
     titre,
@@ -2834,7 +2834,7 @@ function marquerFaitTicket(id,type){
 }
 
 function supprimerTicket(id,type){
-  if(!confirm('Supprimer cet élément?'))return;
+  if(!confirm("Supprimer cet élément?"))return;
   if(type==='ticket')state.tickets=state.tickets.filter(t=>t.id!==id);
   else state.suggestions=state.suggestions.filter(s=>s.id!==id);
   saveToCloud();
