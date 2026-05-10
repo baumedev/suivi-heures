@@ -238,12 +238,9 @@ body{background:#fff;font-size:11px;}
 
 <div id="page-facturation" class="page">
   <nav class="sub-nav">
-    <button class="active" onclick="setSub('facturation','nouvelle')">➕ Facture</button>
+    <button class="active" onclick="setSub('facturation','nouvelle')">➕ Nouvelle facture</button>
     <button onclick="setSub('facturation','historique')">📋 Historique</button>
-    <button onclick="setSub('facturation','materiaux')">🛒 Matériel</button>
-    <button onclick="setSub('facturation','sstraitants')">👷 Sous-traitants</button>
-    <button onclick="setSub('facturation','sstfactures')">🧾 Fact. SST</button>
-    <button onclick="setSub('facturation','fournisseurs')">🏪 Fournisseurs</button>
+    <button onclick="setSub('facturation','depenses')">🧾 Dépenses</button>
   </nav>
   <div class="content" id="content-facturation"></div>
 </div>
@@ -578,7 +575,7 @@ function setSub(emp,sub){
   if(nav){
     let subs;
     if(emp==='chantiers')subs=['clients','chantiersList','employes','sstraitants_fiches','fournisseurs_fiches','entreprise_fiche','listes'];
-    else if(emp==='facturation')subs=['nouvelle','historique','materiaux','sstraitants','sstfactures','fournisseurs'];
+    else if(emp==='facturation')subs=['nouvelle','historique','depenses'];
     else subs=['cal','liste','rapport'];
     nav.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
   }
@@ -609,7 +606,8 @@ function setSub(emp,sub){
   } else if(emp==='facturation'){
     if(sub==='nouvelle')sc.innerHTML=buildNouvelleFacture();
     else if(sub==='historique')sc.innerHTML=buildHistoriqueFactures();
-    else if(sub==='materiaux')sc.innerHTML=buildMateriaux();
+    else if(sub==='depenses')sc.innerHTML=buildDepenses();
+    else if(sub==='materiaux')sc.innerHTML=buildDepenses();
     else if(sub==='sstraitants')sc.innerHTML=buildSstraitants();
     else if(sub==='sstfactures')sc.innerHTML=buildSstFactures();
     else if(sub==='fournisseurs')sc.innerHTML=buildFournisseurs();
@@ -653,7 +651,8 @@ function renderCurrent(){
   else if(emp==='facturation'){
     if(sub==='nouvelle')c.innerHTML=buildNouvelleFacture();
     else if(sub==='historique')c.innerHTML=buildHistoriqueFactures();
-    else if(sub==='materiaux')c.innerHTML=buildMateriaux();
+    else if(sub==='depenses')c.innerHTML=buildDepenses();
+    else if(sub==='materiaux')c.innerHTML=buildDepenses();
     else if(sub==='sstraitants')c.innerHTML=buildSstraitants();
     else if(sub==='sstfactures')c.innerHTML=buildSstFactures();
     else if(sub==='fournisseurs')c.innerHTML=buildFournisseurs();
@@ -3504,6 +3503,264 @@ function supprimerUser(idx){
   state.utilisateurs.splice(idx,1);
   buildUtilisateurs();
 }
+
+
+// ─── DÉPENSES COMBINÉES (Matériel + SST) ─────────────────
+function buildDepenses(){
+  // Combine achats and sstFactures into one list
+  const achats=state.achats.map(a=>({...a,_type:'materiel'}));
+  const sst=state.sstFactures.map(s=>({...s,_type:'sst',montantAvantTax:s.montant,carte:'—'}));
+  const all=[...achats,...sst].sort((a,b)=>b.date.localeCompare(a.date));
+
+  const totalMat=state.achats.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  const totalSST=state.sstFactures.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+
+  const filtreType=window._filtreDepType||'';
+  const filtreChVal=window._filtreDepCh||'';
+  const filtreMois=window._filtreDepMois||'';
+
+  const filtered=all.filter(a=>{
+    if(filtreType&&a._type!==filtreType)return false;
+    if(filtreChVal&&a.chantier!==filtreChVal)return false;
+    if(filtreMois&&!a.date.startsWith(filtreMois))return false;
+    return true;
+  });
+
+  const chOpts='<option value="">-- Tous les chantiers --</option>'+state.chantiers.map(c=>`<option value="${esc(c)}">${c}</option>`).join('');
+
+  const rows=filtered.map(a=>{
+    const isMat=a._type==='materiel';
+    return`<div class="card" style="padding:10px 14px;margin-bottom:8px;border-left:3px solid ${isMat?'#185FA5':'#27500A'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:${isMat?'#E6F1FB':'#EAF3DE'};color:${isMat?'#0C447C':'#27500A'};">${isMat?'🛒 Matériel':'👷 SST'}</span>
+            <span style="font-size:13px;font-weight:600;">${isMat?(a.magasin||'—'):(a.sst||'—')}</span>
+            <span style="font-size:11px;color:var(--secondary);">${a.date}</span>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            ${a.chantier?`<span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">🏗 ${a.chantier}</span>`:''}
+            ${isMat?`<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:2px 7px;border-radius:20px;">💳 ${a.carte}</span>`:''}
+            <span class="fbadge ${a.facturable?'fb-y':'fb-n'}">${a.facturable?'Facturable':'Non-fact.'}</span>
+            ${!isMat&&a.depot?'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#92400E;">💰 Dépôt</span>':''}
+          </div>
+          ${a.description?`<div style="font-size:11px;color:var(--secondary);">${a.description}</div>`:''}
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:15px;font-weight:700;">${parseFloat(a.montantAvantTax||a.montant||0).toFixed(2)} $</div>
+          ${isMat?`<div style="font-size:10px;color:var(--secondary);">avec taxes: ${parseFloat(a.montantAvecTax||0).toFixed(2)} $</div>`:''}
+          <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:4px;">
+            <button class="btn-edit" onclick="${isMat?'editAchat':'editSstFacture'}(${a.id})" style="font-size:12px;">✏️</button>
+            <button class="btn-del" onclick="${isMat?'deleteAchat':'deleteSstFacture'}(${a.id})">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>`;}).join('');
+
+  return`
+    <div class="card">
+      <div class="card-title">🧾 Dépenses</div>
+      <div class="stats-row" style="margin-bottom:10px;">
+        <div class="stat-box stat-money"><div class="label">🛒 Matériel</div><div class="value">${totalMat.toFixed(2)} $</div></div>
+        <div class="stat-box stat-fact"><div class="label">👷 SST</div><div class="value">${totalSST.toFixed(2)} $</div></div>
+        <div class="stat-box"><div class="label">Total</div><div class="value">${(totalMat+totalSST).toFixed(2)} $</div></div>
+      </div>
+      <button class="btn btn-primary" style="margin-bottom:12px;" onclick="openModalDepense()">+ Ajouter une dépense</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <select style="flex:1;font-size:12px;" onchange="window._filtreDepType=this.value;refreshDepenses()">
+          <option value="">Tous les types</option>
+          <option value="materiel" ${filtreType==='materiel'?'selected':''}>🛒 Matériel</option>
+          <option value="sst" ${filtreType==='sst'?'selected':''}>👷 Sous-traitant</option>
+        </select>
+        <select style="flex:1;font-size:12px;" onchange="window._filtreDepCh=this.value;refreshDepenses()">${chOpts.replace('value="'+esc(filtreChVal)+'"','value="'+esc(filtreChVal)+'" selected')}</select>
+        <input type="month" value="${filtreMois}" onchange="window._filtreDepMois=this.value;refreshDepenses()" style="flex:1;font-size:12px;color:var(--primary);"/>
+        <button class="btn btn-sm" onclick="window._filtreDepType='';window._filtreDepCh='';window._filtreDepMois='';refreshDepenses()">↺</button>
+      </div>
+    </div>
+    ${filtered.length?rows:'<div class="empty">Aucune dépense trouvée.</div>'}`;
+}
+
+function refreshDepenses(){
+  const c=document.getElementById('content-facturation');
+  if(c&&(state.currentSub['facturation']==='depenses'||state.currentSub['facturation']==='materiaux'))c.innerHTML=buildDepenses();
+}
+
+// Modal unifié pour ajouter une dépense (matériel OU SST)
+function openModalDepense(editId,editType){
+  const isSstEdit=editType==='sst';
+  const isMatEdit=editType==='materiel';
+  const existing=editId?(isSstEdit?state.sstFactures.find(a=>a.id===editId):state.achats.find(a=>a.id===editId)):null;
+
+  // Default type selection
+  const defaultType=isSstEdit?'sst':isMatEdit?'materiel':'materiel';
+  const sstOpts=state.sstraitants.map(s=>`<option value="${esc(s.nom)}" ${existing&&existing.sst===s.nom?'selected':''}>${s.nom}</option>`).join('');
+  const fournOpts=state.fournisseurs.map(f=>`<option value="${esc(f.nom)}" ${existing&&existing.magasin===f.nom?'selected':''}>${f.nom}</option>`).join('');
+  const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}" ${existing&&existing.chantier===ch?'selected':''}>${ch}</option>`).join('');
+
+  const a=existing||{date:'',chantier:'',facturable:true,description:''};
+  const isSst=defaultType==='sst';
+
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>${editId?'Modifier la dépense':'Nouvelle dépense'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+
+    <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:6px;">Type de dépense</label>
+    <div class="toggle-group" style="margin-bottom:14px;" id="dep-type-toggle">
+      <button id="dep-mat-btn" class="${!isSst?'on-f':''}" onclick="setDepType('materiel')" style="font-size:13px;">🛒 Matériel</button>
+      <button id="dep-sst-btn" class="${isSst?'on-f':''}" onclick="setDepType('sst')" style="font-size:13px;">👷 Sous-traitant</button>
+    </div>
+
+    <div class="grid2">
+      <div class="field"><label>Date</label><input type="date" id="dep-date" value="${a.date||''}" style="width:100%;color:var(--primary);"/></div>
+      <div class="field"><label>Montant ($)</label><input type="number" id="dep-mont" min="0" step="0.01" value="${parseFloat(a.montantAvantTax||a.montant||0)||''}" placeholder="0.00" inputmode="decimal" oninput="calcTaxesDepense(this.value)"/></div>
+    </div>
+
+    <div id="dep-mat-section" style="${isSst?'display:none;':''}">
+      <div class="field"><label>Magasin / Fournisseur</label>
+        <select id="dep-mag" style="width:100%;" onchange="const ai=document.getElementById('dep-mag-autre');if(ai)ai.style.display=this.value==='_autre'?'block':'none';">
+          <option value="">-- Choisir --</option>
+          ${fournOpts}
+          <option value="_autre">Autre...</option>
+        </select>
+        <input type="text" id="dep-mag-autre" placeholder="Nom du magasin..." style="width:100%;margin-top:6px;display:none;"/>
+      </div>
+      <div class="field"><label>Montant avec taxes (calculé)</label>
+        <input type="number" id="dep-montTax" value="${parseFloat(a.montantAvecTax||0)||''}" placeholder="0.00" style="background:#f5f5f5;" readonly/>
+      </div>
+      <div class="field"><label>Carte utilisée</label>
+        <div class="toggle-group">
+          <button id="carte-v" class="${(!existing||existing.carte==='Victor')?'on-f':''}" onclick="setCarteAchat('Victor')" style="font-size:12px;">💳 Victor</button>
+          <button id="carte-e" class="${existing&&existing.carte==='Edouard'?'on-f':''}" onclick="setCarteAchat('Edouard')" style="font-size:12px;">💳 Edouard</button>
+          <button id="carte-d" class="${existing&&existing.carte==='Denis'?'on-f':''}" onclick="setCarteAchat('Denis')" style="font-size:12px;">💳 Denis</button>
+        </div>
+      </div>
+      <div class="field"><label>Type de dépense</label>
+        <select id="dep-type-cat" onchange="onTypeDepenseChange(this.value)" style="width:100%;">
+          <option value="">-- Choisir --</option>
+          <optgroup label="Dépenses générales">
+            ${TYPES_DEPENSE_FIXES.map(t=>`<option value="${t}" ${existing&&existing.typeDepense===t?'selected':''}>${t}</option>`).join('')}
+          </optgroup>
+          <optgroup label="Associé à un chantier">
+            ${state.chantiers.map(ch=>`<option value="Chantier: ${esc(ch)}" ${existing&&existing.typeDepense==='Chantier: '+ch?'selected':''}>Chantier: ${ch}</option>`).join('')}
+          </optgroup>
+        </select>
+      </div>
+    </div>
+
+    <div id="dep-sst-section" style="${!isSst?'display:none;':''}">
+      <div class="field"><label>Sous-traitant</label>
+        <select id="dep-sst" style="width:100%;"><option value="">-- Choisir --</option>${sstOpts}</select>
+      </div>
+      <div class="field"><label>No. de facture SST</label>
+        <input type="text" id="dep-sst-no" value="${a.noFacture||''}" placeholder="Ex: SST-2024-001"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);border:1px solid var(--border);">
+        <input type="checkbox" id="dep-depot" ${a.depot?'checked':''} style="width:18px;height:18px;cursor:pointer;"/>
+        <label for="dep-depot" style="font-size:13px;font-weight:500;cursor:pointer;">💰 Dépôt (acompte)</label>
+      </div>
+    </div>
+
+    <div class="field"><label>Chantier associé</label>
+      <select id="dep-ch" style="width:100%;" onchange="onDepChantierChange()">
+        <option value="">-- Aucun --</option>${chOpts}
+      </select>
+    </div>
+    <div id="dep-facturable-section" style="${a.chantier?'':'display:none;'}">
+      <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable au client?</label>
+      <div class="toggle-group">
+        <button id="fact-y" class="${a.facturable!==false?'on-f':''}" onclick="setFactAchat(true)">✓ Facturable</button>
+        <button id="fact-n" class="${a.facturable===false?'on-nf':''}" onclick="setFactAchat(false)">✕ Non facturable</button>
+      </div>
+    </div>
+    <div class="field"><label>Description</label>
+      <input type="text" id="dep-desc" value="${a.description||''}" placeholder="Description optionnelle..."/>
+    </div>
+    <button class="btn btn-primary" onclick="saveDepense('${editId||0}','${editType||''}')">✓ Enregistrer</button>`;
+
+  window._achatCarte=existing&&existing.carte||'Victor';
+  window._achatFacturable=a.facturable!==false;
+  window._depType=defaultType;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function setDepType(type){
+  window._depType=type;
+  const matBtn=document.getElementById('dep-mat-btn');
+  const sstBtn=document.getElementById('dep-sst-btn');
+  const matSec=document.getElementById('dep-mat-section');
+  const sstSec=document.getElementById('dep-sst-section');
+  if(matBtn)matBtn.className=type==='materiel'?'on-f':'';
+  if(sstBtn)sstBtn.className=type==='sst'?'on-f':'';
+  if(matSec)matSec.style.display=type==='materiel'?'':'none';
+  if(sstSec)sstSec.style.display=type==='sst'?'':'none';
+}
+
+function calcTaxesDepense(val){
+  const montant=parseFloat(val)||0;
+  const el=document.getElementById('dep-montTax');
+  if(el)el.value=(montant*(1+TPS+TVQ)).toFixed(2);
+}
+
+function onDepChantierChange(){
+  const ch=document.getElementById('dep-ch').value;
+  const sec=document.getElementById('dep-facturable-section');
+  if(sec)sec.style.display=ch?'':'none';
+}
+
+function saveDepense(editId,editType){
+  const type=window._depType||'materiel';
+  const date=document.getElementById('dep-date').value;
+  const montant=parseFloat(document.getElementById('dep-mont').value)||0;
+  const chantier=document.getElementById('dep-ch').value;
+  const desc=document.getElementById('dep-desc').value.trim();
+  if(!date){alert("Veuillez entrer une date.");return;}
+  if(!montant){alert("Veuillez entrer un montant.");return;}
+
+  if(type==='materiel'){
+    const magSel=document.getElementById('dep-mag').value;
+    const magAutre=document.getElementById('dep-mag-autre');
+    const magasin=magSel==='_autre'?(magAutre?magAutre.value.trim():''):magSel;
+    const typeDepense=document.getElementById('dep-type-cat').value;
+    const estChantier=typeDepense.startsWith('Chantier: ');
+    const achat={
+      id:editId&&editType==='materiel'?parseInt(editId):++state.achatId,
+      date,magasin,
+      montantAvantTax:montant.toFixed(2),
+      montantAvecTax:(montant*(1+TPS+TVQ)).toFixed(2),
+      carte:window._achatCarte||'Victor',
+      typeDepense:typeDepense||(chantier?'Chantier: '+chantier:''),
+      chantier:estChantier?typeDepense.replace('Chantier: ''):chantier,
+      facturable:chantier?window._achatFacturable:null,
+      description:desc
+    };
+    if(editId&&editType==='materiel'){const idx=state.achats.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.achats[idx]=achat;}
+    else state.achats.push(achat);
+  } else {
+    const sst=document.getElementById('dep-sst').value;
+    if(!sst){alert("Veuillez choisir un sous-traitant.");return;}
+    const depotEl=document.getElementById('dep-depot');
+    const facture={
+      id:editId&&editType==='sst'?parseInt(editId):++state.sstFactureId,
+      date,sst,chantier,
+      montant:montant.toFixed(2),
+      description:desc,
+      noFacture:document.getElementById('dep-sst-no').value.trim(),
+      facturable:chantier?window._achatFacturable:false,
+      depot:depotEl?depotEl.checked:false
+    };
+    if(editId&&editType==='sst'){const idx=state.sstFactures.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.sstFactures[idx]=facture;}
+    else state.sstFactures.push(facture);
+  }
+  closeModal();saveToCloud();refreshDepenses();
+}
+
+// Override old edit functions to use new modal
+function editAchat(id){openModalDepense(id,'materiel');}
+function editSstFacture(id){openModalDepense(id,'sst');}
+function deleteAchat(id){if(!confirm("Supprimer cette depense?"))return;state.achats=state.achats.filter(a=>a.id!==id);saveToCloud();refreshDepenses();}
+function deleteSstFacture(id){if(!confirm("Supprimer cette facture SST?"))return;state.sstFactures=state.sstFactures.filter(a=>a.id!==id);saveToCloud();refreshDepenses();}
 
 // ─── INIT ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
