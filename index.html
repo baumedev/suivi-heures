@@ -174,10 +174,10 @@ body{background:#fff;font-size:11px;}
     </div>
     <div class="login-error" id="loginError">Nom d'utilisateur ou mot de passe incorrect.</div>
     <div class="field"><label>Utilisateur</label>
-      <input type="text" id="login-user" placeholder="Ton nom d'utilisateur" autocomplete="username" autocapitalize="none"/>
+      <input type="text" id="login-user" placeholder="Ton nom utilisateur" autocomplete="username" autocapitalize="none"/>
     </div>
     <div class="field"><label>Mot de passe</label>
-      <input type="password" id="login-pass" placeholder="Ton mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <input type="password" id="login-pass" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==String.fromCharCode(13))doLogin()"/>
     </div>
     <button class="btn btn-primary" onclick="doLogin()" style="margin-top:4px;">Se connecter →</button>
     <p style="font-size:11px;color:var(--secondary);text-align:center;margin:12px 0 0;">Contacte l'administrateur si tu as oublié ton mot de passe.</p>
@@ -348,8 +348,16 @@ let state = {
     date:"9 mai 2026",
     statut:"ouvert",
     dateFait:""
+  },{
+    id:9,
+    titre:"📸 Photo de facture et sauvegarde Google Drive",
+    description:"Fonctionnalite en deux parties. 1) PHOTO: Dans Depenses, bouton pour prendre une photo de la facture avec l&#39;appareil photo du telephone. La photo est attachee a la depense pour reference. 2) GOOGLE DRIVE: La photo est sauvegardee automatiquement dans le bon dossier Google Drive (ex: Suivi-Heures/Materiel/2026-05/). Configuration requise une seule fois: projet Google Cloud gratuit, activer API Google Drive, creer identifiants OAuth, copier le Client ID dans les reglages. Apres configuration: un seul clic pour photographier et sauvegarder. Photos accessibles depuis n&#39;importe quel appareil.",
+    auteur:"Claude",
+    date:"10 mai 2026",
+    statut:"ouvert",
+    dateFait:""
   }],
-  suggestionId:8,
+  suggestionId:9,
   entreprise:{nom:'',adresse:'',telephone:'',courriel:'',siteWeb:'',noTPS:'',noTVQ:'',logo:''},
   sstraitants:[],
   fournisseurs:[],
