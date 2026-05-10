@@ -3716,6 +3716,17 @@ function openModalDepense(editId,editType){
         <label for="dep-depot" style="font-size:13px;font-weight:500;cursor:pointer;">💰 Dépôt (acompte)</label>
       </div>
     </div>
+    <div id="dep-sst-taxes" style="${isSst?'':'display:none;'}background:#f9f9f9;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TPS (5%)</span><span id="dep-sst-tps">${a.montant?((parseFloat(a.montant)||0)*TPS).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TVQ (9.975%)</span><span id="dep-sst-tvq">${a.montant?((parseFloat(a.montant)||0)*TVQ).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);">
+        <span>Total avec taxes</span><span id="dep-sst-total" style="color:#0C447C;">${a.montant?((parseFloat(a.montant)||0)*(1+TPS+TVQ)).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
+    </div>
 
     <div class="field"><label>Chantier associé</label>
       <select id="dep-ch" style="width:100%;" onchange="onDepChantierChange()">
@@ -3751,10 +3762,15 @@ function setDepType(type){
   const sstBtn=document.getElementById('dep-sst-btn');
   const matSec=document.getElementById('dep-mat-section');
   const sstSec=document.getElementById('dep-sst-section');
+  const sstTaxes=document.getElementById('dep-sst-taxes');
   if(matBtn)matBtn.className=type==='materiel'?'on-f':'';
   if(sstBtn)sstBtn.className=type==='sst'?'on-f':'';
   if(matSec)matSec.style.display=type==='materiel'?'':'none';
   if(sstSec)sstSec.style.display=type==='sst'?'':'none';
+  if(sstTaxes)sstTaxes.style.display=type==='sst'?'':'none';
+  // Recalculate taxes on type switch
+  const m=document.getElementById('dep-mont');
+  if(m&&m.value)calcTaxesDepense(m.value);
 }
 
 function calcTaxesDepense(val){
@@ -3762,12 +3778,20 @@ function calcTaxesDepense(val){
   const tps=montant*TPS;
   const tvq=montant*TVQ;
   const total=montant+tps+tvq;
+  // Materiel taxes
   const elTPS=document.getElementById('dep-tps');
   const elTVQ=document.getElementById('dep-tvq');
   const elTotal=document.getElementById('dep-montTax');
   if(elTPS)elTPS.textContent=tps.toFixed(2)+' $';
   if(elTVQ)elTVQ.textContent=tvq.toFixed(2)+' $';
   if(elTotal)elTotal.textContent=total.toFixed(2)+' $';
+  // SST taxes
+  const elSSTTPS=document.getElementById('dep-sst-tps');
+  const elSSTTVQ=document.getElementById('dep-sst-tvq');
+  const elSSTTotal=document.getElementById('dep-sst-total');
+  if(elSSTTPS)elSSTTPS.textContent=tps.toFixed(2)+' $';
+  if(elSSTTVQ)elSSTTVQ.textContent=tvq.toFixed(2)+' $';
+  if(elSSTTotal)elSSTTotal.textContent=total.toFixed(2)+' $';
 }
 
 function onDepChantierChange(){
