@@ -2318,9 +2318,11 @@ function openModalAchat(editId){
 
 function calcTaxesAchat(val){
   const montant=parseFloat(val)||0;
-  const avec=(montant*(1+TPS+TVQ)).toFixed(2);
+  const tps=montant*TPS;
+  const tvq=montant*TVQ;
+  const total=montant+tps+tvq;
   const el=document.getElementById('a-montTax');
-  if(el)el.value=avec;
+  if(el)el.value=total.toFixed(2);
 }
 
 function setCarteAchat(carte){
@@ -2340,6 +2342,13 @@ function setFactAchat(val){
 function onTypeDepenseChange(val){
   const section=document.getElementById('facturable-section');
   if(section)section.style.display=val.startsWith('Chantier: ')?'':'none';
+  // Auto-fill chantier associé
+  if(val.startsWith('Chantier: ')){
+    const ch=val.replace('Chantier: ','');
+    const depCh=document.getElementById('dep-ch');
+    if(depCh)depCh.value=ch;
+    onDepChantierChange();
+  }
 }
 
 function saveAchat(editId){
@@ -2476,8 +2485,19 @@ function openSstFactureModal(editId){
     <div class="field"><label>Chantier</label>
       <select id="sf-ch" style="width:100%;"><option value="">-- Choisir --</option>${chOpts}</select>
     </div>
-    <div class="field"><label>Montant ($)</label>
-      <input type="number" id="sf-mont" min="0" step="0.01" value="${a.montant||''}" placeholder="0.00" inputmode="decimal"/>
+    <div class="field"><label>Montant de la facture ($)</label>
+      <input type="number" id="sf-mont" min="0" step="0.01" value="${a.montant||''}" placeholder="0.00" inputmode="decimal" oninput="calcTaxesSST(this.value)"/>
+    </div>
+    <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TPS (5%)</span><span id="sst-tps">${a.montant?((parseFloat(a.montant)||0)*TPS).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TVQ (9.975%)</span><span id="sst-tvq">${a.montant?((parseFloat(a.montant)||0)*TVQ).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);">
+        <span>Total avec taxes</span><span id="sst-total" style="color:#0C447C;">${a.montant?((parseFloat(a.montant)||0)*(1+TPS+TVQ)).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
     </div>
     <div class="field"><label>Description / Travaux effectués</label>
       <input type="text" id="sf-desc" value="${a.description||''}" placeholder="Description des travaux..."/>
@@ -2494,6 +2514,19 @@ function openSstFactureModal(editId){
     <button class="btn btn-primary" onclick="saveSstFacture(${editId||0})">✓ Enregistrer</button>`;
   window._sfFacturable=a.facturable!==false;
   document.getElementById('modalOverlay').classList.add('open');
+}
+
+function calcTaxesSST(val){
+  const montant=parseFloat(val)||0;
+  const tps=montant*TPS;
+  const tvq=montant*TVQ;
+  const total=montant+tps+tvq;
+  const elTPS=document.getElementById('sst-tps');
+  const elTVQ=document.getElementById('sst-tvq');
+  const elTotal=document.getElementById('sst-total');
+  if(elTPS)elTPS.textContent=tps.toFixed(2)+' $';
+  if(elTVQ)elTVQ.textContent=tvq.toFixed(2)+' $';
+  if(elTotal)elTotal.textContent=total.toFixed(2)+' $';
 }
 
 function setSfFact(val){
@@ -2864,7 +2897,7 @@ function buildProblemes(){
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
           ${t.statut!=='fait'?`<button onclick="marquerFaitTicket(${t.id},'ticket')" style="padding:6px 10px;background:#EAF3DE;color:#27500A;border:1.5px solid #27500A;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">✅ Fait</button>`
-          :`<span style="font-size:11px;font-weight:600;color:#27500A;background:#EAF3DE;padding:4px 8px;border-radius:20px;">✅ Résolu</span>`}
+          :`<button onclick="marquerFaitTicket(${t.id},'ticket')" style="padding:6px 10px;background:#EAF3DE;color:#27500A;border:1.5px solid #27500A;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">✅ Résolu ↺</button>`}
           <button class="btn-del" onclick="supprimerTicket(${t.id},'ticket')">✕</button>
         </div>
       </div>
@@ -2895,7 +2928,7 @@ function buildSuggestions(){
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
           ${s.statut!=='fait'?`<button onclick="marquerFaitTicket(${s.id},'suggestion')" style="padding:6px 10px;background:#EAF3DE;color:#27500A;border:1.5px solid #27500A;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">✅ Ajouté</button>`
-          :`<span style="font-size:11px;font-weight:600;color:#27500A;background:#EAF3DE;padding:4px 8px;border-radius:20px;">✅ Implémenté</span>`}
+          :`<button onclick="marquerFaitTicket(${s.id},'suggestion')" style="padding:6px 10px;background:#EAF3DE;color:#27500A;border:1.5px solid #27500A;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">✅ Implémenté ↺</button>`}
           <button class="btn-del" onclick="supprimerTicket(${s.id},'suggestion')">✕</button>
         </div>
       </div>
@@ -2960,8 +2993,14 @@ function marquerFaitTicket(id,type){
   const list=type==='ticket'?state.tickets:state.suggestions;
   const item=list.find(t=>t.id===id);
   if(item){
-    item.statut='fait';
-    item.dateFait=new Date().toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'});
+    if(item.statut==='fait'){
+      // Toggle back to open
+      item.statut='ouvert';
+      item.dateFait='';
+    } else {
+      item.statut='fait';
+      item.dateFait=new Date().toLocaleDateString('fr-CA',{day:'numeric',month:'long',year:'numeric'});
+    }
     saveToCloud();
     renderReglages();
   }
@@ -3634,8 +3673,16 @@ function openModalDepense(editId,editType){
         </select>
         <input type="text" id="dep-mag-autre" placeholder="Nom du magasin..." style="width:100%;margin-top:6px;display:none;"/>
       </div>
-      <div class="field"><label>Montant avec taxes (calculé)</label>
-        <input type="number" id="dep-montTax" value="${parseFloat(a.montantAvecTax||0)||''}" placeholder="0.00" style="background:#f5f5f5;" readonly/>
+      <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);">
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+          <span>TPS (5%)</span><span id="dep-tps">0.00 $</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+          <span>TVQ (9.975%)</span><span id="dep-tvq">0.00 $</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);">
+          <span>Total avec taxes</span><span id="dep-montTax" style="color:#0C447C;">0.00 $</span>
+        </div>
       </div>
       <div class="field"><label>Carte utilisée</label>
         <div class="toggle-group">
@@ -3691,6 +3738,11 @@ function openModalDepense(editId,editType){
   window._achatFacturable=a.facturable!==false;
   window._depType=defaultType;
   document.getElementById('modalOverlay').classList.add('open');
+  // Init taxes display if editing existing
+  setTimeout(()=>{
+    const m=document.getElementById('dep-mont');
+    if(m&&m.value)calcTaxesDepense(m.value);
+  },50);
 }
 
 function setDepType(type){
@@ -3707,8 +3759,15 @@ function setDepType(type){
 
 function calcTaxesDepense(val){
   const montant=parseFloat(val)||0;
-  const el=document.getElementById('dep-montTax');
-  if(el)el.value=(montant*(1+TPS+TVQ)).toFixed(2);
+  const tps=montant*TPS;
+  const tvq=montant*TVQ;
+  const total=montant+tps+tvq;
+  const elTPS=document.getElementById('dep-tps');
+  const elTVQ=document.getElementById('dep-tvq');
+  const elTotal=document.getElementById('dep-montTax');
+  if(elTPS)elTPS.textContent=tps.toFixed(2)+' $';
+  if(elTVQ)elTVQ.textContent=tvq.toFixed(2)+' $';
+  if(elTotal)elTotal.textContent=total.toFixed(2)+' $';
 }
 
 function onDepChantierChange(){
