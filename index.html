@@ -3739,7 +3739,7 @@ function saveDepense(editId,editType){
       montantAvecTax:(montant*(1+TPS+TVQ)).toFixed(2),
       carte:window._achatCarte||'Victor',
       typeDepense:typeDepense||(chantier?'Chantier: '+chantier:''),
-      chantier:estChantier?typeDepense.replace('Chantier: ''):chantier,
+      chantier:estChantier?typeDepense.replace('Chantier: ',''):chantier,
       facturable:chantier?window._achatFacturable:null,
       description:desc
     };
