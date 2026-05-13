@@ -130,6 +130,9 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .logout-btn:hover{background:#f0f0f0;}
 .tab-heures.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
 .tab-reglages.active{color:#534AB7;border-bottom-color:#534AB7;}
+.cal-cell.selecting{background:#E6F1FB!important;border-color:#185FA5!important;border-width:2px!important;}
+.cal-cell.selected{background:#EAF3DE!important;border-color:#27500A!important;border-width:2px!important;}
+.drag-hint{font-size:10px;color:var(--secondary);text-align:center;padding:4px 0;margin-bottom:4px;}
 .tab-facturation.active{color:#1a6b3a;border-bottom-color:#2ea15a;}
 .tab-entreprise.active{color:#6b3a1a;border-bottom-color:#a15a2e;}
 .facture-section{background:#f9f9f9;border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;border:1px solid var(--border);}
@@ -687,6 +690,7 @@ function buildCal(emp){
     <div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${fm.toFixed(1)}h</div></div>
     <div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(tm-fm).toFixed(1)}h</div></div>
   </div><div class="cal-grid">`;
+  h+='<div class="drag-hint" style="grid-column:1/-1;">Clique sur un jour ou glisse pour sélectionner plusieurs jours</div>';
   dN.forEach(d=>h+=`<div class="cal-day-name">${d}</div>`);
   for(let i=0;i<offset;i++)h+=`<div class="cal-cell empty"></div>`;
   for(let d=1;d<=dim;d++){
@@ -696,10 +700,18 @@ function buildCal(emp){
     if(v&&v.fact>0&&v.fact<v.total)fH=`<div class="day-f" style="color:#888;">F+NF</div>`;
     else if(v&&v.fact>0)fH=`<div class="day-f" style="color:#27500A;">F</div>`;
     else if(v&&v.total>0)fH=`<div class="day-f" style="color:#791F1F;">NF</div>`;
-    h+=`<div class="cal-cell${it?' today':''}${v?' has-data':''}" style="${v?'border-color:'+e.border+';':''}" onclick="openModal('${ds}','${emp}')">
+    h+=`<div class="cal-cell${it?' today':''}${v?' has-data':''}" 
+      style="${v?'border-color:'+e.border+';':''};user-select:none;-webkit-user-select:none;"
+      data-date="${ds}" data-emp="${emp}"
+      onmousedown="startDrag('${ds}','${emp}',event)"
+      onmouseover="continueDrag('${ds}',event)"
+      onmouseup="endDrag('${ds}','${emp}',event)"
+      ontouchstart="startDrag('${ds}','${emp}',event)"
+      ontouchmove="touchDrag(event)"
+      ontouchend="endDrag('${ds}','${emp}',event)"
+      onclick="if(!_dragged)openModal('${ds}','${emp}')">
       <div class="day-num" style="${it?'color:'+e.col+';':''}">${d}</div>
       ${v?(()=>{
-        // Check if any entry for this day is an absence
         const absEntries=state.entries[emp].filter(en=>en.date===ds&&en.absence);
         const absType=absEntries.length?absEntries[0].absence:'';
         const absColor=absType==='conge'?'#0C447C':absType==='maladie'?'#791F1F':absType==='ferie'?'#633806':e.col;
@@ -3928,6 +3940,175 @@ function editAchat(id){openModalDepense(id,'materiel');}
 function editSstFacture(id){openModalDepense(id,'sst');}
 function deleteAchat(id){if(!confirm("Supprimer cette depense?"))return;state.achats=state.achats.filter(a=>a.id!==id);saveToCloud();refreshDepenses();}
 function deleteSstFacture(id){if(!confirm("Supprimer cette facture SST?"))return;state.sstFactures=state.sstFactures.filter(a=>a.id!==id);saveToCloud();refreshDepenses();}
+
+
+// ─── DRAG CALENDRIER ──────────────────────────────────────
+let _dragStart=null, _dragEnd=null, _isDragging=false, _dragged=false, _dragEmp=null;
+
+function startDrag(date,emp,e){
+  _dragStart=date;
+  _dragEnd=date;
+  _dragEmp=emp;
+  _isDragging=true;
+  _dragged=false;
+  highlightDrag();
+  e.preventDefault();
+}
+
+function continueDrag(date,e){
+  if(!_isDragging)return;
+  if(date!==_dragEnd){
+    _dragEnd=date;
+    _dragged=true;
+    highlightDrag();
+  }
+}
+
+function touchDrag(e){
+  if(!_isDragging)return;
+  const touch=e.touches[0];
+  const el=document.elementFromPoint(touch.clientX,touch.clientY);
+  if(el){
+    const cell=el.closest('[data-date]');
+    if(cell){
+      const date=cell.getAttribute('data-date');
+      if(date&&date!==_dragEnd){
+        _dragEnd=date;
+        _dragged=true;
+        highlightDrag();
+      }
+    }
+  }
+  e.preventDefault();
+}
+
+function endDrag(date,emp,e){
+  if(!_isDragging)return;
+  _isDragging=false;
+  _dragEnd=date;
+  if(_dragged&&_dragStart!==_dragEnd){
+    // Multiple days selected - open multi-day modal
+    openMultiDayModal(_dragEmp);
+  }
+  // Clear highlight
+  document.querySelectorAll('.cal-cell.selecting,.cal-cell.selected').forEach(c=>{
+    c.classList.remove('selecting','selected');
+  });
+  setTimeout(()=>{_dragged=false;},50);
+}
+
+function getDragDates(){
+  if(!_dragStart||!_dragEnd)return[];
+  const d1=new Date(_dragStart+'T12:00:00');
+  const d2=new Date(_dragEnd+'T12:00:00');
+  const start=d1<=d2?d1:d2;
+  const end=d1<=d2?d2:d1;
+  const dates=[];
+  const cur=new Date(start);
+  while(cur<=end){
+    dates.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate()+1);
+  }
+  return dates;
+}
+
+function highlightDrag(){
+  // Clear previous
+  document.querySelectorAll('.cal-cell').forEach(c=>c.classList.remove('selecting','selected'));
+  const dates=getDragDates();
+  dates.forEach(d=>{
+    const cell=document.querySelector(`[data-date="${d}"]`);
+    if(cell)cell.classList.add('selecting');
+  });
+}
+
+function openMultiDayModal(emp){
+  const dates=getDragDates();
+  if(!dates.length)return;
+  const e=EMPS[emp];
+  const fs=state.pendingFacturable;
+  const d1=dates[0],d2=dates[dates.length-1];
+  const label=dates.length===1?fmtDateShort(d1):`${fmtDateShort(d1)} → ${fmtDateShort(d2)}`;
+
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>Ajouter heures — ${dates.length} jour${dates.length>1?'s':''}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div style="background:#E6F1FB;border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:12px;color:#0C447C;font-weight:500;">
+      📅 ${label}
+      <div style="margin-top:4px;font-size:11px;color:#185FA5;">${dates.map(d=>fmtDateShort(d)).join(' · ')}</div>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--secondary);font-weight:500;margin-bottom:4px;">Entrée rapide absence</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-sm" onclick="saveAbsenceMulti('${emp}',getDragDates(),'conge')" style="flex:1;background:#E6F1FB;color:#0C447C;border-color:#85B7EB;">🏖 Congé</button>
+        <button class="btn btn-sm" onclick="saveAbsenceMulti('${emp}',getDragDates(),'maladie')" style="flex:1;background:#FCEBEB;color:#791F1F;border-color:#F09595;">🤒 Maladie</button>
+        <button class="btn btn-sm" onclick="saveAbsenceMulti('${emp}',getDragDates(),'ferie')" style="flex:1;background:#FAEEDA;color:#633806;border-color:#EF9F27;">⭐ Férié</button>
+      </div>
+    </div>
+    <div class="form-section">
+      <h4>MÊME ENTRÉE POUR TOUS LES JOURS</h4>
+      <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable</label>
+      <div class="toggle-group"><button id="btn-f" class="${fs?'on-f':''}" onclick="setFact(true)">✓ Facturable</button><button id="btn-nf" class="${!fs?'on-nf':''}" onclick="setFact(false)">✕ Non facturable</button></div>
+      <div class="grid2">
+        <div class="field"><label>Heures par jour</label><input type="number" id="m-h" min="0" step="0.25" placeholder="8" inputmode="decimal"/></div>
+        <div class="field"><label>Chantier</label><select id="m-ch">${selOpts(state.chantiers)}</select></div>
+      </div>
+      <div class="field"><label>Type de travaux</label><select id="m-ty">${selOpts(state.typesTravaux)}</select></div>
+      <div class="field"><label>Description</label><input type="text" id="m-de" placeholder="Description du travail"/></div>
+      <button class="btn btn-primary" onclick="saveMultiEntry('${emp}')">✓ Enregistrer pour ${dates.length} jour${dates.length>1?'s':''}</button>
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>{const h=document.getElementById('m-h');if(h)h.focus();},300);
+}
+
+function saveMultiEntry(emp){
+  const h=parseFloat(document.getElementById('m-h').value)||0;
+  if(h<=0){document.getElementById('m-h').focus();return;}
+  const dates=getDragDates();
+  dates.forEach(date=>{
+    state.entries[emp].push({
+      id:++state.entryId,
+      date,
+      heures:h,
+      chantier:document.getElementById('m-ch').value,
+      type:document.getElementById('m-ty').value,
+      desc:document.getElementById('m-de').value.trim(),
+      facturable:state.pendingFacturable
+    });
+  });
+  closeModal();
+  const c=document.getElementById('content-heures');
+  if(c)c.innerHTML=buildCal(emp);
+  saveToCloud();
+}
+
+function saveAbsenceMulti(emp,dates,type){
+  const labels={conge:'Congé',maladie:'Maladie',ferie:'Jour férié'};
+  dates.forEach(date=>{
+    state.entries[emp].push({
+      id:++state.entryId,
+      date,heures:8,chantier:'',
+      type:labels[type],desc:labels[type],
+      facturable:false,absence:type
+    });
+  });
+  closeModal();
+  const c=document.getElementById('content-heures');
+  if(c)c.innerHTML=buildCal(emp);
+  saveToCloud();
+}
+
+// Stop drag if mouse leaves calendar
+document.addEventListener('mouseup',()=>{
+  if(_isDragging){
+    _isDragging=false;
+    document.querySelectorAll('.cal-cell.selecting,.cal-cell.selected').forEach(c=>{
+      c.classList.remove('selecting','selected');
+    });
+  }
+});
 
 // ─── INIT ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
