@@ -698,7 +698,14 @@ function buildCal(emp){
     else if(v&&v.total>0)fH=`<div class="day-f" style="color:#791F1F;">NF</div>`;
     h+=`<div class="cal-cell${it?' today':''}${v?' has-data':''}" style="${v?'border-color:'+e.border+';':''}" onclick="openModal('${ds}','${emp}')">
       <div class="day-num" style="${it?'color:'+e.col+';':''}">${d}</div>
-      ${v?`<div class="day-h" style="color:${e.col};">${v.total.toFixed(1)}h</div>`:''}${fH}
+      ${v?(()=>{
+        // Check if any entry for this day is an absence
+        const absEntries=state.entries[emp].filter(en=>en.date===ds&&en.absence);
+        const absType=absEntries.length?absEntries[0].absence:'';
+        const absColor=absType==='conge'?'#0C447C':absType==='maladie'?'#791F1F':absType==='ferie'?'#633806':e.col;
+        const absIcon=absType==='conge'?'🏖':absType==='maladie'?'🤒':absType==='ferie'?'⭐':'';
+        return `<div class="day-h" style="color:${absColor};">${absIcon||v.total.toFixed(1)+'h'}</div>`;
+      })():''}${fH}
     </div>`;
   }
   return h+'</div>';
@@ -724,6 +731,11 @@ function openModal(date,emp){
     ${ex?`<div style="margin-bottom:14px;">${ex}</div>`:''}
     <div class="form-section">
       <h4>AJOUTER UNE ENTRÉE</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="btn btn-sm" onclick="saveAbsence('${emp}','${date}','conge')" style="flex:1;background:#E6F1FB;color:#0C447C;border-color:#85B7EB;">🏖 Congé</button>
+        <button class="btn btn-sm" onclick="saveAbsence('${emp}','${date}','maladie')" style="flex:1;background:#FCEBEB;color:#791F1F;border-color:#F09595;">🤒 Maladie</button>
+        <button class="btn btn-sm" onclick="saveAbsence('${emp}','${date}','ferie')" style="flex:1;background:#FAEEDA;color:#633806;border-color:#EF9F27;">⭐ Férié</button>
+      </div>
       <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable</label>
       <div class="toggle-group"><button id="btn-f" class="${fs?'on-f':''}" onclick="setFact(true)">✓ Facturable</button><button id="btn-nf" class="${!fs?'on-nf':''}" onclick="setFact(false)">✕ Non facturable</button></div>
       <div class="grid2">
@@ -737,6 +749,25 @@ function openModal(date,emp){
   document.getElementById('modalOverlay').classList.add('open');
   setTimeout(()=>{const h=document.getElementById('m-h');if(h)h.focus();},300);
 }
+function saveAbsence(emp,date,type){
+  const labels={conge:'Congé',maladie:'Maladie',ferie:'Jour férié'};
+  const heures=8; // Journée complète par défaut
+  state.entries[emp].push({
+    id:++state.entryId,
+    date,
+    heures:heures,
+    chantier:'',
+    type:labels[type],
+    desc:labels[type],
+    facturable:false,
+    absence:type
+  });
+  closeModal();
+  const c=document.getElementById('content-heures');
+  if(c)c.innerHTML=buildCal(emp);
+  saveToCloud();
+}
+
 function setFact(v){state.pendingFacturable=v;const bf=document.getElementById('btn-f'),bn=document.getElementById('btn-nf');if(bf&&bn){bf.className=v?'on-f':'';bn.className=!v?'on-nf':'';}}
 function saveEntry(emp,date){
   const h=parseFloat(document.getElementById('m-h').value)||0;
@@ -3589,6 +3620,7 @@ function buildDepenses(){
             ${a.chantier?`<span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">🏗 ${a.chantier}</span>`:''}
             ${isMat?`<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:2px 7px;border-radius:20px;">💳 ${a.carte}</span>`:''}
             <span class="fbadge ${a.facturable?'fb-y':'fb-n'}">${a.facturable?'Facturable':'Non-fact.'}</span>
+            ${!isMat&&a.typeTravaux?`<span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">${a.typeTravaux}</span>`:''}
             ${!isMat&&a.depot?'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#92400E;">💰 Dépôt</span>':''}
           </div>
           ${a.description?`<div style="font-size:11px;color:var(--secondary);">${a.description}</div>`:''}
@@ -3658,10 +3690,23 @@ function openModalDepense(editId,editType){
       <button id="dep-mat-btn" class="${!isSst?'on-f':''}" onclick="setDepType('materiel')" style="font-size:13px;">🛒 Matériel</button>
       <button id="dep-sst-btn" class="${isSst?'on-f':''}" onclick="setDepType('sst')" style="font-size:13px;">👷 Sous-traitant</button>
     </div>
+    <input type="hidden" id="dep-edit-id" value="${editId||''}"/>
+    <input type="hidden" id="dep-edit-type" value="${editType||''}"/>
 
     <div class="grid2">
       <div class="field"><label>Date</label><input type="date" id="dep-date" value="${a.date||''}" style="width:100%;color:var(--primary);"/></div>
-      <div class="field"><label>Montant ($)</label><input type="number" id="dep-mont" min="0" step="0.01" value="${parseFloat(a.montantAvantTax||a.montant||0)||''}" placeholder="0.00" inputmode="decimal" oninput="calcTaxesDepense(this.value)"/></div>
+      <div class="field"><label>Montant avant taxes ($)</label><input type="number" id="dep-mont" min="0" step="0.01" value="${parseFloat(a.montantAvantTax||a.montant||0)||''}" placeholder="0.00" inputmode="decimal" oninput="calcTaxesDepense(this.value)"/></div>
+    </div>
+    <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TPS (5%)</span><span id="dep-tps-shared">${parseFloat(a.montantAvantTax||a.montant||0)?(parseFloat(a.montantAvantTax||a.montant||0)*TPS).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TVQ (9.975%)</span><span id="dep-tvq-shared">${parseFloat(a.montantAvantTax||a.montant||0)?(parseFloat(a.montantAvantTax||a.montant||0)*TVQ).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);">
+        <span>Total avec taxes</span><span id="dep-total-shared" style="color:#0C447C;">${parseFloat(a.montantAvantTax||a.montant||0)?(parseFloat(a.montantAvantTax||a.montant||0)*(1+TPS+TVQ)).toFixed(2)+' $':'0.00 $'}</span>
+      </div>
     </div>
 
     <div id="dep-mat-section" style="${isSst?'display:none;':''}">
@@ -3673,17 +3718,7 @@ function openModalDepense(editId,editType){
         </select>
         <input type="text" id="dep-mag-autre" placeholder="Nom du magasin..." style="width:100%;margin-top:6px;display:none;"/>
       </div>
-      <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);">
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
-          <span>TPS (5%)</span><span id="dep-tps">0.00 $</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
-          <span>TVQ (9.975%)</span><span id="dep-tvq">0.00 $</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);">
-          <span>Total avec taxes</span><span id="dep-montTax" style="color:#0C447C;">0.00 $</span>
-        </div>
-      </div>
+
       <div class="field"><label>Carte utilisée</label>
         <div class="toggle-group">
           <button id="carte-v" class="${(!existing||existing.carte==='Victor')?'on-f':''}" onclick="setCarteAchat('Victor')" style="font-size:12px;">💳 Victor</button>
@@ -3710,6 +3745,12 @@ function openModalDepense(editId,editType){
       </div>
       <div class="field"><label>No. de facture SST</label>
         <input type="text" id="dep-sst-no" value="${a.noFacture||''}" placeholder="Ex: SST-2024-001"/>
+      </div>
+      <div class="field"><label>Type de travaux</label>
+        <select id="dep-sst-type" style="width:100%;">
+          <option value="">-- Choisir --</option>
+          ${state.typesTravaux.map(t=>`<option value="${esc(t)}" ${a.typeTravaux===t?'selected':''}>${t}</option>`).join('')}
+        </select>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);border:1px solid var(--border);">
         <input type="checkbox" id="dep-depot" ${a.depot?'checked':''} style="width:18px;height:18px;cursor:pointer;"/>
@@ -3778,20 +3819,18 @@ function calcTaxesDepense(val){
   const tps=montant*TPS;
   const tvq=montant*TVQ;
   const total=montant+tps+tvq;
-  // Materiel taxes
-  const elTPS=document.getElementById('dep-tps');
-  const elTVQ=document.getElementById('dep-tvq');
-  const elTotal=document.getElementById('dep-montTax');
-  if(elTPS)elTPS.textContent=tps.toFixed(2)+' $';
-  if(elTVQ)elTVQ.textContent=tvq.toFixed(2)+' $';
-  if(elTotal)elTotal.textContent=total.toFixed(2)+' $';
-  // SST taxes
-  const elSSTTPS=document.getElementById('dep-sst-tps');
-  const elSSTTVQ=document.getElementById('dep-sst-tvq');
-  const elSSTTotal=document.getElementById('dep-sst-total');
-  if(elSSTTPS)elSSTTPS.textContent=tps.toFixed(2)+' $';
-  if(elSSTTVQ)elSSTTVQ.textContent=tvq.toFixed(2)+' $';
-  if(elSSTTotal)elSSTTotal.textContent=total.toFixed(2)+' $';
+  // Shared taxes box (visible for both types)
+  const ids=[['dep-tps-shared','dep-tvq-shared','dep-total-shared'],
+             ['dep-tps','dep-tvq','dep-montTax'],
+             ['dep-sst-tps','dep-sst-tvq','dep-sst-total']];
+  ids.forEach(([tpsId,tvqId,totId])=>{
+    const et=document.getElementById(tpsId);
+    const ev=document.getElementById(tvqId);
+    const eo=document.getElementById(totId);
+    if(et)et.textContent=tps.toFixed(2)+' $';
+    if(ev)ev.textContent=tvq.toFixed(2)+' $';
+    if(eo)eo.textContent=total.toFixed(2)+' $';
+  });
 }
 
 function onDepChantierChange(){
@@ -3801,6 +3840,11 @@ function onDepChantierChange(){
 }
 
 function saveDepense(editId,editType){
+  // Read from hidden fields in case they were passed as '0' or ''
+  const hiddenId=document.getElementById('dep-edit-id');
+  const hiddenType=document.getElementById('dep-edit-type');
+  if(hiddenId&&hiddenId.value)editId=hiddenId.value;
+  if(hiddenType&&hiddenType.value)editType=hiddenType.value;
   const type=window._depType||'materiel';
   const date=document.getElementById('dep-date').value;
   const montant=parseFloat(document.getElementById('dep-mont').value)||0;
@@ -3832,12 +3876,14 @@ function saveDepense(editId,editType){
     const sst=document.getElementById('dep-sst').value;
     if(!sst){alert("Veuillez choisir un sous-traitant.");return;}
     const depotEl=document.getElementById('dep-depot');
+    const depSstTypeEl=document.getElementById('dep-sst-type');
     const facture={
       id:editId&&editType==='sst'?parseInt(editId):++state.sstFactureId,
       date,sst,chantier,
       montant:montant.toFixed(2),
       description:desc,
       noFacture:document.getElementById('dep-sst-no').value.trim(),
+      typeTravaux:depSstTypeEl?depSstTypeEl.value:'',
       facturable:chantier?window._achatFacturable:false,
       depot:depotEl?depotEl.checked:false
     };
