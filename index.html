@@ -241,7 +241,7 @@ body{background:#fff;font-size:11px;}
 
 <div id="page-facturation" class="page">
   <nav class="sub-nav">
-    <button class="active" onclick="setSub('facturation','nouvelle')">➕ Nouvelle facture</button>
+    <button class="active" onclick="setSub('facturation','courantes')">📝 En cours</button>
     <button onclick="setSub('facturation','historique')">📋 Historique</button>
     <button onclick="setSub('facturation','depenses')">🧾 Dépenses</button>
   </nav>
@@ -264,7 +264,7 @@ const ROW_ID = 1;
 // ─── STATE ────────────────────────────────────────────────
 let state = {
   currentEmp:'victor',
-  currentSub:{victor:'cal',edouard:'cal',denis:'cal',chantiers:'clients',facturation:'nouvelle'},
+  currentSub:{victor:'cal',edouard:'cal',denis:'cal',chantiers:'clients',facturation:'courantes'},
   currentHeuresEmp:'victor',
   calMonth:{victor:new Date().getMonth(),edouard:new Date().getMonth(),denis:new Date().getMonth()},
   calYear:{victor:new Date().getFullYear(),edouard:new Date().getFullYear(),denis:new Date().getFullYear()},
@@ -366,6 +366,8 @@ let state = {
   fournisseurs:[],
   factures:[],
   factureId:0,
+  facturesCourantes:[],
+  facturesCourantesId:0,
   achats:[],
   achatId:0,
   sstFactures:[],
@@ -468,7 +470,7 @@ async function saveToCloud(){
 
 function getCloudPayload(){
   return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,
-  entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
+  entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,facturesCourantes:state.facturesCourantes,facturesCourantesId:state.facturesCourantesId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
 }
 
 // ─── LOCAL BACKUP ─────────────────────────────────────────
@@ -499,6 +501,8 @@ function loadLocal(andRender){
       if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
       if(d.factures)state.factures=d.factures;
       if(d.factureId)state.factureId=d.factureId;
+      if(d.facturesCourantes)state.facturesCourantes=d.facturesCourantes;
+      if(d.facturesCourantesId)state.facturesCourantesId=d.facturesCourantesId;
       if(d.achats)state.achats=d.achats;
       if(d.achatId)state.achatId=d.achatId;
       if(d.sstFactures)state.sstFactures=d.sstFactures;
@@ -586,7 +590,7 @@ function setSub(emp,sub){
   if(nav){
     let subs;
     if(emp==='chantiers')subs=['clients','chantiersList','employes','sstraitants_fiches','fournisseurs_fiches','entreprise_fiche','listes'];
-    else if(emp==='facturation')subs=['nouvelle','historique','depenses'];
+    else if(emp==='facturation')subs=['courantes','historique','depenses'];
     else subs=['cal','liste','rapport'];
     nav.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
   }
@@ -615,7 +619,8 @@ function setSub(emp,sub){
     else if(sub==='entreprise_fiche'){renderEntreprise();return;}
     else if(sub==='listes')sc.innerHTML=buildGestionListes();
   } else if(emp==='facturation'){
-    if(sub==='nouvelle')sc.innerHTML=buildNouvelleFacture();
+    if(sub==='courantes')sc.innerHTML=buildFacturesCourantes();
+    else if(sub==='nouvelle'){sc.innerHTML=buildNouvelleFacture();}
     else if(sub==='historique')sc.innerHTML=buildHistoriqueFactures();
     else if(sub==='depenses')sc.innerHTML=buildDepenses();
     else if(sub==='materiaux')sc.innerHTML=buildDepenses();
@@ -660,7 +665,8 @@ function renderCurrent(){
     else if(sub==='listes')c.innerHTML=buildGestionListes();
   }
   else if(emp==='facturation'){
-    if(sub==='nouvelle')c.innerHTML=buildNouvelleFacture();
+    if(sub==='courantes')c.innerHTML=buildFacturesCourantes();
+    else if(sub==='nouvelle')c.innerHTML=buildNouvelleFacture();
     else if(sub==='historique')c.innerHTML=buildHistoriqueFactures();
     else if(sub==='depenses')c.innerHTML=buildDepenses();
     else if(sub==='materiaux')c.innerHTML=buildDepenses();
@@ -1727,8 +1733,9 @@ function buildNouvelleFacture(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;" class="no-print">
         <button class="btn-pdf" onclick="previewFacture()">👁 Aperçu PDF</button>
-        <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderFacture()">💾 Sauvegarder la facture</button>
-        <button class="btn btn-sm" onclick="resetFacture()">↺ Réinitialiser</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderFacCourante()">💾 Sauvegarder brouillon</button>
+        <button class="btn btn-primary" style="flex:1;background:#27500A;" onclick="sauvegarderFacture()">✅ Finaliser</button>
+        <button class="btn btn-sm" onclick="resetFacture()">↺</button>
       </div>
     </div>`;
 }
@@ -1803,57 +1810,66 @@ function sauvegarderFacture(){
 
 // ─── HISTORIQUE FACTURES ──────────────────────────────────
 function buildHistoriqueFactures(){
-  if(!state.factures.length)return`<div class="empty">Aucune facture sauvegardée.<br><br><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="setSub('facturation','nouvelle')">➕ Créer une facture</button></div>`;
-  const statutLabels={brouillon:'Brouillon',envoye:'Envoyée',paye:'Payée'};
-  const rows=state.factures.map(f=>`
-    <div class="card" style="padding:12px 14px;margin-bottom:8px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;" onclick="voirFacture(${f.id})" style="cursor:pointer;">
-        <div style="flex:1;cursor:pointer;">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:13px;font-weight:700;color:#0C447C;">#${f.numero}</span>
-            <span style="font-size:13px;font-weight:600;">${f.chantier}</span>
-            <span class="statut-badge statut-${f.statut}">${f.statut==='brouillon'?'Brouillon':f.statut==='envoye'?'Envoyée':'Payée'}</span>
-          </div>
-          <div style="font-size:11px;color:var(--secondary);margin-top:3px;">${f.dateCreation}${f.dateDebut?' · '+f.dateDebut+' → '+f.dateFin:''}</div>
-        </div>
-        <div style="font-size:16px;font-weight:700;color:#0C447C;flex-shrink:0;">${f.grandTotal.toFixed(2)} $</div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        ${f.statut==='brouillon'?`
-          <button onclick="changerStatutFacture(${f.id},'envoye')" style="flex:1;padding:8px;border:1.5px solid #185FA5;background:#E6F1FB;color:#0C447C;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;">
-            📤 Marquer envoyée
-          </button>
-          <button onclick="voirFacture(${f.id})" style="flex:1;padding:8px;border:1px solid var(--border);background:#f9f9f9;color:var(--secondary);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
-            👁 Voir
-          </button>`:''}
-        ${f.statut==='envoye'?`
-          <button onclick="changerStatutFacture(${f.id},'paye')" style="flex:1;padding:8px;border:1.5px solid #27500A;background:#EAF3DE;color:#27500A;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">
-            ✅ Marquer payée
-          </button>
-          <button onclick="voirFacture(${f.id})" style="flex:1;padding:8px;border:1px solid var(--border);background:#f9f9f9;color:var(--secondary);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
-            👁 Voir
-          </button>`:''}
-        ${f.statut==='paye'?`
-          <div style="flex:1;padding:8px;background:#EAF3DE;border-radius:var(--radius-sm);font-size:12px;font-weight:600;color:#27500A;text-align:center;">
-            ✅ Payée
-          </div>
-          <button onclick="voirFacture(${f.id})" style="flex:1;padding:8px;border:1px solid var(--border);background:#f9f9f9;color:var(--secondary);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">
-            👁 Voir
-          </button>
-          <button onclick="changerStatutFacture(${f.id},'brouillon')" style="padding:8px 10px;border:1px solid var(--border);background:#fff;color:var(--secondary);border-radius:var(--radius-sm);font-size:11px;cursor:pointer;">
-            ↺
-          </button>`:''}
-      </div>
-    </div>`).join('');
+  if(!state.factures.length)return`<div class="empty">Aucune facture.<br><br><button class="btn btn-primary" style="width:auto;padding:10px 20px;" onclick="setSub('facturation','courantes')">➕ Créer une facture</button></div>`;
+
   const totalPaye=state.factures.filter(f=>f.statut==='paye').reduce((s,f)=>s+f.grandTotal,0);
-  const totalEnAttente=state.factures.filter(f=>f.statut!=='paye').reduce((s,f)=>s+f.grandTotal,0);
+  const totalEnvoyee=state.factures.filter(f=>f.statut==='envoye').reduce((s,f)=>s+f.grandTotal,0);
+  const totalBrouillon=state.factures.filter(f=>f.statut==='brouillon').reduce((s,f)=>s+f.grandTotal,0);
+
+  // Grouper par chantier
+  const parChantier={};
+  state.factures.forEach(f=>{
+    const ch=f.chantier||'— Sans chantier —';
+    if(!parChantier[ch])parChantier[ch]=[];
+    parChantier[ch].push(f);
+  });
+
+  const sections=Object.entries(parChantier).sort((a,b)=>a[0].localeCompare(b[0])).map(([ch,factures])=>{
+    const totalCh=factures.reduce((s,f)=>s+f.grandTotal,0);
+    const payeCh=factures.filter(f=>f.statut==='paye').reduce((s,f)=>s+f.grandTotal,0);
+    const rows=factures.map(f=>`
+      <tr onclick="voirFacture(${f.id})" style="cursor:pointer;border-bottom:0.5px solid var(--border);">
+        <td style="padding:10px 8px;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;font-weight:700;color:#0C447C;">#${f.numero}</span>
+            <span class="statut-badge statut-${f.statut}" style="font-size:10px;">${f.statut==='brouillon'?'Brouillon':f.statut==='envoye'?'Envoyée':'Payée'}</span>
+          </div>
+          <div style="font-size:10px;color:var(--secondary);margin-top:2px;">${f.dateCreation}${f.dateDebut?' · '+f.dateDebut+' → '+f.dateFin:''}</div>
+        </td>
+        <td style="padding:10px 8px;text-align:right;">
+          <div style="font-size:13px;font-weight:700;color:#0C447C;">${f.grandTotal.toFixed(2)} $</div>
+          <div style="display:flex;gap:4px;justify-content:flex-end;margin-top:4px;" onclick="event.stopPropagation()">
+            ${f.statut==='brouillon'?`<button onclick="changerStatutFacture(${f.id},'envoye')" style="padding:4px 8px;background:#E6F1FB;color:#0C447C;border:1px solid #185FA5;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;">📤 Envoyer</button>`:''}
+            ${f.statut==='envoye'?`<button onclick="changerStatutFacture(${f.id},'paye')" style="padding:4px 8px;background:#EAF3DE;color:#27500A;border:1px solid #27500A;border-radius:4px;font-size:10px;font-weight:700;cursor:pointer;">✅ Payée</button>`:''}
+            ${f.statut==='paye'?`<button onclick="changerStatutFacture(${f.id},'brouillon')" style="padding:4px 8px;background:#f0f0f0;color:#666;border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;">↺</button>`:''}
+          </div>
+        </td>
+      </tr>`).join('');
+
+    return`<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f9f9;border-bottom:1px solid var(--border);">
+        <div>
+          <span style="font-size:13px;font-weight:600;">🏗 ${ch}</span>
+          <span style="font-size:11px;color:var(--secondary);margin-left:8px;">${factures.length} facture${factures.length>1?'s':''}</span>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:14px;font-weight:700;color:#0C447C;">${totalCh.toFixed(2)} $</div>
+          ${payeCh>0?`<div style="font-size:10px;color:#27500A;">✅ ${payeCh.toFixed(2)} $ payé</div>`:''}
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;">
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
   return`
-    <div class="stats-row">
-      <div class="stat-box stat-fact"><div class="label">Payées</div><div class="value">${totalPaye.toFixed(0)} $</div></div>
-      <div class="stat-box stat-nf"><div class="label">En attente</div><div class="value">${totalEnAttente.toFixed(0)} $</div></div>
-      <div class="stat-box stat-money"><div class="label">Total</div><div class="value">${(totalPaye+totalEnAttente).toFixed(0)} $</div></div>
+    <div class="stats-row" style="margin-bottom:12px;">
+      <div class="stat-box stat-fact"><div class="label">✅ Payées</div><div class="value">${totalPaye.toFixed(0)} $</div></div>
+      <div class="stat-box stat-nf"><div class="label">📤 Envoyées</div><div class="value">${totalEnvoyee.toFixed(0)} $</div></div>
+      <div class="stat-box stat-money"><div class="label">📝 Brouillons</div><div class="value">${totalBrouillon.toFixed(0)} $</div></div>
     </div>
-    <div class="card">${rows}</div>`;
+    ${sections}`;
 }
 
 function changerStatutFacture(id,statut){
@@ -4159,6 +4175,203 @@ document.addEventListener('mouseup',()=>{
     });
   }
 });
+
+
+// ─── FACTURES COURANTES ───────────────────────────────────
+function buildFacturesCourantes(){
+  const list=state.facturesCourantes||[];
+
+  if(!list.length){
+    return`
+      <div class="card" style="text-align:center;padding:30px 20px;">
+        <div style="font-size:40px;margin-bottom:12px;">📝</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px;">Aucune facture en cours</div>
+        <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;">Crée une nouvelle facture pour commencer à la préparer. Tu pourras la modifier avant de la finaliser.</div>
+        <button class="btn btn-primary" style="width:auto;padding:12px 24px;" onclick="nouvelleFactureCourante()">➕ Nouvelle facture</button>
+      </div>`;
+  }
+
+  const cards=list.map(fc=>{
+    const fiche=fc.chantier?state.fiches[fc.chantier]||{}:{};
+    const taux=parseFloat(fiche.taux)||0;
+    const fg=parseFloat(fiche.fraisGestion)||0;
+    // Calculate running total
+    let mdoTotal=0;
+    if(fc.chantier&&fc.dateDebut&&fc.dateFin){
+      const d1=new Date(fc.dateDebut+'T00:00:00'),d2=new Date(fc.dateFin+'T23:59:59');
+      Object.keys(EMPS).forEach(empKey=>{
+        const h=state.entries[empKey].filter(en=>{const d=new Date(en.date+'T12:00:00');return en.chantier===fc.chantier&&d>=d1&&d<=d2&&en.heures>0&&en.facturable;}).reduce((s,en)=>s+en.heures,0);
+        mdoTotal+=taux>0?h*taux:0;
+      });
+    }
+    let sstTotal=0;
+    if(fc.chantier&&fc.dateDebut&&fc.dateFin){
+      const ss1=new Date(fc.dateDebut+'T00:00:00'),ss2=new Date(fc.dateFin+'T23:59:59');
+      sstTotal=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===fc.chantier&&a.facturable===true&&d>=ss1&&d<=ss2;}).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    }
+    let matTotal=0;
+    if(fc.chantier&&(fc.matDateDebut||fc.dateDebut)&&(fc.matDateFin||fc.dateFin)){
+      const md1=new Date((fc.matDateDebut||fc.dateDebut)+'T00:00:00'),md2=new Date((fc.matDateFin||fc.dateFin)+'T23:59:59');
+      matTotal=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===fc.chantier&&a.facturable===true&&d>=md1&&d<=md2;}).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    }
+    const soustotal=mdoTotal+sstTotal+matTotal;
+    const montantFG=fc.appliquerFG&&fg>0?soustotal*(fg/100):0;
+    const avantTaxes=soustotal+montantFG;
+    const tps=fc.appliquerTPS!==false?avantTaxes*0.05:0;
+    const tvq=fc.appliquerTVQ!==false?avantTaxes*0.09975:0;
+    const grandTotal=avantTaxes+tps+tvq;
+    const dateCreation=fc.dateCreation||'—';
+    return`
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+              <span style="font-size:15px;font-weight:700;">${fc.chantier||'Sans chantier'}</span>
+              ${fc.numeroFacture?`<span style="font-size:11px;font-weight:600;color:#0C447C;background:#E6F1FB;padding:2px 8px;border-radius:20px;">#${fc.numeroFacture}</span>`:''}
+              <span style="font-size:10px;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:20px;font-weight:600;">✏️ En cours</span>
+            </div>
+            <div style="font-size:11px;color:var(--secondary);">Créée le ${dateCreation}${fc.dateDebut?' · '+fc.dateDebut+' → '+fc.dateFin:''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:var(--secondary);">Estimé</div>
+            <div style="font-size:20px;font-weight:700;color:#0C447C;">${grandTotal.toFixed(2)} $</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;">
+          <div class="stat-box"><div class="label">Main d'oeuvre</div><div class="value" style="font-size:13px;">${mdoTotal.toFixed(0)} $</div></div>
+          <div class="stat-box"><div class="label">Sous-traitants</div><div class="value" style="font-size:13px;">${sstTotal.toFixed(0)} $</div></div>
+          <div class="stat-box"><div class="label">Matériaux</div><div class="value" style="font-size:13px;">${matTotal.toFixed(0)} $</div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button onclick="editerFacCourante(${fc.id})" style="flex:2;padding:10px;background:#E6F1FB;color:#0C447C;border:1.5px solid #185FA5;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;">✏️ Modifier</button>
+          <button onclick="finaliserFacCourante(${fc.id})" style="flex:2;padding:10px;background:#EAF3DE;color:#27500A;border:1.5px solid #27500A;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;">✅ Finaliser</button>
+          <button onclick="supprimerFacCourante(${fc.id})" style="flex:1;padding:10px;background:#FCEBEB;color:#791F1F;border:1px solid #F09595;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:13px;font-weight:600;">${list.length} facture${list.length>1?'s':''} en cours</span>
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="nouvelleFactureCourante()">➕ Nouvelle facture</button>
+    </div>
+    ${cards}`;
+}
+
+function nouvelleFactureCourante(){
+  // Reset factCourante and open editor
+  factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:'',_couranteId:null};
+  state.currentSub['facturation']='nouvelle';
+  const btns=document.querySelectorAll('#page-facturation .sub-nav button');
+  btns.forEach(b=>b.classList.remove('active'));
+  const c=document.getElementById('content-facturation');
+  if(c)c.innerHTML=buildNouvelleFacture();
+}
+
+function editerFacCourante(id){
+  const fc=state.facturesCourantes.find(f=>f.id===id);
+  if(!fc)return;
+  factCourante={...fc,_couranteId:id};
+  state.currentSub['facturation']='nouvelle';
+  const btns=document.querySelectorAll('#page-facturation .sub-nav button');
+  btns.forEach(b=>b.classList.remove('active'));
+  const c=document.getElementById('content-facturation');
+  if(c)c.innerHTML=buildNouvelleFacture();
+}
+
+function sauvegarderFacCourante(){
+  if(!factCourante.chantier){alert("Veuillez choisir un chantier.");return;}
+  const fc={
+    ...factCourante,
+    id:factCourante._couranteId||++state.facturesCourantesId,
+    dateCreation:factCourante.dateCreation||new Date().toISOString().slice(0,10),
+    matDateDebut:factCourante.matDateDebut||factCourante.dateDebut,
+    matDateFin:factCourante.matDateFin||factCourante.dateFin
+  };
+  delete fc._couranteId;
+  if(factCourante._couranteId){
+    const idx=state.facturesCourantes.findIndex(f=>f.id===factCourante._couranteId);
+    if(idx>=0)state.facturesCourantes[idx]=fc;
+  } else {
+    state.facturesCourantes.push(fc);
+  }
+  saveToCloud();
+  setSub('facturation','courantes');
+  alert("Facture sauvegardée en brouillon!");
+}
+
+function finaliserFacCourante(id){
+  const fc=state.facturesCourantes.find(f=>f.id===id);
+  if(!fc)return;
+  if(!fc.numeroFacture){
+    alert("Veuillez ajouter un numéro de facture avant de finaliser.");
+    editerFacCourante(id);
+    return;
+  }
+  // Load into factCourante and call sauvegarderFacture
+  factCourante={...fc,_couranteId:id};
+  // Calculate totals and save to historique
+  const fiche=state.fiches[fc.chantier]||{};
+  const taux=parseFloat(fiche.taux)||0;
+  const fg=parseFloat(fiche.fraisGestion)||0;
+  const d1=fc.dateDebut?new Date(fc.dateDebut+'T00:00:00'):null;
+  const d2=fc.dateFin?new Date(fc.dateFin+'T23:59:59'):null;
+  let mdoTotal=0;
+  Object.keys(EMPS).forEach(empKey=>{
+    if(!d1||!d2)return;
+    const h=state.entries[empKey].filter(en=>{const d=new Date(en.date+'T12:00:00');return en.chantier===fc.chantier&&d>=d1&&d<=d2&&en.heures>0&&en.facturable;}).reduce((s,en)=>s+en.heures,0);
+    mdoTotal+=taux>0?h*taux:0;
+  });
+  let sstTotal=0;
+  if(fc.chantier&&fc.dateDebut&&fc.dateFin){
+    const ss1=new Date(fc.dateDebut+'T00:00:00'),ss2=new Date(fc.dateFin+'T23:59:59');
+    sstTotal=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===fc.chantier&&a.facturable===true&&d>=ss1&&d<=ss2;}).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  }
+  let matTotal=0;
+  const md1f=fc.matDateDebut||fc.dateDebut;
+  const md2f=fc.matDateFin||fc.dateFin;
+  if(fc.chantier&&md1f&&md2f){
+    const md1=new Date(md1f+'T00:00:00'),md2=new Date(md2f+'T23:59:59');
+    matTotal=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===fc.chantier&&a.facturable===true&&d>=md1&&d<=md2;}).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  }
+  const soustotal=mdoTotal+sstTotal+matTotal;
+  const montantFG=fc.appliquerFG&&fg>0?soustotal*(fg/100):0;
+  const avantTaxes=soustotal+montantFG;
+  const tps=fc.appliquerTPS!==false?avantTaxes*0.05:0;
+  const tvq=fc.appliquerTVQ!==false?avantTaxes*0.09975:0;
+  const grandTotal=avantTaxes+tps+tvq;
+  const facture={
+    id:++state.factureId,
+    numero:fc.numeroFacture,
+    chantier:fc.chantier,
+    dateDebut:fc.dateDebut,
+    dateFin:fc.dateFin,
+    dateCreation:fc.dateCreation||new Date().toISOString().slice(0,10),
+    lignesSst:[],
+    matDateDebut:fc.matDateDebut||fc.dateDebut,
+    matDateFin:fc.matDateFin||fc.dateFin,
+    appliquerTPS:fc.appliquerTPS!==false,
+    appliquerTVQ:fc.appliquerTVQ!==false,
+    appliquerFG:fc.appliquerFG!==false,
+    notes:fc.notes||'',
+    grandTotal,
+    statut:'brouillon'
+  };
+  state.factures.unshift(facture);
+  // Remove from courantes
+  state.facturesCourantes=state.facturesCourantes.filter(f=>f.id!==id);
+  saveToCloud();
+  setSub('facturation','historique');
+  alert("Facture #"+facture.numero+" finalisée et ajoutée à l'historique!");
+}
+
+function supprimerFacCourante(id){
+  if(!confirm("Supprimer cette facture en cours?"))return;
+  state.facturesCourantes=state.facturesCourantes.filter(f=>f.id!==id);
+  saveToCloud();
+  const c=document.getElementById('content-facturation');
+  if(c)c.innerHTML=buildFacturesCourantes();
+}
 
 // ─── INIT ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
