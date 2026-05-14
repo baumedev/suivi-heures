@@ -3278,166 +3278,310 @@ function buildDashboard(){
 function buildRapportChantier(){
   const c=document.getElementById('content-rapport');
   if(!c)return;
-  const chOpts=selOpts(state.chantiers,'','-- Tous les chantiers --');
-  c.innerHTML=`
-    <div class="card">
-      <div class="card-title">🏗 Rapport par chantier</div>
-      <div class="field"><label>Chantier</label><select id="rc-ch" style="width:100%;" onchange="genRapportChantier()">${chOpts}</select></div>
-      <div class="grid2">
-        <div class="field"><label>Date début</label><input type="date" id="rc-d1" style="width:100%;color:var(--primary);" onchange="genRapportChantier()"/></div>
-        <div class="field"><label>Date fin</label><input type="date" id="rc-d2" style="width:100%;color:var(--primary);" onchange="genRapportChantier()"/></div>
-      </div>
-    </div>
-    <div id="rc-result"></div>`;
+  // Show all chantiers as cards directly
+  if(!state.chantiers.length){
+    c.innerHTML='<div class="empty">Aucun chantier configuré.</div>';
+    return;
+  }
+  let html=`<div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--secondary);">🏗 Tous les chantiers</div>`;
+  state.chantiers.forEach(chantier=>{
+    html+=genFicheChantier(chantier);
+  });
+  c.innerHTML=html;
 }
 
-function genRapportChantier(){
-  const ch=document.getElementById('rc-ch').value;
-  const d1s=document.getElementById('rc-d1').value;
-  const d2s=document.getElementById('rc-d2').value;
-  const d1=d1s?new Date(d1s+'T00:00:00'):null;
-  const d2=d2s?new Date(d2s+'T23:59:59'):null;
-  const chs=ch?[ch]:state.chantiers;
-  let html='';
-  chs.forEach(chantier=>{
-    const fiche=state.fiches[chantier]||{};
-    const taux=parseFloat(fiche.taux)||0;
-    const fg=parseFloat(fiche.fraisGestion)||0;
-    // Heures par employé
-    let totalH=0,totalFact=0;
-    const parEmp={};
-    Object.entries(EMPS).forEach(([empKey,e])=>{
-      const entries=state.entries[empKey].filter(en=>{
-        if(en.chantier!==chantier)return false;
-        if(d1&&new Date(en.date+'T12:00:00')<d1)return false;
-        if(d2&&new Date(en.date+'T12:00:00')>d2)return false;
-        return true;
-      });
-      const h=entries.reduce((s,en)=>s+en.heures,0);
-      const hf=entries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
-      if(h>0)parEmp[empKey]={h,hf,label:e.label,col:e.col};
-      totalH+=h;totalFact+=hf;
+function genFicheChantier(chantier){
+  const fiche=state.fiches[chantier]||{};
+  const taux=parseFloat(fiche.taux)||0;
+  const fg=parseFloat(fiche.fraisGestion)||0;
+  const cidx=fiche.clientIdx!==undefined&&fiche.clientIdx!==''?parseInt(fiche.clientIdx):-1;
+  const client=cidx>=0&&state.clients[cidx]?state.clients[cidx]:null;
+
+  // ── Heures totales (tout temps) ──
+  let totalH=0,totalFact=0;
+  const parEmp={};
+  const parType={};
+  Object.entries(EMPS).forEach(([empKey,e])=>{
+    const entries=state.entries[empKey].filter(en=>en.chantier===chantier&&en.heures>0);
+    const h=entries.reduce((s,en)=>s+en.heures,0);
+    const hf=entries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+    if(h>0)parEmp[empKey]={h,hf,label:e.label,col:e.col,bg:e.bg};
+    totalH+=h;totalFact+=hf;
+    entries.forEach(en=>{
+      if(!parType[en.type||'—'])parType[en.type||'—']=0;
+      parType[en.type||'—']+=en.heures;
     });
-    if(!totalH&&!ch)return;
-    const montantMdo=taux>0?totalFact*taux:0;
-    // Factures SST
-    const sstFacts=state.sstFactures.filter(a=>{
-      if(a.chantier!==chantier)return false;
-      if(d1&&new Date(a.date+'T12:00:00')<d1)return false;
-      if(d2&&new Date(a.date+'T12:00:00')>d2)return false;
-      return true;
-    });
-    const totalSST=sstFacts.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
-    const totalSSTFact=sstFacts.filter(a=>a.facturable).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
-    // Achats
-    const achats=state.achats.filter(a=>{
-      if(a.chantier!==chantier)return false;
-      if(d1&&new Date(a.date+'T12:00:00')<d1)return false;
-      if(d2&&new Date(a.date+'T12:00:00')>d2)return false;
-      return true;
-    });
-    const totalAchats=achats.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
-    const totalAchatsFact=achats.filter(a=>a.facturable).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
-    // Total facturable
-    const soustotal=montantMdo+totalSSTFact+totalAchatsFact;
-    const montantFG=fg>0?soustotal*(fg/100):0;
-    const total=soustotal+montantFG;
-    const empRows=Object.entries(parEmp).map(([k,v])=>`
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-size:12px;color:${v.col};font-weight:500;">${v.label}</span>
-        <span style="font-size:12px;">${v.h.toFixed(1)}h <span class="fbadge fb-y">${v.hf.toFixed(1)}h fact.</span> ${taux>0?'= '+(v.hf*taux).toFixed(2)+' $':''}</span>
-      </div>`).join('');
-    html+=`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div><div style="font-size:15px;font-weight:700;">🏗 ${chantier}</div>${fiche.numeroChantier?`<div style="font-size:11px;color:var(--secondary);">#${fiche.numeroChantier}</div>`:''}</div>
-        ${total>0?`<div style="text-align:right;"><div style="font-size:11px;color:var(--secondary);">À facturer</div><div style="font-size:20px;font-weight:700;color:#0C447C;">${total.toFixed(2)} $</div></div>`:''}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
-        <div class="stat-box"><div class="label">Heures</div><div class="value">${totalH.toFixed(1)}h</div></div>
-        <div class="stat-box stat-fact"><div class="label">SST</div><div class="value">${totalSST.toFixed(0)} $</div></div>
-        <div class="stat-box stat-money"><div class="label">Matériaux</div><div class="value">${totalAchats.toFixed(0)} $</div></div>
-      </div>
-      ${empRows?`<div style="border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px;">${empRows}</div>`:''}
-      ${total>0?`<div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;">
-        <div style="display:flex;justify-content:space-between;"><span>Main d'oeuvre</span><span>${montantMdo.toFixed(2)} $</span></div>
-        ${totalSSTFact>0?`<div style="display:flex;justify-content:space-between;"><span>Sous-traitants</span><span>${totalSSTFact.toFixed(2)} $</span></div>`:''}
-        ${totalAchatsFact>0?`<div style="display:flex;justify-content:space-between;"><span>Matériaux</span><span>${totalAchatsFact.toFixed(2)} $</span></div>`:''}
-        ${montantFG>0?`<div style="display:flex;justify-content:space-between;"><span>Frais gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
-        <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);margin-top:4px;padding-top:4px;"><span>Total à facturer</span><span style="color:#0C447C;">${total.toFixed(2)} $</span></div>
-      </div>`:''}
-    </div>`;
   });
-  const el=document.getElementById('rc-result');
-  if(el)el.innerHTML=html||'<div class="empty">Aucune donnée trouvée.</div>';
+  const montantMdo=taux>0?totalFact*taux:0;
+
+  // ── SST ──
+  const sstFacts=state.sstFactures.filter(a=>a.chantier===chantier);
+  const totalSST=sstFacts.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  const totalSSTFact=sstFacts.filter(a=>a.facturable).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  const parSst={};
+  sstFacts.forEach(a=>{if(!parSst[a.sst])parSst[a.sst]=0;parSst[a.sst]+=(parseFloat(a.montant)||0);});
+
+  // ── Matériaux ──
+  const achats=state.achats.filter(a=>a.chantier===chantier);
+  const totalAchats=achats.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  const totalAchatsFact=achats.filter(a=>a.facturable).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  const parFourn={};
+  achats.forEach(a=>{if(!parFourn[a.magasin||'—'])parFourn[a.magasin||'—']=0;parFourn[a.magasin||'—']+=(parseFloat(a.montantAvantTax)||0);});
+
+  // ── Factures émises ──
+  const facturesChantier=state.factures.filter(f=>f.chantier===chantier);
+  const totalFacture=facturesChantier.reduce((s,f)=>s+f.grandTotal,0);
+  const totalPaye=facturesChantier.filter(f=>f.statut==='paye').reduce((s,f)=>s+f.grandTotal,0);
+
+  // ── Total à facturer estimé ──
+  const soustotal=montantMdo+totalSSTFact+totalAchatsFact;
+  const montantFG=fg>0?soustotal*(fg/100):0;
+  const totalAFacturer=soustotal+montantFG;
+  const nonFacture=totalAFacturer-totalPaye;
+
+  const empRows=Object.entries(parEmp).map(([k,v])=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <div style="width:26px;height:26px;border-radius:50%;background:${v.bg};color:${v.col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">${v.label.slice(0,2).toUpperCase()}</div>
+      <span style="font-size:12px;flex:1;color:${v.col};font-weight:500;">${v.label}</span>
+      <span class="fbadge fb-y" style="font-size:10px;">${v.hf.toFixed(1)}h fact.</span>
+      <span style="font-size:12px;font-weight:600;">${v.h.toFixed(1)}h${taux>0?' = '+(v.hf*taux).toFixed(0)+' $':''}</span>
+    </div>`).join('');
+
+  const typeRows=Object.entries(parType).sort((a,b)=>b[1]-a[1]).map(([t,h])=>`
+    <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--secondary);">${t}</span><span style="font-weight:500;">${h.toFixed(1)}h</span>
+    </div>`).join('');
+
+  const sstRows=Object.entries(parSst).map(([s,m])=>`
+    <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--secondary);">${s}</span><span style="font-weight:500;">${m.toFixed(2)} $</span>
+    </div>`).join('');
+
+  const fournRows=Object.entries(parFourn).sort((a,b)=>b[1]-a[1]).map(([f,m])=>`
+    <div style="display:flex;justify-content:space-between;font-size:11px;padding:2px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--secondary);">${f}</span><span style="font-weight:500;">${m.toFixed(2)} $</span>
+    </div>`).join('');
+
+  const factureRows=facturesChantier.map(f=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:#0C447C;font-weight:600;">#${f.numero}</span>
+      <span class="statut-badge statut-${f.statut}" style="font-size:9px;">${f.statut==='brouillon'?'Brouillon':f.statut==='envoye'?'Envoyée':'Payée'}</span>
+      <span style="font-weight:600;">${f.grandTotal.toFixed(2)} $</span>
+    </div>`).join('');
+
+  return`<div class="card" style="margin-bottom:12px;">
+
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:16px;font-weight:700;">🏗 ${chantier}</div>
+        ${fiche.numeroChantier?`<div style="font-size:11px;color:var(--secondary);">#${fiche.numeroChantier}</div>`:''}
+        ${client?`<div style="font-size:12px;color:#0C447C;margin-top:2px;">👤 ${[client.prenom,client.nom].filter(Boolean).join(' ')}${client.tel?' · '+client.tel:''}</div>`:''}
+        ${fiche.adresseChantier?`<div style="font-size:11px;color:var(--secondary);">📍 ${fiche.adresseChantier}</div>`:''}
+        ${fiche.dateDebut?`<div style="font-size:11px;color:var(--secondary);">📅 ${fiche.dateDebut}${fiche.dateFin?' → '+fiche.dateFin:''}</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        ${taux>0?`<div style="font-size:11px;color:var(--secondary);">Taux: ${taux} $/h${fg>0?' · FG: '+fg+'%':''}</div>`:''}
+        ${totalAFacturer>0?`<div style="font-size:11px;color:var(--secondary);">À facturer</div><div style="font-size:18px;font-weight:700;color:#0C447C;">${totalAFacturer.toFixed(2)} $</div>`:''}
+        ${totalPaye>0?`<div style="font-size:11px;color:#27500A;font-weight:600;">✅ Payé: ${totalPaye.toFixed(2)} $</div>`:''}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;">
+      <div class="stat-box"><div class="label">Total heures</div><div class="value">${totalH.toFixed(1)}h</div></div>
+      <div class="stat-box stat-money"><div class="label">Main d'oeuvre</div><div class="value" style="font-size:13px;">${montantMdo.toFixed(0)} $</div></div>
+      <div class="stat-box stat-fact"><div class="label">SST</div><div class="value" style="font-size:13px;">${totalSST.toFixed(0)} $</div></div>
+      <div class="stat-box"><div class="label">Matériaux</div><div class="value" style="font-size:13px;">${totalAchats.toFixed(0)} $</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      ${totalH>0?`<div>
+        <div class="section-label">👷 HEURES PAR EMPLOYÉ</div>
+        ${empRows}
+      </div>`:''}
+      ${Object.keys(parType).length?`<div>
+        <div class="section-label">🏷 PAR TYPE DE TRAVAUX</div>
+        ${typeRows}
+      </div>`:''}
+      ${Object.keys(parSst).length?`<div>
+        <div class="section-label">🔧 SOUS-TRAITANTS</div>
+        ${sstRows}
+      </div>`:''}
+      ${Object.keys(parFourn).length?`<div>
+        <div class="section-label">🛒 MATÉRIAUX PAR FOURNISSEUR</div>
+        ${fournRows}
+      </div>`:''}
+    </div>
+
+    ${facturesChantier.length?`<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+      <div class="section-label">🧾 FACTURES (${facturesChantier.length})</div>
+      ${factureRows}
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
+        <span>Total facturé</span><span style="color:#0C447C;">${totalFacture.toFixed(2)} $</span>
+      </div>
+      ${totalPaye>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#27500A;font-weight:600;margin-top:2px;">
+        <span>✅ Payé</span><span>${totalPaye.toFixed(2)} $</span>
+      </div>`:''}
+    </div>`:''}
+
+    ${totalAFacturer>0&&nonFacture>0?`<div style="margin-top:10px;background:#f9f9f9;border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;">
+      <div style="display:flex;justify-content:space-between;"><span>Main d'oeuvre fact.</span><span>${montantMdo.toFixed(2)} $</span></div>
+      ${totalSSTFact>0?`<div style="display:flex;justify-content:space-between;"><span>SST facturables</span><span>${totalSSTFact.toFixed(2)} $</span></div>`:''}
+      ${totalAchatsFact>0?`<div style="display:flex;justify-content:space-between;"><span>Matériaux facturables</span><span>${totalAchatsFact.toFixed(2)} $</span></div>`:''}
+      ${montantFG>0?`<div style="display:flex;justify-content:space-between;"><span>Frais gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-weight:700;border-top:1px solid var(--border);margin-top:4px;padding-top:4px;"><span>Total à facturer</span><span style="color:#0C447C;">${totalAFacturer.toFixed(2)} $</span></div>
+    </div>`:''}
+
+  </div>`;
 }
 
 // ─── RAPPORT PAR EMPLOYÉ ──────────────────────────────────
 function buildRapportEmployes(){
   const c=document.getElementById('content-rapport');
   if(!c)return;
-  const empOpts='<option value="">-- Tous les employés --</option>'+Object.entries(EMPS).map(([k,e])=>`<option value="${k}">${e.label}</option>`).join('');
-  const chOpts=selOpts(state.chantiers,'','-- Tous les chantiers --');
-  c.innerHTML=`
-    <div class="card">
-      <div class="card-title">👷 Rapport par employé</div>
-      <div class="grid2">
-        <div class="field"><label>Employé</label><select id="re-emp" style="width:100%;">${empOpts}</select></div>
-        <div class="field"><label>Chantier</label><select id="re-ch" style="width:100%;">${chOpts}</select></div>
-      </div>
-      <div class="grid2">
-        <div class="field"><label>Date début</label><input type="date" id="re-d1" style="width:100%;color:var(--primary);"/></div>
-        <div class="field"><label>Date fin</label><input type="date" id="re-d2" style="width:100%;color:var(--primary);"/></div>
-      </div>
-      <button class="btn btn-primary" onclick="genRapportEmployes()">🔍 Générer</button>
-    </div>
-    <div id="re-result"></div>`;
+  let html=`<div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--secondary);">👷 Fiche par employé</div>`;
+  Object.entries(EMPS).forEach(([empKey,e])=>{
+    html+=genFicheEmploye(empKey,e);
+  });
+  c.innerHTML=html;
 }
 
-function genRapportEmployes(){
-  const empF=document.getElementById('re-emp').value;
-  const chF=document.getElementById('re-ch').value;
-  const d1s=document.getElementById('re-d1').value;
-  const d2s=document.getElementById('re-d2').value;
-  const d1=d1s?new Date(d1s+'T00:00:00'):null;
-  const d2=d2s?new Date(d2s+'T23:59:59'):null;
-  const empKeys=empF?[empF]:Object.keys(EMPS);
-  let html='';
-  let grandTotal=0,grandFact=0;
-  empKeys.forEach(empKey=>{
-    const e=EMPS[empKey];
-    const entries=state.entries[empKey].filter(en=>{
-      if(chF&&en.chantier!==chF)return false;
-      if(d1&&new Date(en.date+'T12:00:00')<d1)return false;
-      if(d2&&new Date(en.date+'T12:00:00')>d2)return false;
-      return en.heures>0;
-    });
-    if(!entries.length)return;
-    const total=entries.reduce((s,en)=>s+en.heures,0);
-    const fact=entries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
-    grandTotal+=total;grandFact+=fact;
-    const byCh={};
-    entries.forEach(en=>{if(!byCh[en.chantier||'—'])byCh[en.chantier||'—']=0;byCh[en.chantier||'—']+=en.heures;});
-    const byType={};
-    entries.forEach(en=>{if(!byType[en.type||'—'])byType[en.type||'—']=0;byType[en.type||'—']+=en.heures;});
-    html+=`<div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:36px;height:36px;border-radius:50%;background:${e.bg};color:${e.col};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;">${e.label.slice(0,2).toUpperCase()}</div>
-          <div><div style="font-size:15px;font-weight:700;color:${e.col};">${e.label}</div><div style="font-size:11px;color:var(--secondary);">${entries.length} entrées</div></div>
-        </div>
-        <div style="text-align:right;"><div style="font-size:20px;font-weight:700;">${total.toFixed(1)}h</div><div style="display:flex;gap:4px;"><span class="fbadge fb-y">${fact.toFixed(1)}h</span><span class="fbadge fb-n">${(total-fact).toFixed(1)}h</span></div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div><div class="section-label">PAR CHANTIER</div>${Object.entries(byCh).sort((a,b)=>b[1]-a[1]).map(([ch,h])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);"><span>${ch}</span><span>${h.toFixed(1)}h</span></div>`).join('')}</div>
-        <div><div class="section-label">PAR TYPE</div>${Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,h])=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border);"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100px;">${t}</span><span>${h.toFixed(1)}h</span></div>`).join('')}</div>
-      </div>
-    </div>`;
+function genFicheEmploye(empKey,e){
+  const info=state.empInfos&&state.empInfos[empKey]?state.empInfos[empKey]:{};
+  const taux=parseFloat(info.taux)||0;
+  const entries=state.entries[empKey].filter(en=>en.heures>0&&!en.absence);
+  const absences=state.entries[empKey].filter(en=>en.absence);
+
+  // ── Heures ──
+  const totalH=entries.reduce((s,en)=>s+en.heures,0);
+  const factH=entries.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
+  const nonFactH=totalH-factH;
+  const montantTotal=taux>0?totalH*taux:0;
+  const montantFact=taux>0?factH*taux:0;
+
+  // ── Par chantier ──
+  const byCh={};
+  entries.forEach(en=>{
+    if(!byCh[en.chantier||'—'])byCh[en.chantier||'—']={h:0,hf:0};
+    byCh[en.chantier||'—'].h+=en.heures;
+    if(en.facturable)byCh[en.chantier||'—'].hf+=en.heures;
   });
-  const el=document.getElementById('re-result');
-  if(el){
-    const summary=grandTotal>0?`<div class="stats-row"><div class="stat-box"><div class="label">Total heures</div><div class="value">${grandTotal.toFixed(1)}h</div></div><div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${grandFact.toFixed(1)}h</div></div><div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(grandTotal-grandFact).toFixed(1)}h</div></div></div>`:'';
-    el.innerHTML=summary+(html||'<div class="empty">Aucune donnée trouvée.</div>');
+
+  // ── Par type ──
+  const byType={};
+  entries.forEach(en=>{
+    if(!byType[en.type||'—'])byType[en.type||'—']=0;
+    byType[en.type||'—']+=en.heures;
+  });
+
+  // ── Absences ──
+  const nbConge=absences.filter(a=>a.absence==='conge').length;
+  const nbMaladie=absences.filter(a=>a.absence==='maladie').length;
+  const nbFerie=absences.filter(a=>a.absence==='ferie').length;
+
+  // ── Dépenses perso (carte de cet employé, type "Perso NomEmp") ──
+  const nomEmp=e.label;
+  const depPerso=state.achats.filter(a=>a.typeDepense==='Perso '+nomEmp);
+  const totalDepPerso=depPerso.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+
+  // ── Dépenses par carte ──
+  const depCarte=state.achats.filter(a=>a.carte===nomEmp);
+  const totalDepCarte=depCarte.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+  const depCarteParType={};
+  depCarte.forEach(a=>{
+    const t=a.typeDepense||'—';
+    if(!depCarteParType[t])depCarteParType[t]=0;
+    depCarteParType[t]+=(parseFloat(a.montantAvantTax)||0);
+  });
+
+  // ── Mois en cours ──
+  const today=new Date();
+  const moisDebut=new Date(today.getFullYear(),today.getMonth(),1);
+  const moisFin=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59);
+  const hMois=entries.filter(en=>{const d=new Date(en.date+'T12:00:00');return d>=moisDebut&&d<=moisFin;}).reduce((s,en)=>s+en.heures,0);
+
+  // ── Semaine en cours ──
+  const semDebut=new Date(today);semDebut.setDate(today.getDate()-(today.getDay()||7)+1);semDebut.setHours(0,0,0,0);
+  const hSemaine=entries.filter(en=>{const d=new Date(en.date+'T12:00:00');return d>=semDebut&&d<=today;}).reduce((s,en)=>s+en.heures,0);
+
+  // ── Date de fête ──
+  let feteHtml='';
+  if(info.fete){
+    const fete=new Date(info.fete);
+    const thisYear=new Date(today.getFullYear(),fete.getMonth(),fete.getDate());
+    const diff=Math.ceil((thisYear-today)/(1000*60*60*24));
+    if(diff>=0&&diff<=30)feteHtml=`<div style="background:#FEF3C7;border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;color:#92400E;margin-bottom:8px;">🎂 Anniversaire ${diff===0?'aujourd&#39;hui!':diff===1?'demain!':'dans '+diff+' jours!'}</div>`;
   }
+
+  const chRows=Object.entries(byCh).sort((a,b)=>b[1].h-a[1].h).map(([ch,v])=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--secondary);flex:1;">${ch}</span>
+      <span class="fbadge fb-y" style="font-size:9px;margin-right:4px;">${v.hf.toFixed(1)}h F</span>
+      <span style="font-weight:500;">${v.h.toFixed(1)}h</span>
+    </div>`).join('');
+
+  const typeRows=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([t,h])=>`
+    <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--secondary);">${t}</span><span style="font-weight:500;">${h.toFixed(1)}h</span>
+    </div>`).join('');
+
+  const depCarteRows=Object.entries(depCarteParType).sort((a,b)=>b[1]-a[1]).map(([t,m])=>`
+    <div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:0.5px solid var(--border);">
+      <span style="color:var(--secondary);">${t}</span><span style="font-weight:500;">${m.toFixed(2)} $</span>
+    </div>`).join('');
+
+  return`<div class="card" style="margin-bottom:12px;">
+    ${feteHtml}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:${e.bg};color:${e.col};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;">${e.label.slice(0,2).toUpperCase()}</div>
+        <div>
+          <div style="font-size:16px;font-weight:700;color:${e.col};">${info.prenom||e.label} ${info.nom||''}</div>
+          <div style="font-size:12px;color:var(--secondary);">${info.titre||'Employé'}${taux>0?' · '+taux+' $/h':''}</div>
+          ${info.tel?`<div style="font-size:11px;color:var(--secondary);">📱 ${info.tel}</div>`:''}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:var(--secondary);">Total heures</div>
+        <div style="font-size:22px;font-weight:700;">${totalH.toFixed(1)}h</div>
+        ${montantTotal>0?`<div style="font-size:13px;font-weight:600;color:#0C447C;">${montantTotal.toFixed(2)} $</div>`:''}
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px;">
+      <div class="stat-box"><div class="label">Cette semaine</div><div class="value">${hSemaine.toFixed(1)}h</div></div>
+      <div class="stat-box stat-fact"><div class="label">Ce mois</div><div class="value">${hMois.toFixed(1)}h</div></div>
+      <div class="stat-box stat-money"><div class="label">Facturable</div><div class="value">${factH.toFixed(1)}h</div></div>
+      <div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${nonFactH.toFixed(1)}h</div></div>
+    </div>
+
+    ${absences.length?`<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      ${nbConge?`<span style="background:#E6F1FB;color:#0C447C;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;">🏖 ${nbConge} congé${nbConge>1?'s':''}</span>`:''}
+      ${nbMaladie?`<span style="background:#FCEBEB;color:#791F1F;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;">🤒 ${nbMaladie} maladie${nbMaladie>1?'s':''}</span>`:''}
+      ${nbFerie?`<span style="background:#FAEEDA;color:#633806;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;">⭐ ${nbFerie} férié${nbFerie>1?'s':''}</span>`:''}
+    </div>`:''}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:${depCarte.length?'12px':'0'};">
+      ${Object.keys(byCh).length?`<div>
+        <div class="section-label">🏗 PAR CHANTIER</div>${chRows}
+      </div>`:''}
+      ${Object.keys(byType).length?`<div>
+        <div class="section-label">🏷 PAR TYPE DE TRAVAUX</div>${typeRows}
+      </div>`:''}
+    </div>
+
+    ${depCarte.length?`<div style="border-top:1px solid var(--border);padding-top:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div class="section-label" style="margin:0;">💳 DÉPENSES CARTE ${nomEmp.toUpperCase()}</div>
+        <span style="font-size:13px;font-weight:700;color:#0C447C;">${totalDepCarte.toFixed(2)} $</span>
+      </div>
+      ${depCarteRows}
+      ${totalDepPerso>0?`<div style="display:flex;justify-content:space-between;font-size:11px;margin-top:6px;padding:4px 6px;background:#FCEBEB;border-radius:4px;">
+        <span style="color:#791F1F;font-weight:500;">Dont dépenses perso</span>
+        <span style="color:#791F1F;font-weight:600;">${totalDepPerso.toFixed(2)} $</span>
+      </div>`:''}
+    </div>`:''}
+
+  </div>`;
 }
 
 // ─── RAPPORT DE PAIE ──────────────────────────────────────
@@ -4399,6 +4543,36 @@ function supprimerFacCourante(id){
   saveToCloud();
   const c=document.getElementById('content-facturation');
   if(c)c.innerHTML=buildFacturesCourantes();
+}
+
+
+function ajouterNote(id,type){
+  const inputId='note-'+type+'-'+id;
+  const input=document.getElementById(inputId);
+  if(!input||!input.value.trim())return;
+  const list=type==='ticket'?state.tickets:state.suggestions;
+  const item=list.find(t=>t.id===id);
+  if(!item)return;
+  if(!item.notes)item.notes=[];
+  const auteur=state.currentUser?state.currentUser.nom:'Anonyme';
+  item.notes.push({
+    texte:input.value.trim(),
+    auteur,
+    date:new Date().toLocaleDateString('fr-CA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+  });
+  input.value='';
+  saveToCloud();
+  renderReglages();
+}
+
+function supprimerNote(id,type,noteIdx){
+  if(!confirm("Supprimer cette note?"))return;
+  const list=type==='ticket'?state.tickets:state.suggestions;
+  const item=list.find(t=>t.id===id);
+  if(!item||!item.notes)return;
+  item.notes.splice(noteIdx,1);
+  saveToCloud();
+  renderReglages();
 }
 
 // ─── INIT ─────────────────────────────────────────────────
