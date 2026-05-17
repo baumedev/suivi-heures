@@ -3846,77 +3846,100 @@ function buildDepenses(){
   const totalMat=state.achats.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
   const totalSST=state.sstFactures.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
 
-  const filtreType=window._filtreDepType||'';
-  const filtreChVal=window._filtreDepCh||'';
-  const filtreMois=window._filtreDepMois||'';
-
-  const filtered=all.filter(a=>{
-    if(filtreType&&a._type!==filtreType)return false;
-    if(filtreChVal&&a.chantier!==filtreChVal)return false;
-    if(filtreMois&&!a.date.startsWith(filtreMois))return false;
-    return true;
-  });
-
-  const chOpts='<option value="">-- Tous les chantiers --</option>'+state.chantiers.map(c=>`<option value="${esc(c)}">${c}</option>`).join('');
-
-  // Grouper par chantier
+  // Grouper par chantier, puis par cycle de facturation
+  // Un cycle = période d'une facture existante, ou "Non facturé" si pas de facture
   const parChantier={};
-  filtered.forEach(a=>{
+  all.forEach(a=>{
     const ch=a.chantier||'— Sans chantier —';
-    if(!parChantier[ch])parChantier[ch]=[];
-    parChantier[ch].push(a);
+    if(!parChantier[ch])parChantier[ch]={total:0,parCycle:{}};
+    parChantier[ch].total+=(parseFloat(a.montantAvantTax||a.montant||0));
+    // Trouver la facture correspondante pour ce chantier
+    const facturesChantier=state.factures.filter(f=>f.chantier===a.chantier);
+    let cycleKey='Non facturé';
+    let cycleLabel='📋 Non facturé';
+    for(const f of facturesChantier){
+      if(f.dateDebut&&f.dateFin&&a.date>=f.dateDebut&&a.date<=f.dateFin){
+        cycleKey=f.dateDebut+'_'+f.dateFin;
+        cycleLabel=`🧾 #${f.numero} · ${f.dateDebut} → ${f.dateFin}`;
+        break;
+      }
+    }
+    if(!parChantier[ch].parCycle[cycleKey])parChantier[ch].parCycle[cycleKey]={items:[],total:0,label:cycleLabel};
+    parChantier[ch].parCycle[cycleKey].items.push(a);
+    parChantier[ch].parCycle[cycleKey].total+=(parseFloat(a.montantAvantTax||a.montant||0));
   });
 
-  const sections=Object.entries(parChantier).sort((a,b)=>a[0].localeCompare(b[0])).map(([ch,items])=>{
-    const totalCh=items.reduce((s,a)=>s+(parseFloat(a.montantAvantTax||a.montant||0)),0);
-    const rows=items.map(a=>{
-      const isMat=a._type==='materiel';
-      return`<tr style="border-bottom:0.5px solid var(--border);">
-        <td style="padding:7px 6px;">
-          <div style="display:flex;align-items:center;gap:5px;">
-            <span style="font-size:10px;font-weight:600;padding:1px 5px;border-radius:10px;background:${isMat?'#E6F1FB':'#EAF3DE'};color:${isMat?'#0C447C':'#27500A'};flex-shrink:0;">${isMat?'MAT':'SST'}</span>
-            <span style="font-size:12px;font-weight:500;">${isMat?(a.magasin||'—'):(a.sst||'—')}</span>
+  const sections=Object.entries(parChantier).sort((a,b)=>a[0].localeCompare(b[0])).map(([ch,chData])=>{
+    const moisSections=Object.entries(chData.parCycle).sort((a,b)=>{
+      if(a[0]==='Non facturé')return-1;if(b[0]==='Non facturé')return 1;
+      return b[0].localeCompare(a[0]);
+    }).map(([cycleKey,mData])=>{
+      const moisLabel=mData.label;
+      const moisId='dep-mois-'+cycleKey;
+      const isOpen=window._depMoisOpen&&window._depMoisOpen[moisId];
+
+      const rows=mData.items.map(a=>{
+        const isMat=a._type==='materiel';
+        return`<tr style="border-bottom:0.5px solid var(--border);">
+          <td style="padding:7px 8px;">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:${isMat?'#E6F1FB':'#EAF3DE'};color:${isMat?'#0C447C':'#27500A'};flex-shrink:0;">${isMat?'MAT':'SST'}</span>
+              <span style="font-size:12px;font-weight:500;">${isMat?(a.magasin||'—'):(a.sst||'—')}</span>
+              ${a.photo?`<span onclick="voirPhoto('${a._type}',${a.id})" style="cursor:pointer;font-size:14px;" title="Voir la photo">📷</span>`:''}
+            </div>
+            ${a.description?`<div style="font-size:10px;color:var(--secondary);margin-top:1px;">${a.description}</div>`:''}
+          </td>
+          <td style="padding:7px 6px;font-size:11px;color:var(--secondary);white-space:nowrap;">${a.date}</td>
+          <td style="padding:7px 6px;">
+            ${isMat?`<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:1px 5px;border-radius:10px;">💳 ${a.carte}</span>`:''}
+            <span class="fbadge ${a.facturable?'fb-y':'fb-n'}" style="font-size:9px;">${a.facturable?'F':'NF'}</span>
+            ${!isMat&&a.depot?'<span style="font-size:9px;background:#FEF3C7;color:#92400E;padding:1px 5px;border-radius:10px;">D</span>':''}
+          </td>
+          <td style="padding:7px 8px;text-align:right;white-space:nowrap;">
+            <span style="font-size:12px;font-weight:600;">${parseFloat(a.montantAvantTax||a.montant||0).toFixed(2)} $</span>
+            <div style="display:flex;gap:2px;justify-content:flex-end;margin-top:2px;">
+              <button class="btn-edit" onclick="${isMat?'editAchat':'editSstFacture'}(${a.id})" style="font-size:11px;padding:2px;">✏️</button>
+              <button class="btn-del" onclick="${isMat?'deleteAchat':'deleteSstFacture'}(${a.id})" style="font-size:11px;padding:2px;">✕</button>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+
+      return`
+        <div style="border-bottom:1px solid var(--border);">
+          <div onclick="toggleDepMois('${moisId}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:pointer;background:${isOpen?'#f0f4ff':'#fff'};transition:background 0.2s;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:16px;color:var(--secondary);transition:transform 0.2s;display:inline-block;transform:${isOpen?'rotate(90deg)':'rotate(0deg)'};">›</span>
+              <span style="font-size:12px;font-weight:600;">${moisLabel.charAt(0).toUpperCase()+moisLabel.slice(1)}</span>
+              <span style="font-size:11px;color:var(--secondary);">${mData.items.length} item${mData.items.length>1?'s':''}</span>
+            </div>
+            <span style="font-size:13px;font-weight:700;color:#0C447C;">${mData.total.toFixed(2)} $</span>
           </div>
-          ${a.description?`<div style="font-size:10px;color:var(--secondary);padding-left:2px;">${a.description}</div>`:''}
-        </td>
-        <td style="padding:7px 6px;font-size:11px;color:var(--secondary);white-space:nowrap;">${a.date}</td>
-        <td style="padding:7px 6px;">
-          ${isMat?`<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:1px 5px;border-radius:10px;">💳 ${a.carte}</span>`:''}
-          <span class="fbadge ${a.facturable?'fb-y':'fb-n'}" style="font-size:9px;">${a.facturable?'F':'NF'}</span>
-          ${!isMat&&a.depot?'<span style="font-size:9px;background:#FEF3C7;color:#92400E;padding:1px 5px;border-radius:10px;">D</span>':''}
-        </td>
-        <td style="padding:7px 6px;text-align:right;white-space:nowrap;">
-          <span style="font-size:12px;font-weight:600;">${parseFloat(a.montantAvantTax||a.montant||0).toFixed(2)} $</span>
-          <div style="display:flex;gap:2px;justify-content:flex-end;margin-top:2px;">
-            <button class="btn-edit" onclick="${isMat?'editAchat':'editSstFacture'}(${a.id})" style="font-size:11px;padding:2px;">✏️</button>
-            <button class="btn-del" onclick="${isMat?'deleteAchat':'deleteSstFacture'}(${a.id})" style="font-size:11px;padding:2px;">✕</button>
-          </div>
-        </td>
-      </tr>`;
+          ${isOpen?`<table style="width:100%;border-collapse:collapse;background:#fafffe;">
+            <thead><tr style="background:#f0f4ff;">
+              <th style="padding:5px 8px;text-align:left;font-size:10px;font-weight:600;color:var(--secondary);">DESCRIPTION</th>
+              <th style="padding:5px 6px;text-align:left;font-size:10px;font-weight:600;color:var(--secondary);">DATE</th>
+              <th style="padding:5px 6px;text-align:left;font-size:10px;font-weight:600;color:var(--secondary);">INFO</th>
+              <th style="padding:5px 8px;text-align:right;font-size:10px;font-weight:600;color:var(--secondary);">MONTANT</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr style="background:#f0f4ff;">
+              <td colspan="3" style="padding:6px 8px;font-size:11px;font-weight:600;">Total</td>
+              <td style="padding:6px 8px;text-align:right;font-size:12px;font-weight:700;color:#0C447C;">${mData.total.toFixed(2)} $</td>
+            </tr></tfoot>
+          </table>`:''}
+        </div>`;
     }).join('');
 
     return`<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f9f9f9;border-bottom:1px solid var(--border);">
-        <span style="font-size:12px;font-weight:600;">🏗 ${ch}</span>
-        <span style="font-size:13px;font-weight:700;color:#0C447C;">${totalCh.toFixed(2)} $</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f9f9;border-bottom:1px solid var(--border);">
+        <div>
+          <span style="font-size:13px;font-weight:700;">🏗 ${ch}</span>
+          <span style="font-size:11px;color:var(--secondary);margin-left:6px;">${Object.keys(chData.parCycle).length} cycle${Object.keys(chData.parCycle).length>1?'s':''}</span>
+        </div>
+        <span style="font-size:14px;font-weight:700;color:#0C447C;">${chData.total.toFixed(2)} $</span>
       </div>
-      <table style="width:100%;border-collapse:collapse;">
-        <thead>
-          <tr style="border-bottom:0.5px solid var(--border);background:#fafafa;">
-            <th style="padding:5px 6px;text-align:left;font-size:10px;font-weight:600;color:var(--secondary);">DESCRIPTION</th>
-            <th style="padding:5px 6px;text-align:left;font-size:10px;font-weight:600;color:var(--secondary);">DATE</th>
-            <th style="padding:5px 6px;text-align:left;font-size:10px;font-weight:600;color:var(--secondary);">INFO</th>
-            <th style="padding:5px 6px;text-align:right;font-size:10px;font-weight:600;color:var(--secondary);">MONTANT</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-        <tfoot>
-          <tr style="border-top:1px solid var(--border);background:#f9f9f9;">
-            <td colspan="3" style="padding:6px 12px;font-size:11px;font-weight:600;">Sous-total ${ch}</td>
-            <td style="padding:6px 12px;text-align:right;font-size:12px;font-weight:700;color:#0C447C;">${totalCh.toFixed(2)} $</td>
-          </tr>
-        </tfoot>
-      </table>
+      ${moisSections}
     </div>`;
   }).join('');
 
@@ -3928,19 +3951,15 @@ function buildDepenses(){
         <div class="stat-box stat-fact"><div class="label">👷 SST</div><div class="value">${totalSST.toFixed(2)} $</div></div>
         <div class="stat-box"><div class="label">Total</div><div class="value">${(totalMat+totalSST).toFixed(2)} $</div></div>
       </div>
-      <button class="btn btn-primary" style="margin-bottom:12px;" onclick="openModalDepense()">+ Ajouter une dépense</button>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <select style="flex:1;font-size:12px;" onchange="window._filtreDepType=this.value;refreshDepenses()">
-          <option value="">Tous les types</option>
-          <option value="materiel" ${filtreType==='materiel'?'selected':''}>🛒 Matériel</option>
-          <option value="sst" ${filtreType==='sst'?'selected':''}>👷 Sous-traitant</option>
-        </select>
-        <select style="flex:1;font-size:12px;" onchange="window._filtreDepCh=this.value;refreshDepenses()">${chOpts.replace('value="'+esc(filtreChVal)+'"','value="'+esc(filtreChVal)+'" selected')}</select>
-        <input type="month" value="${filtreMois}" onchange="window._filtreDepMois=this.value;refreshDepenses()" style="flex:1;font-size:12px;color:var(--primary);"/>
-        <button class="btn btn-sm" onclick="window._filtreDepType='';window._filtreDepCh='';window._filtreDepMois='';refreshDepenses()">↺</button>
-      </div>
+      <button class="btn btn-primary" style="margin-bottom:8px;" onclick="openModalDepense()">+ Ajouter une dépense</button>
     </div>
-    ${filtered.length?sections:'<div class="empty">Aucune dépense trouvée.</div>'}`;
+    ${all.length?sections:'<div class="empty">Aucune dépense.</div>'}`;
+}
+
+function toggleDepMois(id){
+  if(!window._depMoisOpen)window._depMoisOpen={};
+  window._depMoisOpen[id]=!window._depMoisOpen[id];
+  refreshDepenses();
 }
 
 function refreshDepenses(){
@@ -4068,17 +4087,62 @@ function openModalDepense(editId,editType){
     <div class="field"><label>Description</label>
       <input type="text" id="dep-desc" value="${a.description||''}" placeholder="Description optionnelle..."/>
     </div>
+    <div class="field">
+      <label>📷 Photo de la facture</label>
+      ${a.photo?`<div style="margin-bottom:8px;position:relative;display:inline-block;">
+        <img src="${a.photo}" style="max-width:100%;max-height:200px;border-radius:var(--radius-sm);border:1px solid var(--border);display:block;"/>
+        <button type="button" onclick="document.getElementById('dep-photo-preview').style.display='none';window._depPhoto=null;" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>`:''}
+      <div id="dep-photo-preview" style="${a.photo?'display:none;':''}">
+        <label style="display:flex;align-items:center;gap:8px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;font-size:13px;color:var(--secondary);">
+          📷 Prendre une photo ou choisir un fichier
+          <input type="file" accept="image/*" capture="environment" onchange="handleDepPhoto(this)" style="display:none;"/>
+        </label>
+      </div>
+    </div>
     <button class="btn btn-primary" onclick="saveDepense('${editId||0}','${editType||''}')">✓ Enregistrer</button>`;
 
   window._achatCarte=existing&&existing.carte||'Victor';
   window._achatFacturable=a.facturable!==false;
   window._depType=defaultType;
+  window._depPhoto=existing&&existing.photo||null;
   document.getElementById('modalOverlay').classList.add('open');
   // Init taxes display if editing existing
   setTimeout(()=>{
     const m=document.getElementById('dep-mont');
     if(m&&m.value)calcTaxesDepense(m.value);
   },50);
+}
+
+function handleDepPhoto(input){
+  const file=input.files[0];
+  if(!file)return;
+  // Resize image before storing to keep size reasonable
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const img=new Image();
+    img.onload=function(){
+      const canvas=document.createElement('canvas');
+      const maxW=800,maxH=1000;
+      let w=img.width,h=img.height;
+      if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+      if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const compressed=canvas.toDataURL('image/jpeg',0.7);
+      window._depPhoto=compressed;
+      // Show preview
+      const preview=document.getElementById('dep-photo-preview');
+      if(preview){
+        preview.innerHTML=`<div style="position:relative;display:inline-block;">
+          <img src="${compressed}" style="max-width:100%;max-height:200px;border-radius:var(--radius-sm);border:1px solid var(--border);display:block;"/>
+          <button type="button" onclick="window._depPhoto=null;document.getElementById('dep-photo-preview').innerHTML='<label style=\'display:flex;align-items:center;gap:8px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;font-size:13px;color:var(--secondary);\'>📷 Prendre une photo ou choisir un fichier<input type=\'file\' accept=\'image/*\' capture=\'environment\' onchange=\'handleDepPhoto(this)\' style=\'display:none;\'/></label>'" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;">✕</button>
+        </div>`;
+      }
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 function setDepType(type){
@@ -4152,7 +4216,8 @@ function saveDepense(editId,editType){
       typeDepense:typeDepense||(chantier?'Chantier: '+chantier:''),
       chantier:estChantier?typeDepense.replace('Chantier: ',''):chantier,
       facturable:chantier?window._achatFacturable:null,
-      description:desc
+      description:desc,
+      photo:window._depPhoto||null
     };
     if(editId&&editType==='materiel'){const idx=state.achats.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.achats[idx]=achat;}
     else state.achats.push(achat);
@@ -4169,7 +4234,8 @@ function saveDepense(editId,editType){
       noFacture:document.getElementById('dep-sst-no').value.trim(),
       typeTravaux:depSstTypeEl?depSstTypeEl.value:'',
       facturable:chantier?window._achatFacturable:false,
-      depot:depotEl?depotEl.checked:false
+      depot:depotEl?depotEl.checked:false,
+      photo:window._depPhoto||null
     };
     if(editId&&editType==='sst'){const idx=state.sstFactures.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.sstFactures[idx]=facture;}
     else state.sstFactures.push(facture);
@@ -4584,6 +4650,24 @@ function supprimerNote(id,type,noteIdx){
   item.notes.splice(noteIdx,1);
   saveToCloud();
   renderReglages();
+}
+
+
+function voirPhoto(type,id){
+  const item=type==='materiel'?state.achats.find(a=>a.id===id):state.sstFactures.find(a=>a.id===id);
+  if(!item||!item.photo)return;
+  const label=type==='materiel'?(item.magasin||'Facture'):(item.sst||'Facture SST');
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>📷 ${label} — ${item.date}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <img src="${item.photo}" style="width:100%;border-radius:var(--radius-sm);"/>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn btn-sm" style="flex:1;" onclick="${type==='materiel'?'editAchat':'editSstFacture'}(${id});closeModal()">✏️ Modifier</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="closeModal()">Fermer</button>
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
 }
 
 // ─── INIT ─────────────────────────────────────────────────
