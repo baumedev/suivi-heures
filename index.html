@@ -2588,7 +2588,7 @@ function refreshSstFactures(){
 }
 
 function openSstFactureModal(editId){
-  const existing=editId?state.sstFactures.find(a=>a.id===editId):null;
+  const existing=(editId!==null&&editId!==undefined&&editId!==0&&editId!=='0')?state.sstFactures.find(a=>a.id===parseInt(editId)):null;
   const a=existing||{date:'',sst:'',chantier:'',montant:'',description:'',facturable:true,noFacture:''};
   const sstOpts=state.sstraitants.map(s=>`<option value="${esc(s.nom)}"${s.nom===a.sst?' selected':''}>${s.nom}</option>`).join('');
   const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}"${ch===a.chantier?' selected':''}>${ch}</option>`).join('');
@@ -2667,7 +2667,7 @@ function saveSstFacture(editId){
   if(!montant){alert("Veuillez entrer un montant.");return;}
   const depotEl=document.getElementById('sf-depot');
   const facture={
-    id:editId?editId:++state.sstFactureId,
+    id:(editId&&editId!=='0')?parseInt(editId):++state.sstFactureId,
     date,sst,chantier,
     montant:montant.toFixed(2),
     description:document.getElementById('sf-desc').value.trim(),
@@ -2680,7 +2680,7 @@ function saveSstFacture(editId){
   closeModal();saveToCloud();refreshSstFactures();
 }
 
-function editSstFacture(id){openSstFactureModal(id);}
+function editSstFacture(id){openSstFactureModal(parseInt(id));}
 function deleteSstFacture(id){
   if(!confirm("Supprimer cette facture?"))return;
   state.sstFactures=state.sstFactures.filter(a=>a.id!==id);
@@ -3971,7 +3971,7 @@ function refreshDepenses(){
 function openModalDepense(editId,editType){
   const isSstEdit=editType==='sst';
   const isMatEdit=editType==='materiel';
-  const existing=editId?(isSstEdit?state.sstFactures.find(a=>a.id===editId):state.achats.find(a=>a.id===editId)):null;
+  const existing=(editId&&editId!=='0'&&editId!==0)?(isSstEdit?state.sstFactures.find(a=>a.id===parseInt(editId)):state.achats.find(a=>a.id===parseInt(editId))):null;
 
   // Default type selection
   const defaultType=isSstEdit?'sst':isMatEdit?'materiel':'materiel';
@@ -4219,7 +4219,7 @@ function saveDepense(editId,editType){
       description:desc,
       photo:window._depPhoto||null
     };
-    if(editId&&editType==='materiel'){const idx=state.achats.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.achats[idx]=achat;}
+    if(editId&&editId!=='0'&&editType==='materiel'){const idx=state.achats.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.achats[idx]=achat;}
     else state.achats.push(achat);
   } else {
     const sst=document.getElementById('dep-sst').value;
@@ -4237,7 +4237,7 @@ function saveDepense(editId,editType){
       depot:depotEl?depotEl.checked:false,
       photo:window._depPhoto||null
     };
-    if(editId&&editType==='sst'){const idx=state.sstFactures.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.sstFactures[idx]=facture;}
+    if(editId&&editId!=='0'&&editType==='sst'){const idx=state.sstFactures.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.sstFactures[idx]=facture;}
     else state.sstFactures.push(facture);
   }
   closeModal();saveToCloud();refreshDepenses();
