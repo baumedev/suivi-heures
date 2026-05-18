@@ -5203,35 +5203,20 @@ function imprimerApercuFacture(){
 }
 
 function envoyerFactureCourriel(){
-  const html=window._apercuHTML||'';
   const courriel=document.getElementById('apercu-courriel').value.trim();
   const message=document.getElementById('apercu-message').value.trim();
   if(!courriel){alert("Veuillez entrer un courriel.");return;}
-
-  // Collecter les pièces jointes sélectionnées
   const pjSelectionnees=(window._apercuPJ||[]).filter(pj=>{
     const cb=document.getElementById('pj-'+pj.id);
     return cb&&cb.checked;
   });
-
-  // Créer un lien mailto avec le message
   const num=factCourante.numeroFacture?'#'+factCourante.numeroFacture:'';
   const sujet='Facture '+num+' - '+(factCourante.chantier||'');
-  const corps=message+'\n\n---\n'+(pjSelectionnees.length?'\nPieces jointes: '+pjSelectionnees.map(pj=>pj.nom).join(', '):'');
-
-  // Ouvrir client mail avec mailto
-  const mailtoLink=`mailto:${courriel}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
-  window.open(mailtoLink);
-
-  // Info sur les pièces jointes
-  if(pjSelectionnees.length){
-    setTimeout(()=>{
-      alert('ℹ️ Note: '+pjSelectionnees.length+' piece(s) jointe(s).\n\nLes pieces jointes doivent etre attachees manuellement.\n\n'+pjSelectionnees.map(pj=>pj.nom).join('\n'));
-    },500);
-  }
-
-  // Proposer aussi d'imprimer
-  if(confirm("Voulez-vous aussi imprimer/sauvegarder la facture en PDF pour la joindre?")){
+  const pjNoms=pjSelectionnees.length?'Pieces jointes: '+pjSelectionnees.map(pj=>pj.nom).join(', '):'';
+  const corps=message+(pjNoms?'\n\n'+pjNoms:'');
+  const lien='mailto:'+courriel+'?subject='+encodeURIComponent(sujet)+'&body='+encodeURIComponent(corps);
+  window.open(lien);
+  if(confirm("Voulez-vous imprimer ou sauvegarder en PDF pour joindre la facture?")){
     imprimerApercuFacture();
   }
 }
