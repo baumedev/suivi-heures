@@ -1758,8 +1758,8 @@ function buildNouvelleFacture(){
         <textarea id="fac-notes" oninput="factCourante.notes=this.value" placeholder="Ex: Paiement dû dans 30 jours..." style="width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;min-height:80px;">${factCourante.notes||''}</textarea>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;" class="no-print">
-        <button class="btn-pdf" onclick="previewFacture()">👁 Aperçu PDF</button>
-        <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderFacCourante()">💾 Sauvegarder brouillon</button>
+        <button class="btn-pdf" onclick="apercuFactureCourante()">👁 Aperçu & Envoyer</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderFacCourante()">💾 Brouillon</button>
         <button class="btn btn-primary" style="flex:1;background:#27500A;" onclick="sauvegarderFacture()">✅ Finaliser</button>
         <button class="btn btn-sm" onclick="resetFacture()">↺</button>
       </div>
@@ -5022,6 +5022,227 @@ function notifierAutoLink(chantier, date, typeDepense, montant){
   notif.innerHTML='✅ Ajouté à la '+label+' ('+chantier+')';
   document.body.appendChild(notif);
   setTimeout(()=>notif.remove(),3500);
+}
+
+
+// ─── APERÇU FACTURE COURANTE ──────────────────────────────
+function apercuFactureCourante(){
+  // Calculer les totaux comme dans voirFacture
+  const fiche=factCourante.chantier?state.fiches[factCourante.chantier]||{}:{};
+  const e=state.entreprise;
+  const fg=parseFloat(fiche.fraisGestion)||0;
+  const taux=parseFloat(fiche.taux)||0;
+  const d1=factCourante.dateDebut?new Date(factCourante.dateDebut+'T00:00:00'):null;
+  const d2=factCourante.dateFin?new Date(factCourante.dateFin+'T23:59:59'):null;
+
+  // Main d'oeuvre
+  let mdoHtml='',mdoTotal=0;
+  Object.entries(EMPS).forEach(([empKey,emp])=>{
+    if(!d1||!d2)return;
+    const filtered=state.entries[empKey].filter(en=>{const d=new Date(en.date+'T12:00:00');return en.chantier===factCourante.chantier&&d>=d1&&d<=d2&&en.heures>0&&en.facturable;});
+    if(!filtered.length)return;
+    const total=filtered.reduce((s,en)=>s+en.heures,0);
+    const montant=taux>0?total*taux:0;
+    mdoTotal+=montant;
+    const byType={};
+    filtered.forEach(en=>{if(!byType[en.type||'Général'])byType[en.type||'Général']=0;byType[en.type||'Général']+=en.heures;});
+    const typeRows=Object.entries(byType).map(([t,h])=>`<tr><td style="padding:2px 0 2px 16px;font-size:11px;color:#666;">${t}</td><td style="text-align:right;font-size:11px;">${h.toFixed(2)}h</td><td></td></tr>`).join('');
+    mdoHtml+=`<tr><td style="padding:5px 0;">${emp.label}</td><td style="text-align:right;">${total.toFixed(2)}h${taux>0?' × '+taux+' $':''}</td><td style="text-align:right;font-weight:600;">${taux>0?montant.toFixed(2)+' $':'—'}</td></tr>${typeRows}`;
+  });
+
+  // SST
+  let sstTotal=0,sstHtml='';
+  if(factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin){
+    const ss1=new Date(factCourante.dateDebut+'T00:00:00'),ss2=new Date(factCourante.dateFin+'T23:59:59');
+    const sstFacts=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&a.facturable===true&&d>=ss1&&d<=ss2;});
+    const parSst={};
+    sstFacts.forEach(a=>{if(!parSst[a.sst])parSst[a.sst]={total:0,items:[]};parSst[a.sst].total+=(parseFloat(a.montant)||0);parSst[a.sst].items.push(a);});
+    sstTotal=sstFacts.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    if(sstTotal>0)sstHtml=Object.entries(parSst).map(([sst,d])=>`<tr><td style="padding:5px 0;font-weight:500;">${sst}</td><td style="font-size:12px;color:#666;">${d.items.length} facture${d.items.length>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('');
+  }
+
+  // Matériaux
+  let matTotal=0,matHtml='';
+  const md1f=factCourante.matDateDebut||factCourante.dateDebut;
+  const md2f=factCourante.matDateFin||factCourante.dateFin;
+  if(factCourante.chantier&&md1f&&md2f){
+    const md1=new Date(md1f+'T00:00:00'),md2=new Date(md2f+'T23:59:59');
+    const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&a.facturable===true&&d>=md1&&d<=md2;});
+    matTotal=achF.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    if(matTotal>0)matHtml=achF.map(a=>`<tr><td style="padding:5px 0;font-size:11px;">${a.date}</td><td>${a.magasin}</td><td style="font-size:11px;color:#666;">${a.carte}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('');
+  }
+
+  // Totaux
+  const soustotal=mdoTotal+sstTotal+matTotal;
+  const montantFG=factCourante.appliquerFG&&fg>0?soustotal*(fg/100):0;
+  const avantTaxes=soustotal+montantFG;
+  const tps=factCourante.appliquerTPS?avantTaxes*0.05:0;
+  const tvq=factCourante.appliquerTVQ?avantTaxes*0.09975:0;
+  const grandTotal=avantTaxes+tps+tvq;
+
+  // Client
+  const cidx=fiche.clientIdx!==undefined&&fiche.clientIdx!==''?parseInt(fiche.clientIdx):-1;
+  const client=cidx>=0&&state.clients[cidx]?state.clients[cidx]:null;
+  const clientNom=client?[client.prenom,client.nom].filter(Boolean).join(' '):factCourante.chantier;
+  const clientCourriel=client?client.courriel:'';
+
+  // Pièces jointes disponibles
+  const piecesJointes=[];
+  if(factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin){
+    const psd1=new Date(factCourante.dateDebut+'T00:00:00'),psd2=new Date(factCourante.dateFin+'T23:59:59');
+    state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&d>=psd1&&d<=psd2&&a.photo;}).forEach(a=>piecesJointes.push({id:'sst-'+a.id,nom:a.sst+' · '+a.date+(a.noFacture?' #'+a.noFacture:''),type:a.photoType||'image',photo:a.photo,photoName:a.photoName}));
+    state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&d>=psd1&&d<=psd2&&a.photo;}).forEach(a=>piecesJointes.push({id:'mat-'+a.id,nom:(a.magasin||'Achat')+' · '+a.date,type:a.photoType||'image',photo:a.photo,photoName:a.photoName}));
+  }
+
+  const pjHtml=piecesJointes.length?`
+    <div style="margin-top:16px;border-top:1px solid #e0e0e0;padding-top:12px;">
+      <div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;">📎 PIÈCES JOINTES DISPONIBLES</div>
+      <div style="font-size:12px;color:#666;margin-bottom:8px;">Sélectionne les documents à joindre avec la facture :</div>
+      ${piecesJointes.map(pj=>`
+        <label style="display:flex;align-items:center;gap:10px;padding:8px;background:#f9f9f9;border-radius:6px;margin-bottom:6px;cursor:pointer;border:1px solid #e0e0e0;">
+          <input type="checkbox" id="pj-${pj.id}" style="width:18px;height:18px;cursor:pointer;" checked/>
+          <span style="font-size:18px;">${pj.type==='pdf'?'📄':'📷'}</span>
+          <span style="font-size:12px;flex:1;">${pj.nom}</span>
+          <span style="font-size:10px;color:#888;">${pj.type.toUpperCase()}</span>
+        </label>`).join('')}
+    </div>`:'';
+
+  const factureHTML=`
+    <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          ${e.logo?`<img src="${e.logo}" style="height:50px;object-fit:contain;margin-bottom:6px;display:block;" onerror="this.style.display='none'"/>`:''}
+          <div style="font-size:18px;font-weight:700;">${e.nom||'Mon entreprise'}</div>
+          ${e.adresse?`<div style="font-size:11px;color:#666;">${e.adresse}</div>`:''}
+          ${e.telephone?`<div style="font-size:11px;color:#666;">${e.telephone}</div>`:''}
+          ${e.courriel?`<div style="font-size:11px;color:#666;">${e.courriel}</div>`:''}
+          ${e.noTPS?`<div style="font-size:10px;color:#888;">TPS: ${e.noTPS}</div>`:''}
+          ${e.noTVQ?`<div style="font-size:10px;color:#888;">TVQ: ${e.noTVQ}</div>`:''}
+          ${e.noRBQ?`<div style="font-size:10px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:20px;font-weight:700;color:#0C447C;">FACTURE</div>
+          <div style="font-size:13px;font-weight:600;">${factCourante.numeroFacture?'#'+factCourante.numeroFacture:'(Numéro à confirmer)'}</div>
+          <div style="font-size:11px;color:#666;">Date: ${new Date().toISOString().slice(0,10)}</div>
+          ${factCourante.dateDebut?`<div style="font-size:11px;color:#666;">Période: ${factCourante.dateDebut} → ${factCourante.dateFin}</div>`:''}
+        </div>
+      </div>
+      <div style="background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:16px;">
+        <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:4px;">FACTURER À</div>
+        <div style="font-weight:600;">${clientNom}</div>
+        ${client&&client.adresse?`<div style="font-size:12px;">${client.adresse}</div>`:''}
+        ${client&&client.tel?`<div style="font-size:12px;">${client.tel}</div>`:''}
+        ${clientCourriel?`<div style="font-size:12px;">${clientCourriel}</div>`:''}
+        <div style="font-size:11px;color:#666;margin-top:4px;">Chantier: ${factCourante.chantier}</div>
+      </div>
+      ${mdoHtml?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MAIN D'ŒUVRE</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Employé</td><td style="text-align:right;font-weight:600;">Heures</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${mdoHtml}</tbody>
+        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${mdoTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+      ${sstTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">SOUS-TRAITANTS</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${sstHtml}</tbody>
+        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${sstTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+      ${matTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MATÉRIAUX</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Date</td><td style="font-weight:600;">Fournisseur</td><td style="font-weight:600;">Carte</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${matHtml}</tbody>
+        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="3" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+      <div style="border-top:2px solid #1a1a1a;padding-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
+        ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Frais de gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;font-weight:600;"><span>Avant taxes</span><span>${avantTaxes.toFixed(2)} $</span></div>
+        ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>`:''}
+        ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;background:#0C447C;color:#fff;padding:12px;border-radius:6px;margin-top:8px;font-size:15px;font-weight:700;">
+          <span>TOTAL</span><span>${grandTotal.toFixed(2)} $</span>
+        </div>
+      </div>
+      ${factCourante.notes?`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border-radius:6px;font-size:11px;color:#666;">${factCourante.notes}</div>`:''}
+    </div>`;
+
+  // Ouvrir modal d'aperçu
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>👁 Aperçu de la facture</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div style="max-height:55vh;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:12px;">
+      ${factureHTML}
+    </div>
+    ${pjHtml}
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px;">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;">📤 Envoyer par courriel</div>
+      <div class="field" style="margin-bottom:8px;">
+        <label>Courriel du client</label>
+        <input type="email" id="apercu-courriel" value="${clientCourriel||''}" placeholder="client@exemple.com" inputmode="email" style="width:100%;"/>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label>Message (optionnel)</label>
+        <textarea id="apercu-message" style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;min-height:60px;font-family:inherit;" placeholder="Veuillez trouver ci-joint votre facture...">Bonjour,
+
+Veuillez trouver ci-joint votre facture pour les travaux effectués au chantier ${factCourante.chantier||''}.
+
+N'hésitez pas à nous contacter pour toute question.
+
+Cordialement,
+${e.nom||'Notre équipe'}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" style="flex:1;" onclick="envoyerFactureCourriel(${JSON.stringify(factureHTML).replace(/`/g,'\`')})">📧 Envoyer par courriel</button>
+        <button class="btn-pdf" onclick="imprimerApercuFacture()">🖨️ Imprimer / PDF</button>
+        <button class="btn btn-sm" onclick="closeModal()">Fermer</button>
+      </div>
+    </div>`;
+  window._apercuHTML=factureHTML;
+  window._apercuPJ=piecesJointes;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function imprimerApercuFacture(){
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Facture</title><style>body{margin:0;padding:20px;font-family:-apple-system,sans-serif;}@media print{body{padding:0;}}</style></head><body>${window._apercuHTML||''}</body></html>`);
+  win.document.close();
+  setTimeout(()=>win.print(),500);
+}
+
+function envoyerFactureCourriel(html){
+  const courriel=document.getElementById('apercu-courriel').value.trim();
+  const message=document.getElementById('apercu-message').value.trim();
+  if(!courriel){alert("Veuillez entrer un courriel.");return;}
+
+  // Collecter les pièces jointes sélectionnées
+  const pjSelectionnees=(window._apercuPJ||[]).filter(pj=>{
+    const cb=document.getElementById('pj-'+pj.id);
+    return cb&&cb.checked;
+  });
+
+  // Créer un lien mailto avec le message
+  const sujet=`Facture ${factCourante.numeroFacture?'#'+factCourante.numeroFacture:''} - ${factCourante.chantier||''}`;
+  const corps=message+'
+
+---
+'+
+    (pjSelectionnees.length?'
+Pièces jointes sélectionnées: '+pjSelectionnees.map(pj=>pj.nom).join(', ')+'
+':'');
+
+  // Ouvrir client mail avec mailto
+  const mailtoLink=`mailto:${courriel}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
+  window.open(mailtoLink);
+
+  // Info sur les pièces jointes
+  if(pjSelectionnees.length){
+    setTimeout(()=>{
+      alert(`ℹ️ Note: ${pjSelectionnees.length} pièce(s) jointe(s) sélectionnée(s).
+
+Les pièces jointes ne peuvent pas être automatiquement attachées via mailto. Vous devrez les joindre manuellement depuis les dépenses:
+
+${pjSelectionnees.map(pj=>pj.nom).join('
+')}`);
+    },500);
+  }
+
+  // Proposer aussi d'imprimer
+  if(confirm("Voulez-vous aussi imprimer/sauvegarder la facture en PDF pour la joindre?")){
+    imprimerApercuFacture();
+  }
 }
 
 // ─── INIT ─────────────────────────────────────────────────
