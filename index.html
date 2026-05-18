@@ -2001,9 +2001,9 @@ function voirFacture(id){
           const mv1b=new Date((f.matDateDebut||f.dateDebut)+'T00:00:00'),mv2b=new Date((f.matDateFin||f.dateFin)+'T23:59:59');
           const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=mv1b&&d<=mv2b;});
           return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MATÉRIAUX</div>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Date</td><td style="font-weight:600;">Magasin</td><td style="font-weight:600;">Carte</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
-          <tbody>${achF.map(a=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;font-size:11px;">${a.date}</td><td style="padding:5px 0;">${a.magasin}</td><td style="padding:5px 0;font-size:11px;color:#666;">${a.carte}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('')}</tbody>
-          <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="3" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`;
+          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Date</td><td style="font-weight:600;">Magasin</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
+          <tbody>${achF.map(a=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;font-size:11px;">${a.date}</td><td style="padding:5px 0;">${a.magasin}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('')}</tbody>
+          <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`;
         })():''}
         <div style="border-top:2px solid #1a1a1a;padding-top:12px;">
           <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
@@ -5069,7 +5069,7 @@ function apercuFactureCourante(){
     const md1=new Date(md1f+'T00:00:00'),md2=new Date(md2f+'T23:59:59');
     const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&a.facturable===true&&d>=md1&&d<=md2;});
     matTotal=achF.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
-    if(matTotal>0)matHtml=achF.map(a=>`<tr><td style="padding:5px 0;font-size:11px;">${a.date}</td><td>${a.magasin}</td><td style="font-size:11px;color:#666;">${a.carte}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('');
+    if(matTotal>0)matHtml=achF.map(a=>`<tr><td style="padding:5px 0;font-size:11px;">${a.date}</td><td>${a.magasin}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('');
   }
 
   // Totaux
@@ -5142,8 +5142,8 @@ function apercuFactureCourante(){
         <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${sstHtml}</tbody>
         <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${sstTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
       ${matTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MATÉRIAUX</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Date</td><td style="font-weight:600;">Fournisseur</td><td style="font-weight:600;">Carte</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${matHtml}</tbody>
-        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="3" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Date</td><td style="font-weight:600;">Fournisseur</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${matHtml}</tbody>
+        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
       <div style="border-top:2px solid #1a1a1a;padding-top:10px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
         ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Frais de gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
