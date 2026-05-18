@@ -492,10 +492,15 @@ function loadLocal(andRender){
       if(d.ticketId)state.ticketId=d.ticketId;
       if(d.suggestions)state.suggestions=d.suggestions;
       if(d.suggestionId)state.suggestionId=d.suggestionId;
+      state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
+      state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
     if(d.tickets)state.tickets=d.tickets;
     if(d.ticketId)state.ticketId=d.ticketId;
     if(d.suggestions)state.suggestions=d.suggestions;
     if(d.suggestionId)state.suggestionId=d.suggestionId;
+    // S'assurer que toutes les suggestions et tickets ont un tableau notes
+    state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
+    state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
       if(d.entreprise)state.entreprise=d.entreprise;
       if(d.sstraitants)state.sstraitants=d.sstraitants;
       if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
@@ -4716,6 +4721,8 @@ window.addEventListener('DOMContentLoaded', function(){
         if(d.ticketId)state.ticketId=d.ticketId;
         if(d.suggestions)state.suggestions=d.suggestions;
         if(d.suggestionId)state.suggestionId=d.suggestionId;
+        state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
+        state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
         if(d.facturesCourantes)state.facturesCourantes=d.facturesCourantes;
         if(d.facturesCourantesId)state.facturesCourantesId=d.facturesCourantesId;
         saveLocal();
