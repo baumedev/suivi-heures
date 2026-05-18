@@ -5226,12 +5226,7 @@ function envoyerFactureCourriel(){
   // Info sur les pièces jointes
   if(pjSelectionnees.length){
     setTimeout(()=>{
-      alert(`ℹ️ Note: ${pjSelectionnees.length} pièce(s) jointe(s) sélectionnée(s).
-
-Les pièces jointes ne peuvent pas être automatiquement attachées via mailto. Vous devrez les joindre manuellement depuis les dépenses:
-
-${pjSelectionnees.map(pj=>pj.nom).join('
-')}`);
+      alert('ℹ️ Note: '+pjSelectionnees.length+' piece(s) jointe(s).\n\nLes pieces jointes doivent etre attachees manuellement.\n\n'+pjSelectionnees.map(pj=>pj.nom).join('\n'));
     },500);
   }
 
