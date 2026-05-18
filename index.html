@@ -5215,7 +5215,8 @@ function envoyerFactureCourriel(){
   });
 
   // Créer un lien mailto avec le message
-  const sujet=`Facture ${factCourante.numeroFacture?'#'+factCourante.numeroFacture:''} - ${factCourante.chantier||''}`;
+  const num=factCourante.numeroFacture?'#'+factCourante.numeroFacture:'';
+  const sujet='Facture '+num+' - '+(factCourante.chantier||'');
   const corps=message+'
 
 ---
