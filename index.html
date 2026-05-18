@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Suivi Heures">
 <meta name="theme-color" content="#ffffff">
@@ -2685,7 +2686,6 @@ function saveSstFacture(editId){
   closeModal();saveToCloud();refreshSstFactures();
 }
 
-// editSstFacture défini plus bas
 function deleteSstFacture(id){
   if(!confirm("Supprimer cette facture?"))return;
   state.sstFactures=state.sstFactures.filter(a=>a.id!==id);
@@ -4005,7 +4005,7 @@ function openModalDepense(editId,editType){
     <input type="hidden" id="dep-edit-type" value="${editType||''}"/>
 
     <div class="grid2">
-      <div class="field"><label>Date</label><input type="date" id="dep-date" value="${a.date||''}" style="width:100%;color:var(--primary);"/></div>
+      <div class="field"><label>Date</label><input type="date" id="dep-date" value="${a.date||''}" style="width:100%;color:var(--primary);" onchange="const ch=document.getElementById('dep-ch');if(ch)afficherIndicateurFacture(ch.value,this.value)"/></div>
       <div class="field"><label>Montant avant taxes ($)</label><input type="number" id="dep-mont" min="0" step="0.01" value="${parseFloat(a.montantAvantTax||a.montant||0)||''}" placeholder="0.00" inputmode="decimal" oninput="calcTaxesDepense(this.value)"/></div>
     </div>
     <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);">
@@ -4096,16 +4096,35 @@ function openModalDepense(editId,editType){
       <input type="text" id="dep-desc" value="${a.description||''}" placeholder="Description optionnelle..."/>
     </div>
     <div class="field">
-      <label>📷 Photo de la facture</label>
-      ${a.photo?`<div style="margin-bottom:8px;position:relative;display:inline-block;">
-        <img src="${a.photo}" style="max-width:100%;max-height:200px;border-radius:var(--radius-sm);border:1px solid var(--border);display:block;"/>
-        <button type="button" onclick="document.getElementById('dep-photo-preview').style.display='none';window._depPhoto=null;" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
-      </div>`:''}
-      <div id="dep-photo-preview" style="${a.photo?'display:none;':''}">
-        <label style="display:flex;align-items:center;gap:8px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;font-size:13px;color:var(--secondary);">
-          📷 Prendre une photo ou choisir un fichier
-          <input type="file" accept="image/*" capture="environment" onchange="handleDepPhoto(this)" style="display:none;"/>
-        </label>
+      <label>📎 Pièce jointe (photo ou PDF)</label>
+      <div id="dep-attach-preview">
+        ${a.photo?(()=>{
+          const isPdf=a.photo.startsWith('data:application/pdf')||a.photoType==='pdf';
+          return `<div style="display:flex;align-items:center;gap:10px;background:#f9f9f9;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:8px;">
+            ${isPdf
+              ?`<div style="font-size:32px;">📄</div><div style="flex:1;"><div style="font-size:12px;font-weight:600;">Facture PDF jointe</div><div style="font-size:10px;color:var(--secondary);">${a.photoName||'document.pdf'}</div></div>`
+              :`<img src="${a.photo}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0;"/><div style="flex:1;font-size:12px;font-weight:600;">Photo jointe</div>`
+            }
+            <button type="button" onclick="window._depPhoto=null;window._depPhotoType=null;window._depPhotoName=null;refreshAttachPreview()" style="background:none;border:none;color:#ccc;font-size:20px;cursor:pointer;padding:0;">✕</button>
+          </div>`;
+        })():''}
+        ${!a.photo?`<div style="display:flex;gap:8px;">
+          <label style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:center;">
+            <span style="font-size:24px;">📷</span>
+            <span style="font-size:12px;color:var(--secondary);">Photo</span>
+            <input type="file" accept="image/*" capture="environment" onchange="handleDepPhoto(this,'image')" style="display:none;"/>
+          </label>
+          <label style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:center;">
+            <span style="font-size:24px;">📄</span>
+            <span style="font-size:12px;color:var(--secondary);">PDF</span>
+            <input type="file" accept=".pdf,application/pdf" onchange="handleDepPhoto(this,'pdf')" style="display:none;"/>
+          </label>
+          <label style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:center;">
+            <span style="font-size:24px;">🖼</span>
+            <span style="font-size:12px;color:var(--secondary);">Fichier</span>
+            <input type="file" accept="image/*,.pdf" onchange="handleDepPhoto(this,'file')" style="display:none;"/>
+          </label>
+        </div>`:''}
       </div>
     </div>
     <button class="btn btn-primary" onclick="saveDepense('${editId||0}','${editType||''}')">✓ Enregistrer</button>`;
@@ -4114,6 +4133,8 @@ function openModalDepense(editId,editType){
   window._achatFacturable=a.facturable!==false;
   window._depType=defaultType;
   window._depPhoto=existing&&existing.photo||null;
+  window._depPhotoType=existing&&existing.photoType||null;
+  window._depPhotoName=existing&&existing.photoName||null;
   document.getElementById('modalOverlay').classList.add('open');
   // Init taxes display if editing existing
   setTimeout(()=>{
@@ -4122,35 +4143,69 @@ function openModalDepense(editId,editType){
   },50);
 }
 
-function handleDepPhoto(input){
+function handleDepPhoto(input, type){
   const file=input.files[0];
   if(!file)return;
-  // Resize image before storing to keep size reasonable
   const reader=new FileReader();
   reader.onload=function(e){
-    const img=new Image();
-    img.onload=function(){
-      const canvas=document.createElement('canvas');
-      const maxW=800,maxH=1000;
-      let w=img.width,h=img.height;
-      if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
-      if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}
-      canvas.width=w;canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      const compressed=canvas.toDataURL('image/jpeg',0.7);
-      window._depPhoto=compressed;
-      // Show preview
-      const preview=document.getElementById('dep-photo-preview');
-      if(preview){
-        preview.innerHTML=`<div style="position:relative;display:inline-block;">
-          <img src="${compressed}" style="max-width:100%;max-height:200px;border-radius:var(--radius-sm);border:1px solid var(--border);display:block;"/>
-          <button type="button" onclick="window._depPhoto=null;document.getElementById('dep-photo-preview').innerHTML='<label style=\'display:flex;align-items:center;gap:8px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;font-size:13px;color:var(--secondary);\'>📷 Prendre une photo ou choisir un fichier<input type=\'file\' accept=\'image/*\' capture=\'environment\' onchange=\'handleDepPhoto(this)\' style=\'display:none;\'/></label>'" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;">✕</button>
-        </div>`;
-      }
-    };
-    img.src=e.target.result;
+    if(type==='pdf'||file.type==='application/pdf'){
+      // Store PDF as base64
+      window._depPhoto=e.target.result;
+      window._depPhotoType='pdf';
+      window._depPhotoName=file.name;
+      refreshAttachPreview();
+    } else {
+      // Compress image
+      const img=new Image();
+      img.onload=function(){
+        const canvas=document.createElement('canvas');
+        const maxW=900,maxH=1200;
+        let w=img.width,h=img.height;
+        if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+        if(h>maxH){w=Math.round(w*maxH/h);h=maxH;}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const compressed=canvas.toDataURL('image/jpeg',0.75);
+        window._depPhoto=compressed;
+        window._depPhotoType='image';
+        window._depPhotoName=file.name;
+        refreshAttachPreview();
+      };
+      img.src=e.target.result;
+    }
   };
   reader.readAsDataURL(file);
+}
+
+function refreshAttachPreview(){
+  const preview=document.getElementById('dep-attach-preview');
+  if(!preview)return;
+  const photo=window._depPhoto;
+  const type=window._depPhotoType;
+  const name=window._depPhotoName;
+  if(photo){
+    preview.innerHTML=`<div style="display:flex;align-items:center;gap:10px;background:#f9f9f9;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;margin-bottom:8px;">
+      ${type==='pdf'
+        ?`<div style="font-size:32px;">📄</div><div style="flex:1;"><div style="font-size:12px;font-weight:600;">PDF joint</div><div style="font-size:10px;color:var(--secondary);">${name||'document.pdf'}</div></div><button type="button" onclick="window._depPhoto=null;window._depPhotoType=null;window._depPhotoName=null;refreshAttachPreview()" style="background:none;border:none;color:#ccc;font-size:20px;cursor:pointer;padding:0;">✕</button>`
+        :`<img src="${photo}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;flex-shrink:0;"/><div style="flex:1;font-size:12px;font-weight:600;">Photo jointe</div><button type="button" onclick="window._depPhoto=null;window._depPhotoType=null;window._depPhotoName=null;refreshAttachPreview()" style="background:none;border:none;color:#ccc;font-size:20px;cursor:pointer;padding:0;">✕</button>`
+      }
+    </div>`;
+  } else {
+    preview.innerHTML=`<div style="display:flex;gap:8px;">
+      <label style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:center;">
+        <span style="font-size:24px;">📷</span><span style="font-size:12px;color:var(--secondary);">Photo</span>
+        <input type="file" accept="image/*" capture="environment" onchange="handleDepPhoto(this,'image')" style="display:none;"/>
+      </label>
+      <label style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:center;">
+        <span style="font-size:24px;">📄</span><span style="font-size:12px;color:var(--secondary);">PDF</span>
+        <input type="file" accept=".pdf,application/pdf" onchange="handleDepPhoto(this,'pdf')" style="display:none;"/>
+      </label>
+      <label style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f9f9f9;border:1.5px dashed var(--border);border-radius:var(--radius-sm);padding:14px;cursor:pointer;text-align:center;">
+        <span style="font-size:24px;">🖼</span><span style="font-size:12px;color:var(--secondary);">Fichier</span>
+        <input type="file" accept="image/*,.pdf" onchange="handleDepPhoto(this,'file')" style="display:none;"/>
+      </label>
+    </div>`;
+  }
 }
 
 function setDepType(type){
@@ -4193,6 +4248,32 @@ function onDepChantierChange(){
   const ch=document.getElementById('dep-ch').value;
   const sec=document.getElementById('dep-facturable-section');
   if(sec)sec.style.display=ch?'':'none';
+  // Vérifier si une facture en cours correspond
+  const date=document.getElementById('dep-date')?document.getElementById('dep-date').value:'';
+  afficherIndicateurFacture(ch,date);
+}
+
+function afficherIndicateurFacture(ch,date){
+  let indicator=document.getElementById('dep-facture-indicator');
+  if(!indicator){
+    const chField=document.getElementById('dep-ch');
+    if(!chField||!chField.parentNode)return;
+    indicator=document.createElement('div');
+    indicator.id='dep-facture-indicator';
+    indicator.style.cssText='margin-top:4px;font-size:11px;';
+    chField.parentNode.appendChild(indicator);
+  }
+  if(!ch||!date){indicator.innerHTML='';return;}
+  const match=verifierAutoLinkFacture(ch,date);
+  if(match){
+    const f=match.facture;
+    const label=match.type==='courante'
+      ?`#${f.numeroFacture||'(sans numéro)'} · ${f.dateDebut} → ${f.dateFin}`
+      :`#${f.numero} · ${f.dateDebut} → ${f.dateFin}`;
+    indicator.innerHTML=`<span style="background:#EAF3DE;color:#27500A;padding:3px 8px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;">✅ Sera ajouté à la facture ${label}</span>`;
+  } else {
+    indicator.innerHTML=`<span style="color:var(--secondary);">Aucune facture en cours pour ce chantier</span>`;
+  }
 }
 
 function saveDepense(editId,editType){
@@ -4225,7 +4306,9 @@ function saveDepense(editId,editType){
       chantier:estChantier?typeDepense.replace('Chantier: ',''):chantier,
       facturable:chantier?window._achatFacturable:null,
       description:desc,
-      photo:window._depPhoto||null
+      photo:window._depPhoto||null,
+      photoType:window._depPhotoType||null,
+      photoName:window._depPhotoName||null
     };
     if(editId&&editId!=='0'&&editType==='materiel'){const idx=state.achats.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.achats[idx]=achat;}
     else state.achats.push(achat);
@@ -4243,17 +4326,143 @@ function saveDepense(editId,editType){
       typeTravaux:depSstTypeEl?depSstTypeEl.value:'',
       facturable:chantier?window._achatFacturable:false,
       depot:depotEl?depotEl.checked:false,
-      photo:window._depPhoto||null
+      photo:window._depPhoto||null,
+      photoType:window._depPhotoType||null,
+      photoName:window._depPhotoName||null
     };
     if(editId&&editId!=='0'&&editType==='sst'){const idx=state.sstFactures.findIndex(a=>a.id===parseInt(editId));if(idx>=0)state.sstFactures[idx]=facture;}
     else state.sstFactures.push(facture);
   }
   closeModal();saveToCloud();refreshDepenses();
+  // Notification si la dépense correspond à une facture en cours
+  setTimeout(()=>notifierAutoLink(chantier,date,type,montant),300);
 }
 
 // Override old edit functions to use new modal
 function editAchat(id){openModalDepense(id,'materiel');}
-function editSstFacture(id){openModalDepense(id,'sst');}
+function editSstFacture(id){
+  // Trouver la facture par ID exact
+  const idNum=parseInt(id);
+  const item=state.sstFactures.find(a=>a.id===idNum);
+  if(!item){alert("Facture introuvable (ID: "+idNum+")");return;}
+  ouvrirModalSSTDirect(item);
+}
+
+function ouvrirModalSSTDirect(a){
+  const editId=a.id;
+  const sstOpts=state.sstraitants.map(s=>`<option value="${esc(s.nom)}"${s.nom===a.sst?' selected':''}>${s.nom}</option>`).join('');
+  const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}"${ch===a.chantier?' selected':''}>${ch}</option>`).join('');
+  const montant=parseFloat(a.montant)||0;
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>Modifier facture SST</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div style="background:#E6F1FB;border-radius:var(--radius-sm);padding:6px 10px;margin-bottom:10px;font-size:11px;color:#0C447C;">ID: ${editId} · ${a.sst||'—'}</div>
+    <div class="grid2">
+      <div class="field"><label>Date</label><input type="date" id="sst-date" value="${a.date||''}" style="width:100%;color:var(--primary);"/></div>
+      <div class="field"><label>No. facture</label><input type="text" id="sst-no" value="${a.noFacture||''}" placeholder="SST-2024-001"/></div>
+    </div>
+    <div class="field"><label>Sous-traitant</label>
+      <select id="sst-nom" style="width:100%;"><option value="">-- Choisir --</option>${sstOpts}</select>
+    </div>
+    <div class="field"><label>Chantier</label>
+      <select id="sst-ch" style="width:100%;" onchange="onDepChantierChangeSst()"><option value="">-- Choisir --</option>${chOpts}</select>
+    </div>
+    <div class="field"><label>Montant ($)</label>
+      <input type="number" id="sst-mont" min="0" step="0.01" value="${montant||''}" placeholder="0.00" inputmode="decimal" oninput="calcTaxesSSTDirect(this.value)"/>
+    </div>
+    <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TPS (5%)</span><span id="sst-d-tps">${(montant*TPS).toFixed(2)} $</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:var(--secondary);">
+        <span>TVQ (9.975%)</span><span id="sst-d-tvq">${(montant*TVQ).toFixed(2)} $</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding-top:6px;margin-top:4px;border-top:1px solid var(--border);">
+        <span>Total avec taxes</span><span id="sst-d-total" style="color:#0C447C;">${(montant*(1+TPS+TVQ)).toFixed(2)} $</span>
+      </div>
+    </div>
+    <div class="field"><label>Type de travaux</label>
+      <select id="sst-typetrav" style="width:100%;">
+        <option value="">-- Choisir --</option>
+        ${state.typesTravaux.map(t=>`<option value="${esc(t)}" ${t===a.typeTravaux?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Description</label>
+      <input type="text" id="sst-desc" value="${a.description||''}" placeholder="Description des travaux..."/>
+    </div>
+    <div id="sst-fact-section" style="${a.chantier?'':'display:none;'}">
+      <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable au client?</label>
+      <div class="toggle-group" style="margin-bottom:12px;">
+        <button id="sst-fy" class="${a.facturable?'on-f':''}" onclick="setSstFact(true)">✓ Facturable</button>
+        <button id="sst-fn" class="${!a.facturable?'on-nf':''}" onclick="setSstFact(false)">✕ Non facturable</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);border:1px solid var(--border);">
+      <input type="checkbox" id="sst-depot" ${a.depot?'checked':''} style="width:18px;height:18px;cursor:pointer;"/>
+      <label for="sst-depot" style="font-size:13px;font-weight:500;cursor:pointer;">💰 Dépôt (acompte)</label>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderSSTDirect(${editId})">💾 Sauvegarder</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteSstFacture(${editId})" style="background:#FCEBEB;color:#791F1F;border:1px solid #F09595;">🗑</button>
+    </div>`;
+  window._sstFacturable=a.facturable!==false;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function calcTaxesSSTDirect(val){
+  const m=parseFloat(val)||0;
+  const el1=document.getElementById('sst-d-tps');
+  const el2=document.getElementById('sst-d-tvq');
+  const el3=document.getElementById('sst-d-total');
+  if(el1)el1.textContent=(m*TPS).toFixed(2)+' $';
+  if(el2)el2.textContent=(m*TVQ).toFixed(2)+' $';
+  if(el3)el3.textContent=(m*(1+TPS+TVQ)).toFixed(2)+' $';
+}
+
+function onDepChantierChangeSst(){
+  const ch=document.getElementById('sst-ch').value;
+  const sec=document.getElementById('sst-fact-section');
+  if(sec)sec.style.display=ch?'':'none';
+}
+
+function setSstFact(val){
+  window._sstFacturable=val;
+  const fy=document.getElementById('sst-fy'),fn=document.getElementById('sst-fn');
+  if(fy)fy.className=val?'on-f':'';
+  if(fn)fn.className=!val?'on-nf':'';
+}
+
+function sauvegarderSSTDirect(editId){
+  const date=document.getElementById('sst-date').value;
+  const sst=document.getElementById('sst-nom').value;
+  const montant=parseFloat(document.getElementById('sst-mont').value)||0;
+  if(!date){alert("Veuillez entrer une date.");return;}
+  if(!sst){alert("Veuillez choisir un sous-traitant.");return;}
+  if(!montant){alert("Veuillez entrer un montant.");return;}
+  const chantier=document.getElementById('sst-ch').value;
+  const depotEl=document.getElementById('sst-depot');
+  const updated={
+    id:editId,
+    date,sst,chantier,
+    montant:montant.toFixed(2),
+    description:document.getElementById('sst-desc').value.trim(),
+    noFacture:document.getElementById('sst-no').value.trim(),
+    typeTravaux:document.getElementById('sst-typetrav').value,
+    facturable:chantier?window._sstFacturable:false,
+    depot:depotEl?depotEl.checked:false,
+    photo:null
+  };
+  const idx=state.sstFactures.findIndex(a=>a.id===editId);
+  if(idx>=0)state.sstFactures[idx]=updated;
+  closeModal();
+  saveToCloud();
+  refreshDepenses();
+  refreshSstFactures();
+  // Notification si la facture SST correspond à une facture en cours
+  setTimeout(()=>notifierAutoLink(chantier,date,'sst',montant),300);
+}
 function deleteAchat(id){if(!confirm("Supprimer cette depense?"))return;state.achats=state.achats.filter(a=>a.id!==id);saveToCloud();refreshDepenses();}
 function deleteSstFacture(id){if(!confirm("Supprimer cette facture SST?"))return;state.sstFactures=state.sstFactures.filter(a=>a.id!==id);saveToCloud();refreshDepenses();}
 
@@ -4665,17 +4874,34 @@ function voirPhoto(type,id){
   const item=type==='materiel'?state.achats.find(a=>a.id===id):state.sstFactures.find(a=>a.id===id);
   if(!item||!item.photo)return;
   const label=type==='materiel'?(item.magasin||'Facture'):(item.sst||'Facture SST');
+  const isPdf=item.photoType==='pdf'||item.photo.startsWith('data:application/pdf');
   document.getElementById('modalBox').innerHTML=`
     <div class="modal-header">
-      <h3>📷 ${label} — ${item.date}</h3>
+      <h3>${isPdf?'📄':'📷'} ${label} — ${item.date}</h3>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
-    <img src="${item.photo}" style="width:100%;border-radius:var(--radius-sm);"/>
+    ${isPdf
+      ?`<div style="text-align:center;padding:20px;">
+          <div style="font-size:48px;margin-bottom:12px;">📄</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:8px;">${item.photoName||'document.pdf'}</div>
+          <a href="${item.photo}" download="${item.photoName||'facture.pdf'}" class="btn btn-primary" style="display:inline-block;text-decoration:none;margin-bottom:8px;">⬇️ Télécharger le PDF</a>
+          <br/>
+          <button onclick="ouvrirPDFNouvelleFenetre('${id}','${type}')" class="btn btn-sm" style="margin-top:8px;">🔗 Ouvrir dans nouvel onglet</button>
+        </div>`
+      :`<img src="${item.photo}" style="width:100%;border-radius:var(--radius-sm);max-height:70vh;object-fit:contain;"/>`
+    }
     <div style="display:flex;gap:8px;margin-top:12px;">
       <button class="btn btn-sm" style="flex:1;" onclick="${type==='materiel'?'editAchat':'editSstFacture'}(${id});closeModal()">✏️ Modifier</button>
       <button class="btn btn-primary" style="flex:1;" onclick="closeModal()">Fermer</button>
     </div>`;
   document.getElementById('modalOverlay').classList.add('open');
+}
+
+function ouvrirPDFNouvelleFenetre(id,type){
+  const item=type==='materiel'?state.achats.find(a=>a.id===parseInt(id)):state.sstFactures.find(a=>a.id===parseInt(id));
+  if(!item||!item.photo)return;
+  const win=window.open();
+  win.document.write('<iframe src="'+item.photo+'" width="100%" height="100%" style="border:none;"></iframe>');
 }
 
 
@@ -4759,6 +4985,43 @@ function supprimerNoteModal(id, type, noteIdx){
   saveToCloud();
   afficherModalNotes(id, type);
   renderReglages();
+}
+
+
+// ─── AUTO-LINK DÉPENSE → FACTURE EN COURS ────────────────
+function verifierAutoLinkFacture(chantier, date){
+  if(!chantier||!date)return null;
+  // Chercher une facture en cours qui correspond
+  const facCourante=state.facturesCourantes.find(fc=>{
+    if(fc.chantier!==chantier)return false;
+    if(!fc.dateDebut||!fc.dateFin)return false;
+    return date>=fc.dateDebut&&date<=fc.dateFin;
+  });
+  if(facCourante)return{type:'courante',facture:facCourante};
+  // Chercher aussi dans les factures historique (brouillon)
+  const facHisto=state.factures.find(f=>{
+    if(f.chantier!==chantier)return false;
+    if(!f.dateDebut||!f.dateFin)return false;
+    if(f.statut==='paye')return false;
+    return date>=f.dateDebut&&date<=f.dateFin;
+  });
+  if(facHisto)return{type:'historique',facture:facHisto};
+  return null;
+}
+
+function notifierAutoLink(chantier, date, typeDepense, montant){
+  const match=verifierAutoLinkFacture(chantier, date);
+  if(!match)return;
+  const f=match.facture;
+  const label=match.type==='courante'
+    ?`facture en cours #${f.numeroFacture||'(sans numéro)'}`
+    :`facture #${f.numero}`;
+  // Afficher une notification discrète
+  const notif=document.createElement('div');
+  notif.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:20px;font-size:13px;z-index:9999;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);max-width:320px;text-align:center;';
+  notif.innerHTML='✅ Ajouté à la '+label+' ('+chantier+')';
+  document.body.appendChild(notif);
+  setTimeout(()=>notif.remove(),3500);
 }
 
 // ─── INIT ─────────────────────────────────────────────────
