@@ -5185,7 +5185,7 @@ Cordialement,
 ${e.nom||'Notre équipe'}</textarea>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary" style="flex:1;" onclick="envoyerFactureCourriel(${JSON.stringify(factureHTML).replace(/`/g,'\`')})">📧 Envoyer par courriel</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="envoyerFactureCourriel()">📧 Envoyer par courriel</button>
         <button class="btn-pdf" onclick="imprimerApercuFacture()">🖨️ Imprimer / PDF</button>
         <button class="btn btn-sm" onclick="closeModal()">Fermer</button>
       </div>
@@ -5202,7 +5202,8 @@ function imprimerApercuFacture(){
   setTimeout(()=>win.print(),500);
 }
 
-function envoyerFactureCourriel(html){
+function envoyerFactureCourriel(){
+  const html=window._apercuHTML||'';
   const courriel=document.getElementById('apercu-courriel').value.trim();
   const message=document.getElementById('apercu-message').value.trim();
   if(!courriel){alert("Veuillez entrer un courriel.");return;}
