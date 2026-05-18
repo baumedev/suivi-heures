@@ -5217,13 +5217,7 @@ function envoyerFactureCourriel(){
   // Créer un lien mailto avec le message
   const num=factCourante.numeroFacture?'#'+factCourante.numeroFacture:'';
   const sujet='Facture '+num+' - '+(factCourante.chantier||'');
-  const corps=message+'
-
----
-'+
-    (pjSelectionnees.length?'
-Pièces jointes sélectionnées: '+pjSelectionnees.map(pj=>pj.nom).join(', ')+'
-':'');
+  const corps=message+'\n\n---\n'+(pjSelectionnees.length?'\nPieces jointes: '+pjSelectionnees.map(pj=>pj.nom).join(', '):'');
 
   // Ouvrir client mail avec mailto
   const mailtoLink=`mailto:${courriel}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(corps)}`;
