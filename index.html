@@ -156,15 +156,15 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .statut-paye{background:#EAF3DE;color:#27500A;}
 .logo-preview{width:100px;height:60px;object-fit:contain;border-radius:6px;border:1px solid var(--border);}
 @media print{
-.top-nav,.sub-nav,.sync-bar,.no-print{display:none!important;}
+.top-nav,.sub-nav,.sync-bar,.no-print,.login-screen{display:none!important;}
 body{background:#fff;font-size:11px;}
 .page{display:block!important;}
 .content{padding:0;max-width:100%;}
 .card{break-inside:avoid;border:none;padding:8px 0;}
 .btn-pdf,.btn-del,.btn-edit{display:none!important;}
 .facture-grand-total{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.modal-overlay{display:none!important;}
 }
-@media print{.top-nav,.sub-nav,.sync-bar,.no-print{display:none!important;}body{background:#fff;}.page{display:block!important;}.content{padding:0;max-width:100%;}.card{break-inside:avoid;margin-bottom:8px;}.btn-pdf{display:none!important;}details{open:true;}}
 </style>
 </head>
 <body>
@@ -2001,8 +2001,8 @@ function voirFacture(id){
           const mv1b=new Date((f.matDateDebut||f.dateDebut)+'T00:00:00'),mv2b=new Date((f.matDateFin||f.dateFin)+'T23:59:59');
           const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=mv1b&&d<=mv2b;});
           return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MATÉRIAUX</div>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Date</td><td style="font-weight:600;">Magasin</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
-          <tbody>${achF.map(a=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;font-size:11px;">${a.date}</td><td style="padding:5px 0;">${a.magasin}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('')}</tbody>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Fournisseur</td><td style="font-weight:600;text-align:center;">Qté</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
+          <tbody>${(()=>{const pf={};achF.forEach(a=>{const f=a.magasin||'—';if(!pf[f])pf[f]={total:0,count:0};pf[f].total+=(parseFloat(a.montantAvantTax)||0);pf[f].count++;});return Object.entries(pf).map(([f,d])=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;">${f}</td><td style="font-size:11px;color:#666;text-align:center;">${d.count} facture${d.count>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('');})()}</tbody>
           <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`;
         })():''}
         <div style="border-top:2px solid #1a1a1a;padding-top:12px;">
@@ -5069,7 +5069,16 @@ function apercuFactureCourante(){
     const md1=new Date(md1f+'T00:00:00'),md2=new Date(md2f+'T23:59:59');
     const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===factCourante.chantier&&a.facturable===true&&d>=md1&&d<=md2;});
     matTotal=achF.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
-    if(matTotal>0)matHtml=achF.map(a=>`<tr><td style="padding:5px 0;font-size:11px;">${a.date}</td><td>${a.magasin}</td><td style="text-align:right;">${parseFloat(a.montantAvantTax).toFixed(2)} $</td></tr>`).join('');
+    if(matTotal>0){
+      const parFourn={};
+      achF.forEach(a=>{
+        const f=a.magasin||'—';
+        if(!parFourn[f])parFourn[f]={total:0,count:0};
+        parFourn[f].total+=(parseFloat(a.montantAvantTax)||0);
+        parFourn[f].count++;
+      });
+      matHtml=Object.entries(parFourn).map(([f,d])=>`<tr><td style="padding:5px 0;">${f}</td><td style="font-size:11px;color:#666;text-align:center;">${d.count} facture${d.count>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('');
+    }
   }
 
   // Totaux
@@ -5142,7 +5151,7 @@ function apercuFactureCourante(){
         <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${sstHtml}</tbody>
         <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${sstTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
       ${matTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MATÉRIAUX</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Date</td><td style="font-weight:600;">Fournisseur</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${matHtml}</tbody>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Fournisseur</td><td style="font-weight:600;text-align:center;">Qté</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${matHtml}</tbody>
         <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
       <div style="border-top:2px solid #1a1a1a;padding-top:10px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
@@ -5197,9 +5206,19 @@ ${e.nom||'Notre équipe'}</textarea>
 
 function imprimerApercuFacture(){
   const win=window.open('','_blank');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Facture</title><style>body{margin:0;padding:20px;font-family:-apple-system,sans-serif;}@media print{body{padding:0;}}</style></head><body>${window._apercuHTML||''}</body></html>`);
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Facture</title><style>'
+    +'*{box-sizing:border-box;margin:0;padding:0;}'
+    +'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px;color:#1a1a1a;}'
+    +'@media print{'
+    +'  body{padding:12px;}'
+    +'  @page{margin:10mm;size:letter;}'
+    +'}'
+    +'table{width:100%;border-collapse:collapse;}'
+    +'</style></head><body>'
+    +(window._apercuHTML||'')
+    +'</body></html>');
   win.document.close();
-  setTimeout(()=>win.print(),500);
+  setTimeout(()=>win.print(),600);
 }
 
 function envoyerFactureCourriel(){
