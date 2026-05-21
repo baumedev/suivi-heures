@@ -5195,7 +5195,7 @@ ${e.nom||'Notre équipe'}</textarea>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" style="flex:1;" onclick="envoyerFactureCourriel()">📧 Envoyer par courriel</button>
-        <button class="btn-pdf" onclick="imprimerApercuFacture()">🖨️ Imprimer / PDF</button>
+        <button class="btn-pdf" onclick="sauvegarderPDFFacCourante()">📥 Enregistrer PDF</button>
         <button class="btn btn-sm" onclick="closeModal()">Fermer</button>
       </div>
     </div>`;
@@ -5205,20 +5205,22 @@ ${e.nom||'Notre équipe'}</textarea>
 }
 
 function imprimerApercuFacture(){
-  const win=window.open('','_blank');
-  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Facture</title><style>'
-    +'*{box-sizing:border-box;margin:0;padding:0;}'
-    +'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px;color:#1a1a1a;}'
-    +'@media print{'
-    +'  body{padding:12px;}'
-    +'  @page{margin:10mm;size:letter;}'
-    +'}'
-    +'table{width:100%;border-collapse:collapse;}'
-    +'</style></head><body>'
-    +(window._apercuHTML||'')
-    +'</body></html>');
-  win.document.close();
-  setTimeout(()=>win.print(),600);
+  const css=[
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px;color:#1a1a1a;background:#fff;}',
+    'table{width:100%;border-collapse:collapse;}',
+    '@media print{@page{size:letter;margin:15mm 12mm;}body{padding:0;}}'
+  ].join('');
+  const html='<!DOCTYPE html><html><head>'
+    +'<meta charset="UTF-8"><title>​</title>'
+    +'<style>'+css+'</style>'
+    +'</head><body>'+(window._apercuHTML||'')+'</body></html>';
+  // Créer un Blob et ouvrir dans nouvel onglet
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const win=window.open(url,'_blank');
+  // Nettoyer après
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 
 function envoyerFactureCourriel(){
@@ -5238,6 +5240,46 @@ function envoyerFactureCourriel(){
   if(confirm("Voulez-vous imprimer ou sauvegarder en PDF pour joindre la facture?")){
     imprimerApercuFacture();
   }
+}
+
+
+function sauvegarderPDFFacCourante(){
+  const e=state.entreprise;
+  const num=factCourante.numeroFacture||'facture';
+  const ch=(factCourante.chantier||'').replace(/\s+/g,'-');
+  const date=new Date().toISOString().slice(0,10);
+  const filename='Facture-'+num+'-'+ch+'-'+date+'.pdf';
+
+  const css=[
+    '*{box-sizing:border-box;margin:0;padding:0;}',
+    'body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;padding:24px;color:#1a1a1a;background:#fff;font-size:13px;}',
+    'table{width:100%;border-collapse:collapse;}',
+    'img{max-width:100%;}',
+    '@media print{',
+    '  html,body{margin:0;padding:0;}',
+    '  @page{size:letter portrait;margin:12mm 10mm;}',
+    '  body{padding:0;}',
+    '}'
+  ].join('');
+
+  const html='<!DOCTYPE html><html><head>'
+    +'<meta charset="UTF-8">'
+    +'<title>'+filename+'</title>'
+    +'<style>'+css+'</style>'
+    +'<script>'
+    +'window.onload=function(){'
+    +'  document.title="'+filename+'";'
+    +'  setTimeout(function(){window.print();},500);'
+    +'};'
+    +'<\/script>'
+    +'</head><body>'
+    +(window._apercuHTML||'')
+    +'</body></html>';
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const win=window.open(url,'_blank');
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
 // ─── INIT ─────────────────────────────────────────────────
