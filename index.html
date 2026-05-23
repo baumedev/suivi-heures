@@ -4476,9 +4476,13 @@ function startDrag(date,emp,e){
   _dragEmp=emp;
   _isDragging=true;
   _dragged=false;
+  _touchStartTime=Date.now();
+  _touchMoved=false;
   highlightDrag();
-  e.preventDefault();
+  // Don't preventDefault for touch - allows onclick to fire on iOS
 }
+
+let _touchStartTime=0, _touchMoved=false;
 
 function continueDrag(date,e){
   if(!_isDragging)return;
@@ -4491,6 +4495,7 @@ function continueDrag(date,e){
 
 function touchDrag(e){
   if(!_isDragging)return;
+  _touchMoved=true;
   const touch=e.touches[0];
   const el=document.elementFromPoint(touch.clientX,touch.clientY);
   if(el){
@@ -4511,15 +4516,22 @@ function endDrag(date,emp,e){
   if(!_isDragging)return;
   _isDragging=false;
   _dragEnd=date;
-  if(_dragged&&_dragStart!==_dragEnd){
+  const wasTap=!_touchMoved&&(Date.now()-_touchStartTime)<300;
+  if(!wasTap&&_dragged&&_dragStart!==_dragEnd){
     // Multiple days selected - open multi-day modal
     openMultiDayModal(_dragEmp);
+  } else if(wasTap||(!_dragged)){
+    // Simple tap - open single day modal
+    openModal(date,emp);
+    return;
   }
   // Clear highlight
   document.querySelectorAll('.cal-cell.selecting,.cal-cell.selected').forEach(c=>{
     c.classList.remove('selecting','selected');
   });
-  setTimeout(()=>{_dragged=false;},50);
+  // On mobile, give more time before resetting _dragged
+  // so the onclick handler can check it
+  setTimeout(()=>{_dragged=false;},200);
 }
 
 function getDragDates(){
