@@ -4282,6 +4282,10 @@ function saveDepense(editId,editType){
   const hiddenType=document.getElementById('dep-edit-type');
   if(hiddenId&&hiddenId.value)editId=hiddenId.value;
   if(hiddenType&&hiddenType.value)editType=hiddenType.value;
+  // Define eid and existing for edit detection
+  const eid=(editId!==null&&editId!==undefined&&editId!=='')?parseInt(editId):-1;
+  const isSstEdit=editType==='sst';
+  const existing=(eid>=0)?(isSstEdit?state.sstFactures.find(a=>a.id===eid):state.achats.find(a=>a.id===eid)):null;
   const type=window._depType||'materiel';
   const date=document.getElementById('dep-date').value;
   const montant=parseFloat(document.getElementById('dep-mont').value)||0;
