@@ -226,6 +226,7 @@ body{background:#fff;font-size:11px;}
 <div id="page-rapport" class="page">
   <nav class="sub-nav" id="rapport-subnav">
     <button class="active" onclick="setRapportSub('dashboard')">📊 Tableau de bord</button>
+    <button onclick="setRapportSub('suivi')">✅ Suivi facturation</button>
     <button onclick="setRapportSub('chantier')">🏗 Par chantier</button>
     <button onclick="setRapportSub('employe')">👷 Par employé</button>
     <button onclick="setRapportSub('paie')">💵 Paie</button>
@@ -985,13 +986,13 @@ function buildRapportEmp(emp){
 function setRapportSub(sub){
   window._rapportMainSub=sub;
   const btns=document.querySelectorAll('#rapport-subnav button');
-  const subs=['dashboard','chantier','employe','paie','periode'];
+  const subs=['dashboard','suivi','chantier','employe','paie','periode'];
   btns.forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
-  // Make sure content div is visible
   const c=document.getElementById('content-rapport');
   if(!c)return;
   c.innerHTML='';
   if(sub==='dashboard'){buildDashboard();}
+  else if(sub==='suivi'){buildRapportSuivi();}
   else if(sub==='chantier'){buildRapportChantier();}
   else if(sub==='employe'){buildRapportEmployes();}
   else if(sub==='paie'){buildRapportPaie();}
@@ -1001,6 +1002,7 @@ function setRapportSub(sub){
 function renderRapportPeriode(){
   const sub=window._rapportMainSub||'dashboard';
   if(sub==='dashboard'){buildDashboard();return;}
+  if(sub==='suivi'){buildRapportSuivi();return;}
   if(sub==='chantier'){buildRapportChantier();return;}
   if(sub==='employe'){buildRapportEmployes();return;}
   if(sub==='paie'){buildRapportPaie();return;}
@@ -5468,6 +5470,155 @@ function initSafeState(){
   // Notes sur tickets/suggestions
   state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
   state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
+}
+
+
+// ─── RAPPORT SUIVI FACTURATION ────────────────────────────
+function buildRapportSuivi(){
+  const c=document.getElementById('content-rapport');
+  if(!c)return;
+  initSafeState();
+
+  let html='';
+
+  state.chantiers.forEach(chantier=>{
+    const fiche=state.fiches[chantier]||{};
+    const taux=parseFloat(fiche.taux)||0;
+
+    // Toutes les heures facturables pour ce chantier
+    let totalHFact=0;
+    Object.keys(EMPS).forEach(empKey=>{
+      const h=state.entries[empKey].filter(en=>en.chantier===chantier&&en.facturable&&en.heures>0&&!en.absence).reduce((s,en)=>s+en.heures,0);
+      totalHFact+=h;
+    });
+    const totalMdoFact=taux>0?totalHFact*taux:0;
+
+    // Toutes les dépenses facturables
+    const totalSSTFact=state.sstFactures.filter(a=>a.chantier===chantier&&a.facturable).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    const totalMatFact=state.achats.filter(a=>a.chantier===chantier&&a.facturable).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    const totalFacturable=totalMdoFact+totalSSTFact+totalMatFact;
+
+    if(totalHFact===0&&totalSSTFact===0&&totalMatFact===0)return;
+
+    // Factures émises pour ce chantier
+    const factures=state.factures.filter(f=>f.chantier===chantier);
+    const facCourantes=state.facturesCourantes.filter(f=>f.chantier===chantier);
+
+    // Calculer ce qui EST dans une facture (heures)
+    let hFacturees=0;
+    factures.forEach(f=>{
+      if(!f.dateDebut||!f.dateFin)return;
+      const d1=new Date(f.dateDebut+'T00:00:00'),d2=new Date(f.dateFin+'T23:59:59');
+      Object.keys(EMPS).forEach(empKey=>{
+        const h=state.entries[empKey].filter(en=>{
+          const d=new Date(en.date+'T12:00:00');
+          return en.chantier===chantier&&en.facturable&&en.heures>0&&!en.absence&&d>=d1&&d<=d2;
+        }).reduce((s,en)=>s+en.heures,0);
+        hFacturees+=h;
+      });
+    });
+    facCourantes.forEach(f=>{
+      if(!f.dateDebut||!f.dateFin)return;
+      const d1=new Date(f.dateDebut+'T00:00:00'),d2=new Date(f.dateFin+'T23:59:59');
+      Object.keys(EMPS).forEach(empKey=>{
+        const h=state.entries[empKey].filter(en=>{
+          const d=new Date(en.date+'T12:00:00');
+          return en.chantier===chantier&&en.facturable&&en.heures>0&&!en.absence&&d>=d1&&d<=d2;
+        }).reduce((s,en)=>s+en.heures,0);
+        hFacturees+=h;
+      });
+    });
+
+    const hNonFacturees=totalHFact-hFacturees;
+    const montantNonFacture=taux>0?hNonFacturees*taux:0;
+
+    // Statut global du chantier
+    const totalPaye=factures.filter(f=>f.statut==='paye').reduce((s,f)=>s+f.grandTotal,0);
+    const totalEnvoyee=factures.filter(f=>f.statut==='envoye').reduce((s,f)=>s+f.grandTotal,0);
+    const totalBrouillon=factures.filter(f=>f.statut==='brouillon').reduce((s,f)=>s+f.grandTotal,0);
+    const totalEnCours=facCourantes.reduce((s,f)=>s+0,0); // brouillons non finalisés
+
+    // Couleur selon état
+    let statusColor='#666';
+    let statusIcon='⚪';
+    let statusLabel='Aucune facture';
+    if(hNonFacturees>0.5){statusColor='#E24B4A';statusIcon='🔴';statusLabel='Heures non facturées!';}
+    else if(totalEnvoyee>0){statusColor='#EF9F27';statusIcon='🟡';statusLabel='En attente de paiement';}
+    else if(totalPaye>=totalFacturable*0.95&&totalFacturable>0){statusColor='#27500A';statusIcon='🟢';statusLabel='Tout facturé et payé';}
+    else if(factures.length>0||facCourantes.length>0){statusColor='#185FA5';statusIcon='🔵';statusLabel='Facturé, paiement en cours';}
+
+    // Lignes d'heures non facturées par employé
+    let hNonFactHtml='';
+    if(hNonFacturees>0.5){
+      Object.keys(EMPS).forEach(empKey=>{
+        const e=EMPS[empKey];
+        const allEntries=state.entries[empKey].filter(en=>en.chantier===chantier&&en.facturable&&en.heures>0&&!en.absence);
+        if(!allEntries.length)return;
+        // Heures dans une facture
+        let hDansFact=0;
+        [...factures,...facCourantes].forEach(f=>{
+          if(!f.dateDebut||!f.dateFin)return;
+          const d1=new Date(f.dateDebut+'T00:00:00'),d2=new Date(f.dateFin+'T23:59:59');
+          hDansFact+=allEntries.filter(en=>{const d=new Date(en.date+'T12:00:00');return d>=d1&&d<=d2;}).reduce((s,en)=>s+en.heures,0);
+        });
+        const hEmpNonFact=allEntries.reduce((s,en)=>s+en.heures,0)-hDansFact;
+        if(hEmpNonFact>0.25){
+          hNonFactHtml+=`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:0.5px solid var(--border);">
+            <span style="color:${e.col};font-weight:500;">${e.label}</span>
+            <span style="color:#E24B4A;font-weight:600;">${hEmpNonFact.toFixed(1)}h non facturées${taux>0?' = '+(hEmpNonFact*taux).toFixed(0)+' $':''}</span>
+          </div>`;
+        }
+      });
+    }
+
+    // Lignes de factures
+    const factHtml=[...factures,...facCourantes.map(f=>({...f,numero:f.numeroFacture||'(brouillon)',statut:'en_cours',grandTotal:0}))].map(f=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 0;border-bottom:0.5px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${f.statut==='paye'?'✅':f.statut==='envoye'?'📤':f.statut==='en_cours'?'✏️':'📝'}
+          <span style="color:#0C447C;font-weight:600;">#${f.numero}</span>
+          <span style="color:var(--secondary);">${f.dateDebut||''}${f.dateFin?' → '+f.dateFin:''}</span>
+        </div>
+        <span style="font-weight:600;">${f.grandTotal>0?f.grandTotal.toFixed(2)+' $':f.statut==='en_cours'?'En cours':''}</span>
+      </div>`).join('');
+
+    html+=`<div class="card" style="margin-bottom:10px;border-left:3px solid ${statusColor};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+        <div>
+          <div style="font-size:15px;font-weight:700;">🏗 ${chantier}</div>
+          <div style="font-size:12px;margin-top:3px;">${statusIcon} <span style="color:${statusColor};font-weight:600;">${statusLabel}</span></div>
+        </div>
+        <div style="text-align:right;">
+          ${taux>0?`<div style="font-size:11px;color:var(--secondary);">Taux: ${taux} $/h</div>`:''}
+          <div style="font-size:11px;color:var(--secondary);">Total facturable: ${totalFacturable>0?totalFacturable.toFixed(0)+' $':'—'}</div>
+          ${totalPaye>0?`<div style="font-size:12px;color:#27500A;font-weight:600;">✅ Payé: ${totalPaye.toFixed(0)} $</div>`:''}
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+        <div class="stat-box"><div class="label">Heures fact.</div><div class="value" style="font-size:14px;">${totalHFact.toFixed(1)}h</div></div>
+        <div class="stat-box ${hNonFacturees>0.5?'stat-nf':'stat-fact'}">
+          <div class="label">Non facturées</div>
+          <div class="value" style="font-size:14px;${hNonFacturees>0.5?'color:#E24B4A;':''}">${hNonFacturees>0.5?hNonFacturees.toFixed(1)+'h':'✅ 0h'}</div>
+        </div>
+        <div class="stat-box"><div class="label">Factures</div><div class="value" style="font-size:14px;">${factures.length+facCourantes.length}</div></div>
+      </div>
+
+      ${hNonFactHtml?`<div style="background:#FFF0F0;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:8px;border:1px solid #F09595;">
+        <div style="font-size:11px;font-weight:700;color:#E24B4A;margin-bottom:6px;">⚠️ HEURES NON FACTURÉES</div>
+        ${hNonFactHtml}
+        ${montantNonFacture>0?`<div style="font-size:12px;font-weight:700;color:#E24B4A;margin-top:6px;padding-top:6px;border-top:1px solid #F09595;">Total: ${hNonFacturees.toFixed(1)}h = ${montantNonFacture.toFixed(2)} $</div>`:''}
+      </div>`:''}
+
+      ${factHtml?`<div>
+        <div style="font-size:10px;font-weight:700;color:var(--secondary);margin-bottom:4px;">FACTURES</div>
+        ${factHtml}
+        ${totalEnvoyee>0?`<div style="font-size:11px;color:#EF9F27;font-weight:600;margin-top:4px;">📤 En attente: ${totalEnvoyee.toFixed(2)} $</div>`:''}
+      </div>`:'<div style="font-size:12px;color:var(--secondary);">Aucune facture créée pour ce chantier.</div>'}
+    </div>`;
+  });
+
+  c.innerHTML=html||'<div class="empty">Aucune donnée à afficher.</div>';
 }
 
 // ─── INIT ─────────────────────────────────────────────────
