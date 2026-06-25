@@ -20,11 +20,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0
 .top-nav button.tab-victor.active{color:#0C447C;border-bottom-color:#185FA5;}
 .top-nav button.tab-edouard.active{color:#085041;border-bottom-color:#0F6E56;}
 .top-nav button.tab-denis.active{color:#633806;border-bottom-color:#854F0B;}
+.top-nav button.tab-guewenn.active{color:#6B21A8;border-bottom-color:#9333EA;}
 .top-nav button.tab-rapport.active{color:#3C3489;border-bottom-color:#534AB7;}
 .avatar{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;}
 .av-v{background:#E6F1FB;color:#0C447C;}
 .av-e{background:#E1F5EE;color:#085041;}
 .av-d{background:#FAEEDA;color:#633806;}
+.av-g{background:#F3E8FF;color:#6B21A8;}
 .sub-nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .sub-nav::-webkit-scrollbar{display:none;}
 .sub-nav button{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;font-size:12px;color:var(--secondary);white-space:nowrap;cursor:pointer;}
@@ -208,6 +210,7 @@ body{background:#fff;font-size:11px;}
     <button class="active" onclick="setHeuresEmp('victor')"><span class="avatar av-v" style="width:20px;height:20px;font-size:9px;margin-right:4px;">VI</span>Victor</button>
     <button onclick="setHeuresEmp('edouard')"><span class="avatar av-e" style="width:20px;height:20px;font-size:9px;margin-right:4px;">ED</span>Edouard</button>
     <button onclick="setHeuresEmp('denis')"><span class="avatar av-d" style="width:20px;height:20px;font-size:9px;margin-right:4px;">DE</span>Denis</button>
+    <button onclick="setHeuresEmp('guewenn')"><span class="avatar av-g" style="width:20px;height:20px;font-size:9px;margin-right:4px;">GU</span>Guewenn</button>
   </nav>
   <nav class="sub-nav" id="heures-sub2nav">
     <button class="active" onclick="setSub(currentHeuresEmp,'cal')">📅 Calendrier</button>
@@ -265,11 +268,11 @@ const ROW_ID = 1;
 // ─── STATE ────────────────────────────────────────────────
 let state = {
   currentEmp:'victor',
-  currentSub:{victor:'cal',edouard:'cal',denis:'cal',chantiers:'clients',facturation:'courantes'},
+  currentSub:{victor:'cal',edouard:'cal',denis:'cal',guewenn:'cal',chantiers:'clients',facturation:'courantes'},
   currentHeuresEmp:'victor',
-  calMonth:{victor:new Date().getMonth(),edouard:new Date().getMonth(),denis:new Date().getMonth()},
-  calYear:{victor:new Date().getFullYear(),edouard:new Date().getFullYear(),denis:new Date().getFullYear()},
-  entries:{victor:[],edouard:[],denis:[]},
+  calMonth:{victor:new Date().getMonth(),edouard:new Date().getMonth(),denis:new Date().getMonth(),guewenn:new Date().getMonth()},
+  calYear:{victor:new Date().getFullYear(),edouard:new Date().getFullYear(),denis:new Date().getFullYear(),guewenn:new Date().getFullYear()},
+  entries:{victor:[],edouard:[],denis:[],guewenn:[]},
   entryId:0,
   pendingFacturable:true,
   chantiers:['Ardennes','Bullion','Cadzow','Des Carrières','Desrochers','Garnier','McDougall','Upper Edison'],
@@ -283,7 +286,8 @@ let state = {
     {username:'victor',password:'Victor2024!',nom:'Victor',role:'employe'},
     {username:'edouard',password:'Edouard2024!',nom:'Edouard',role:'employe'},
     {username:'denis',password:'Denis2024!',nom:'Denis',role:'employe'},
-    {username:'dom',password:'Dom2024!',nom:'Dom',role:'employe'}
+    {username:'dom',password:'Dom2024!',nom:'Dom',role:'employe'},
+    {username:'guewenn',password:'Guewenn2024!',nom:'Guewenn',role:'admin'}
   ],
   currentUser:null,
   tickets:[],
@@ -381,7 +385,7 @@ function setHeuresEmp(emp){
   state.currentEmp=emp;
   // Update employee sub-nav
   const btns=document.querySelectorAll('#heures-subnav button');
-  const emps=['victor','edouard','denis'];
+  const emps=['victor','edouard','denis','guewenn'];
   btns.forEach((b,i)=>b.classList.toggle('active',emps[i]===emp));
   // Update action sub-nav
   const sub=state.currentSub[emp]||'cal';
@@ -396,7 +400,7 @@ function setHeuresEmp(emp){
   else c.innerHTML=buildRapportEmp(emp);
 }
 
-const EMPS={victor:{label:'Victor',bg:'#E6F1FB',col:'#0C447C',border:'#185FA5',cls:'ev'},edouard:{label:'Edouard',bg:'#E1F5EE',col:'#085041',border:'#0F6E56',cls:'ee'},denis:{label:'Denis',bg:'#FAEEDA',col:'#633806',border:'#854F0B',cls:'ed'}};
+const EMPS={victor:{label:'Victor',bg:'#E6F1FB',col:'#0C447C',border:'#185FA5',cls:'ev'},edouard:{label:'Edouard',bg:'#E1F5EE',col:'#085041',border:'#0F6E56',cls:'ee'},denis:{label:'Denis',bg:'#FAEEDA',col:'#633806',border:'#854F0B',cls:'ed'},guewenn:{label:'Guewenn',bg:'#F3E8FF',col:'#6B21A8',border:'#9333EA',cls:'eg'}};
 const today=new Date(),todayStr=fmtDate(today);
 let isSaving=false,pendingSave=false;
 
@@ -585,7 +589,7 @@ function setEmp(emp){
   }
   const page=document.getElementById('page-'+emp);
   if(page)page.classList.add('active');
-  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'){
     setHeuresEmp(emp);
   } else {
     // Trigger setSub to render correct content
@@ -1179,7 +1183,7 @@ function genRapport(){
     } else {
       const totalDep=achatsFiltered.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
       const totalAvecTax=achatsFiltered.reduce((s,a)=>s+(parseFloat(a.montantAvecTax)||0),0);
-      const parCarte={Victor:0,Edouard:0,Denis:0};
+      const parCarte={Victor:0,Edouard:0,Denis:0,Guewenn:0};
       achatsFiltered.forEach(a=>{if(parCarte[a.carte]!==undefined)parCarte[a.carte]+=(parseFloat(a.montantAvantTax)||0);});
       // Replace stats row with money stats
       html=`<div class="stats-row-4">
@@ -1187,6 +1191,7 @@ function genRapport(){
         <div class="stat-box" style="background:#E6F1FB;"><div class="label">💳 Victor</div><div class="value" style="color:#0C447C;">${parCarte.Victor.toFixed(2)} $</div></div>
         <div class="stat-box" style="background:#E1F5EE;"><div class="label">💳 Edouard</div><div class="value" style="color:#085041;">${parCarte.Edouard.toFixed(2)} $</div></div>
         <div class="stat-box" style="background:#FAEEDA;"><div class="label">💳 Denis</div><div class="value" style="color:#633806;">${parCarte.Denis.toFixed(2)} $</div></div>
+        <div class="stat-box" style="background:#F3E8FF;"><div class="label">💳 Guewenn</div><div class="value" style="color:#6B21A8;">${parCarte.Guewenn.toFixed(2)} $</div></div>
       </div>`;
       const byDep={};
       achatsFiltered.forEach(a=>{
@@ -1660,7 +1665,7 @@ function buildNouvelleFacture(){
       </div>`:''}
     </div>
 
-    <div class="card">
+    <div class="card no-print">
       <div class="facture-section-title">👷 MAIN D'ŒUVRE</div>
       ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?
         mdoHtml?`<table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -1679,7 +1684,7 @@ function buildNouvelleFacture(){
         '<div class="empty" style="padding:16px;">Choisis un chantier et une période pour voir les heures.</div>'}
     </div>
 
-    <div class="card">
+    <div class="card no-print">
       <div class="facture-section-title">🔨 SOUS-TRAITANTS</div>
       <p style="font-size:12px;color:var(--secondary);margin:0 0 10px;">Basé sur les factures SST facturables pour ce chantier et cette période.</p>
       ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?(()=>{
@@ -1706,7 +1711,7 @@ function buildNouvelleFacture(){
       })():'<div style="font-size:12px;color:var(--secondary);padding:8px 0;">Choisis un chantier et une période pour voir les factures SST.</div>'}
     </div>
 
-    <div class="card">
+    <div class="card no-print">
       <div class="facture-section-title">🪵 MATÉRIAUX</div>
       ${factCourante.chantier&&factCourante.dateDebut&&factCourante.dateFin?
         matRows?`<table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -1777,6 +1782,19 @@ function addLigneMat(){factCourante.lignesMat.push({fourn:'',desc:'',montant:''}
 function removeLigneMat(i){factCourante.lignesMat.splice(i,1);refreshFacture();}
 function updateLigneMat(i,f,v){factCourante.lignesMat[i][f]=v;if(f!=='desc')refreshFacture();}
 function resetFacture(){factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:''};refreshFacture();}
+
+function preFillFacture(chantier,dateMin,dateMax){
+  factCourante.chantier=chantier;
+  factCourante.dateDebut=dateMin;
+  factCourante.dateFin=dateMax;
+  factCourante.matDateDebut=dateMin;
+  factCourante.matDateFin=dateMax;
+  // Naviguer vers la page facturation
+  setEmp('facturation');
+  setSub('facturation','courantes');
+  // Petit délai pour laisser le DOM se construire avant refresh
+  setTimeout(()=>refreshFacture(),100);
+}
 
 function sauvegarderFacture(){
   if(!factCourante.chantier){alert("Veuillez choisir un chantier.");return;}
@@ -2308,7 +2326,7 @@ function buildMateriaux(){
   // Stats
   const total=list.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
   const totalAvecTax=list.reduce((s,a)=>s+(parseFloat(a.montantAvecTax)||0),0);
-  const parCarte={Victor:0,Edouard:0,Denis:0};
+  const parCarte={Victor:0,Edouard:0,Denis:0,Guewenn:0};
   list.forEach(a=>{if(parCarte[a.carte]!==undefined)parCarte[a.carte]+=(parseFloat(a.montantAvantTax)||0);});
 
   // Filters
@@ -2700,7 +2718,8 @@ function buildEmployes(){
   const empList=[
     {key:'victor', label:'Victor', bg:'#E6F1FB', col:'#0C447C'},
     {key:'edouard', label:'Edouard', bg:'#E1F5EE', col:'#085041'},
-    {key:'denis', label:'Denis', bg:'#FAEEDA', col:'#633806'}
+    {key:'denis', label:'Denis', bg:'#FAEEDA', col:'#633806'},
+    {key:'guewenn', label:'Guewenn', bg:'#F3E8FF', col:'#6B21A8'}
   ];
   const rows=empList.map(emp=>{
     const total=state.entries[emp.key].reduce((s,en)=>s+en.heures,0);
@@ -2737,7 +2756,7 @@ function buildEmployes(){
 }
 
 function openEmployeModal(empKey){
-  const empLabels={victor:'Victor',edouard:'Edouard',denis:'Denis'};
+  const empLabels={victor:'Victor',edouard:'Edouard',denis:'Denis',guewenn:'Guewenn'};
   const empBg={victor:'#E6F1FB',edouard:'#E1F5EE',denis:'#FAEEDA'};
   const empCol={victor:'#0C447C',edouard:'#085041',denis:'#633806'};
   if(!state.empInfos)state.empInfos={};
@@ -3226,7 +3245,56 @@ function buildDashboard(){
   const topCh=Object.entries(hCh).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxCh=topCh.length?topCh[0][1]:1;
 
-  // Alertes
+  // ── ANALYSE ANTI-OUBLI ──
+  const chantierAlerts=[];
+  state.chantiers.forEach(chantier=>{
+    const fiche=state.fiches[chantier]||{};
+    const taux=parseFloat(fiche.taux)||0;
+    const entreesFact=[];
+    Object.keys(EMPS).forEach(emp=>{
+      state.entries[emp].filter(en=>en.chantier===chantier&&en.facturable&&en.heures>0).forEach(en=>entreesFact.push({...en,emp}));
+    });
+    const sstFact=state.sstFactures.filter(a=>a.chantier===chantier&&a.facturable===true);
+    const achatsFact=state.achats.filter(a=>a.chantier===chantier&&a.facturable===true);
+    if(!entreesFact.length&&!sstFact.length&&!achatsFact.length)return;
+    const factsCh=state.factures.filter(f=>f.chantier===chantier&&(f.statut==='envoye'||f.statut==='paye'));
+    const nonCouvertsH=entreesFact.filter(en=>{
+      return!factsCh.some(f=>{
+        if(!f.dateDebut||!f.dateFin)return false;
+        const d=new Date(en.date+'T12:00:00');
+        return d>=new Date(f.dateDebut+'T00:00:00')&&d<=new Date(f.dateFin+'T23:59:59');
+      });
+    });
+    const nonCouvertsSST=sstFact.filter(a=>{
+      return!factsCh.some(f=>{
+        if(!f.dateDebut||!f.dateFin)return false;
+        const d=new Date(a.date+'T12:00:00');
+        return d>=new Date(f.dateDebut+'T00:00:00')&&d<=new Date(f.dateFin+'T23:59:59');
+      });
+    });
+    const nonCouvertsMat=achatsFact.filter(a=>{
+      return!factsCh.some(f=>{
+        const md1=f.matDateDebut||f.dateDebut;
+        const md2=f.matDateFin||f.dateFin;
+        if(!md1||!md2)return false;
+        const d=new Date(a.date+'T12:00:00');
+        return d>=new Date(md1+'T00:00:00')&&d<=new Date(md2+'T23:59:59');
+      });
+    });
+    if(!nonCouvertsH.length&&!nonCouvertsSST.length&&!nonCouvertsMat.length)return;
+    const hNonFact=nonCouvertsH.reduce((s,en)=>s+en.heures,0);
+    const montantMdoNon=taux>0?hNonFact*taux:0;
+    const montantSSTNon=nonCouvertsSST.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    const montantMatNon=nonCouvertsMat.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    const totalNon=montantMdoNon+montantSSTNon+montantMatNon;
+    const datesNon=[...nonCouvertsH.map(e=>e.date),...nonCouvertsSST.map(a=>a.date),...nonCouvertsMat.map(a=>a.date)].sort();
+    chantierAlerts.push({chantier,hNonFact,montantMdoNon,montantSSTNon,montantMatNon,totalNon,
+      dateMin:datesNon[0],dateMax:datesNon[datesNon.length-1],
+      nbEntrees:nonCouvertsH.length,nbSST:nonCouvertsSST.length,nbMat:nonCouvertsMat.length});
+  });
+  const totalNonFacture=chantierAlerts.reduce((s,a)=>s+a.totalNon,0);
+
+  // Alertes standard
   const alertes=[];
   if(facturesBrouillon.length)alertes.push({type:'warn',msg:`${facturesBrouillon.length} facture${facturesBrouillon.length>1?'s':''} en brouillon non envoyée${facturesBrouillon.length>1?'s':''}`});
   if(facturesEnvoyees.length)alertes.push({type:'info',msg:`${facturesEnvoyees.length} facture${facturesEnvoyees.length>1?'s':''} envoyée${facturesEnvoyees.length>1?'s':''} en attente de paiement — ${totalEnAttente.toFixed(2)} $`});
@@ -3234,6 +3302,28 @@ function buildDashboard(){
 
   c.innerHTML=`
     <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--secondary);">📊 Tableau de bord — ${moisNom.charAt(0).toUpperCase()+moisNom.slice(1)}</div>
+
+    ${chantierAlerts.length?`
+    <div style="background:#FEF3C7;border:1.5px solid #F59E0B;border-radius:var(--radius);padding:14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:13px;font-weight:700;color:#92400E;">🚨 Éléments facturables non couverts</div>
+        ${totalNonFacture>0?`<div style="background:#92400E;color:#fff;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:700;">${totalNonFacture.toFixed(2)} $</div>`:''}
+      </div>
+      ${chantierAlerts.map(a=>`
+        <div style="background:#fff;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;border:1px solid #F59E0B;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:4px;">
+            <div style="font-size:13px;font-weight:700;">🏗 ${a.chantier}</div>
+            ${a.totalNon>0?`<div style="font-size:13px;font-weight:700;color:#92400E;">${a.totalNon.toFixed(2)} $</div>`:''}
+          </div>
+          <div style="font-size:11px;color:#666;margin-bottom:6px;">Période : ${a.dateMin} → ${a.dateMax}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${a.hNonFact>0?`<span style="font-size:11px;background:#E6F1FB;color:#0C447C;padding:2px 8px;border-radius:20px;font-weight:600;">👷 ${a.hNonFact.toFixed(1)}h${a.montantMdoNon>0?' = '+a.montantMdoNon.toFixed(0)+' $':''}</span>`:''}
+            ${a.montantSSTNon>0?`<span style="font-size:11px;background:#E1F5EE;color:#085041;padding:2px 8px;border-radius:20px;font-weight:600;">🔧 SST ${a.montantSSTNon.toFixed(0)} $</span>`:''}
+            ${a.montantMatNon>0?`<span style="font-size:11px;background:#FAEEDA;color:#633806;padding:2px 8px;border-radius:20px;font-weight:600;">🪵 Mat. ${a.montantMatNon.toFixed(0)} $</span>`:''}
+          </div>
+          <button onclick="preFillFacture('${a.chantier}','${a.dateMin}','${a.dateMax}')" style="margin-top:8px;width:100%;padding:7px;background:#0C447C;color:#fff;border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;">➕ Créer la facture pour cette période</button>
+        </div>`).join('')}
+    </div>`:'<div style="background:#EAF3DE;border-left:3px solid #27500A;padding:10px 12px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:12px;color:#27500A;">✅ Tous les éléments facturables sont couverts par une facture.</div>'}
 
     ${alertes.length?`<div style="margin-bottom:12px;">${alertes.map(a=>`
       <div style="background:${a.type==='warn'?'#FEF3C7':'#E6F1FB'};border-left:3px solid ${a.type==='warn'?'#F59E0B':'#185FA5'};padding:10px 12px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:6px;color:${a.type==='warn'?'#92400E':'#0C447C'};">
@@ -5135,91 +5225,57 @@ function apercuFactureCourante(){
     </div>`:'';
 
   const factureHTML=`
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
-      <!-- Bande d'accent en haut -->
-      <div style="background:#0C447C;height:6px;border-radius:4px 4px 0 0;margin-bottom:0;"></div>
-      <div style="padding:24px 24px 20px;">
-      <!-- En-tête -->
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
         <div>
-          ${e.logo?`<img src="${e.logo}" style="height:55px;object-fit:contain;margin-bottom:8px;display:block;" onerror="this.style.display='none'"/>`:''}
-          <div style="font-size:20px;font-weight:800;color:#0C447C;letter-spacing:-0.5px;">${e.nom||'Mon entreprise'}</div>
-          ${e.adresse?`<div style="font-size:11px;color:#555;margin-top:2px;">${e.adresse}</div>`:''}
-          ${e.telephone?`<div style="font-size:11px;color:#555;">${e.telephone}</div>`:''}
-          ${e.courriel?`<div style="font-size:11px;color:#555;">${e.courriel}</div>`:''}
-          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
-          ${e.noTPS?`<span style="font-size:10px;color:#888;background:#f0f0f0;padding:2px 7px;border-radius:20px;">TPS: ${e.noTPS}</span>`:''}
-          ${e.noTVQ?`<span style="font-size:10px;color:#888;background:#f0f0f0;padding:2px 7px;border-radius:20px;">TVQ: ${e.noTVQ}</span>`:''}
-          ${e.noRBQ?`<span style="font-size:10px;color:#888;background:#f0f0f0;padding:2px 7px;border-radius:20px;">RBQ: ${e.noRBQ}</span>`:''}
-          </div>
+          ${e.logo?`<img src="${e.logo}" style="height:50px;object-fit:contain;margin-bottom:6px;display:block;" onerror="this.style.display='none'"/>`:''}
+          <div style="font-size:18px;font-weight:700;">${e.nom||'Mon entreprise'}</div>
+          ${e.adresse?`<div style="font-size:11px;color:#666;">${e.adresse}</div>`:''}
+          ${e.telephone?`<div style="font-size:11px;color:#666;">${e.telephone}</div>`:''}
+          ${e.courriel?`<div style="font-size:11px;color:#666;">${e.courriel}</div>`:''}
+          ${e.noTPS?`<div style="font-size:10px;color:#888;">TPS: ${e.noTPS}</div>`:''}
+          ${e.noTVQ?`<div style="font-size:10px;color:#888;">TVQ: ${e.noTVQ}</div>`:''}
+          ${e.noRBQ?`<div style="font-size:10px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
         </div>
         <div style="text-align:right;">
-          <div style="font-size:28px;font-weight:900;color:#0C447C;letter-spacing:-1px;">FACTURE</div>
-          <div style="font-size:14px;font-weight:700;color:#1a1a1a;">${factCourante.numeroFacture?'N° '+factCourante.numeroFacture:'(N° à confirmer)'}</div>
-          <div style="font-size:11px;color:#666;margin-top:4px;">Date : ${new Date().toLocaleDateString('fr-CA',{year:'numeric',month:'long',day:'numeric'})}</div>
-          ${factCourante.dateDebut?`<div style="font-size:11px;color:#666;">Période : ${factCourante.dateDebut} → ${factCourante.dateFin}</div>`:''}
+          <div style="font-size:20px;font-weight:700;color:#0C447C;">FACTURE</div>
+          <div style="font-size:13px;font-weight:600;">${factCourante.numeroFacture?'#'+factCourante.numeroFacture:'(Numéro à confirmer)'}</div>
+          <div style="font-size:11px;color:#666;">Date: ${new Date().toISOString().slice(0,10)}</div>
+          ${factCourante.dateDebut?`<div style="font-size:11px;color:#666;">Période: ${factCourante.dateDebut} → ${factCourante.dateFin}</div>`:''}
         </div>
       </div>
-      <!-- Séparateur -->
-      <div style="border-top:1px solid #e0e0e0;margin-bottom:16px;"></div>
-      <!-- Facturer à -->
-      <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:180px;background:#f7f9fc;border-left:4px solid #0C447C;border-radius:0 6px 6px 0;padding:12px 14px;">
-          <div style="font-size:10px;font-weight:800;color:#0C447C;letter-spacing:.08em;margin-bottom:6px;">FACTURER À</div>
-          <div style="font-weight:700;font-size:14px;color:#1a1a1a;">${clientNom}</div>
-          ${client&&client.adresse?`<div style="font-size:12px;color:#555;">${client.adresse}</div>`:''}
-          ${client&&client.tel?`<div style="font-size:12px;color:#555;">${client.tel}</div>`:''}
-          ${clientCourriel?`<div style="font-size:12px;color:#0C447C;">${clientCourriel}</div>`:''}
-        </div>
-        <div style="flex:1;min-width:140px;background:#f7f9fc;border-left:4px solid #ccc;border-radius:0 6px 6px 0;padding:12px 14px;">
-          <div style="font-size:10px;font-weight:800;color:#666;letter-spacing:.08em;margin-bottom:6px;">CHANTIER</div>
-          <div style="font-weight:700;font-size:13px;color:#1a1a1a;">${factCourante.chantier||'—'}</div>
-        </div>
+      <div style="background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:16px;">
+        <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:4px;">FACTURER À</div>
+        <div style="font-weight:600;">${clientNom}</div>
+        ${client&&client.adresse?`<div style="font-size:12px;">${client.adresse}</div>`:''}
+        ${client&&client.tel?`<div style="font-size:12px;">${client.tel}</div>`:''}
+        ${clientCourriel?`<div style="font-size:12px;">${clientCourriel}</div>`:''}
+        <div style="font-size:11px;color:#666;margin-top:4px;">Chantier: ${factCourante.chantier}</div>
       </div>
-      <!-- Tableaux -->
-      ${mdoHtml?`<div style="margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:800;color:#0C447C;letter-spacing:.06em;background:#EBF3FC;padding:6px 10px;border-radius:4px 4px 0 0;border-left:4px solid #0C447C;">MAIN D'ŒUVRE</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
-          <thead><tr style="background:#f7f9fc;"><td style="padding:6px 8px;font-weight:700;color:#333;">Employé</td><td style="text-align:right;padding:6px 8px;font-weight:700;color:#333;">Heures</td><td style="text-align:right;padding:6px 8px;font-weight:700;color:#333;">Montant</td></tr></thead>
-          <tbody>${mdoHtml}</tbody>
-          <tfoot><tr style="background:#f0f4f8;"><td colspan="2" style="padding:6px 8px;font-weight:700;">Sous-total main d'œuvre</td><td style="text-align:right;padding:6px 8px;font-weight:700;color:#0C447C;">${mdoTotal.toFixed(2)} $</td></tr></tfoot>
-        </table></div>`:''}
-      ${sstTotal>0?`<div style="margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:800;color:#085041;letter-spacing:.06em;background:#E6F5EF;padding:6px 10px;border-radius:4px 4px 0 0;border-left:4px solid #0F6E56;">SOUS-TRAITANTS</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
-          <thead><tr style="background:#f7f9fc;"><td style="padding:6px 8px;font-weight:700;color:#333;">Sous-traitant</td><td style="padding:6px 8px;font-weight:700;color:#333;">Détail</td><td style="text-align:right;padding:6px 8px;font-weight:700;color:#333;">Montant</td></tr></thead>
-          <tbody>${sstHtml}</tbody>
-          <tfoot><tr style="background:#f0f4f8;"><td colspan="2" style="padding:6px 8px;font-weight:700;">Sous-total sous-traitants</td><td style="text-align:right;padding:6px 8px;font-weight:700;color:#0C447C;">${sstTotal.toFixed(2)} $</td></tr></tfoot>
-        </table></div>`:''}
-      ${matTotal>0?`<div style="margin-bottom:16px;">
-        <div style="font-size:11px;font-weight:800;color:#633806;letter-spacing:.06em;background:#FAF0E0;padding:6px 10px;border-radius:4px 4px 0 0;border-left:4px solid #854F0B;">MATÉRIAUX</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;">
-          <thead><tr style="background:#f7f9fc;"><td style="padding:6px 8px;font-weight:700;color:#333;">Fournisseur</td><td style="text-align:center;padding:6px 8px;font-weight:700;color:#333;">Qté</td><td style="text-align:right;padding:6px 8px;font-weight:700;color:#333;">Montant</td></tr></thead>
-          <tbody>${matHtml}</tbody>
-          <tfoot><tr style="background:#f0f4f8;"><td colspan="2" style="padding:6px 8px;font-weight:700;">Sous-total matériaux</td><td style="text-align:right;padding:6px 8px;font-weight:700;color:#0C447C;">${matTotal.toFixed(2)} $</td></tr></tfoot>
-        </table></div>`:''}
-      <!-- Section totaux -->
-      <div style="margin-left:auto;max-width:280px;margin-top:8px;">
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #eee;"><span style="color:#555;">Sous-total</span><span style="font-weight:600;">${soustotal.toFixed(2)} $</span></div>
-        ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #eee;"><span style="color:#555;">Frais de gestion (${fg}%)</span><span style="font-weight:600;">${montantFG.toFixed(2)} $</span></div>`:''}
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #eee;font-weight:700;"><span>Avant taxes</span><span>${avantTaxes.toFixed(2)} $</span></div>
-        ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #eee;color:#555;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>`:''}
-        ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #eee;color:#555;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>`:''}
-        <!-- TOTAL AVEC TAXES — très foncé et imposant -->
-        <div style="display:flex;justify-content:space-between;align-items:center;background:#0a1f3d;color:#fff;padding:14px 16px;border-radius:6px;margin-top:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+      ${mdoHtml?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MAIN D'ŒUVRE</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Employé</td><td style="text-align:right;font-weight:600;">Heures</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${mdoHtml}</tbody>
+        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${mdoTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+      ${sstTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">SOUS-TRAITANTS</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${sstHtml}</tbody>
+        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${sstTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+      ${matTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MATÉRIAUX</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Fournisseur</td><td style="font-weight:600;text-align:center;">Qté</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${matHtml}</tbody>
+        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
+      <div style="border-top:2px solid #1a1a1a;padding-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
+        ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Frais de gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;font-weight:600;"><span>Avant taxes</span><span>${avantTaxes.toFixed(2)} $</span></div>
+        ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>`:''}
+        ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#0a1f3d;color:#fff;padding:14px 16px;border-radius:6px;margin-top:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
           <div>
-            <div style="font-size:10px;font-weight:600;opacity:0.7;letter-spacing:.08em;margin-bottom:2px;">TOTAL AVEC TAXES</div>
-            <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;">${grandTotal.toFixed(2)} $</div>
+            <div style="font-size:10px;font-weight:600;opacity:0.75;letter-spacing:.08em;margin-bottom:2px;">TOTAL AVEC TAXES</div>
+            <div style="font-size:20px;font-weight:900;">${grandTotal.toFixed(2)} $</div>
           </div>
-          <div style="font-size:28px;opacity:0.2;">✓</div>
+          <div style="font-size:24px;opacity:0.2;">✓</div>
         </div>
       </div>
-      ${factCourante.notes?`<div style="margin-top:16px;padding:12px;background:#fffbe6;border-left:4px solid #f0c040;border-radius:0 6px 6px 0;font-size:11px;color:#555;">${factCourante.notes}</div>`:''}
-      <!-- Pied de page -->
-      <div style="margin-top:24px;border-top:1px solid #e0e0e0;padding-top:10px;text-align:center;font-size:10px;color:#aaa;">
-        Merci pour votre confiance · ${e.nom||''}${e.telephone?' · '+e.telephone:''}${e.courriel?' · '+e.courriel:''}
-      </div>
-      </div>
+      ${factCourante.notes?`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border-radius:6px;font-size:11px;color:#666;">${factCourante.notes}</div>`:''}
     </div>`;
 
   // Ouvrir modal d'aperçu
