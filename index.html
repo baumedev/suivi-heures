@@ -226,7 +226,6 @@ body{background:#fff;font-size:11px;}
 <div id="page-rapport" class="page">
   <nav class="sub-nav" id="rapport-subnav">
     <button class="active" onclick="setRapportSub('dashboard')">📊 Tableau de bord</button>
-    <button onclick="setRapportSub('suivi')">✅ Suivi facturation</button>
     <button onclick="setRapportSub('chantier')">🏗 Par chantier</button>
     <button onclick="setRapportSub('employe')">👷 Par employé</button>
     <button onclick="setRapportSub('paie')">💵 Paie</button>
@@ -3568,16 +3567,95 @@ function genFicheChantier(chantier){
       </div>`:''}
     </div>
 
-    ${facturesChantier.length?`<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
-      <div class="section-label">🧾 FACTURES (${facturesChantier.length})</div>
-      ${factureRows}
-      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
-        <span>Total facturé</span><span style="color:#0C447C;">${totalFacture.toFixed(2)} $</span>
-      </div>
-      ${totalPaye>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#27500A;font-weight:600;margin-top:2px;">
-        <span>✅ Payé</span><span>${totalPaye.toFixed(2)} $</span>
-      </div>`:''}
-    </div>`:''}
+    ${(()=>{
+      // ── Suivi facturation ──
+      const facCourCh=state.facturesCourantes.filter(f=>f.chantier===chantier);
+      // Heures facturées (dans une facture)
+      let hFacturees=0;
+      [...facturesChantier,...facCourCh].forEach(f=>{
+        if(!f.dateDebut||!f.dateFin)return;
+        const fd1=new Date(f.dateDebut+'T00:00:00'),fd2=new Date(f.dateFin+'T23:59:59');
+        Object.keys(EMPS).forEach(empKey=>{
+          hFacturees+=state.entries[empKey].filter(en=>{
+            const d=new Date(en.date+'T12:00:00');
+            return en.chantier===chantier&&en.facturable&&en.heures>0&&!en.absence&&d>=fd1&&d<=fd2;
+          }).reduce((s,en)=>s+en.heures,0);
+        });
+      });
+      // Heures facturables totales
+      let hFacturables=0;
+      Object.keys(EMPS).forEach(empKey=>{
+        hFacturables+=state.entries[empKey].filter(en=>en.chantier===chantier&&en.facturable&&en.heures>0&&!en.absence).reduce((s,en)=>s+en.heures,0);
+      });
+      const hManquantes=hFacturables-hFacturees;
+      const montantManquant=taux>0?hManquantes*taux:0;
+
+      // Statut
+      let statusColor='#666',statusIcon='⚪',statusLabel='Aucune facture';
+      if(hManquantes>0.5){statusColor='#E24B4A';statusIcon='🔴';statusLabel='Heures non facturées!';}
+      else if(facturesChantier.some(f=>f.statut==='envoye')){statusColor='#EF9F27';statusIcon='🟡';statusLabel='En attente de paiement';}
+      else if(facturesChantier.length>0&&totalPaye>=totalFacture*0.95){statusColor='#27500A';statusIcon='🟢';statusLabel='Tout facturé et payé';}
+      else if(facturesChantier.length>0||facCourCh.length>0){statusColor='#185FA5';statusIcon='🔵';statusLabel='Facturé, en cours';}
+
+      // Détail heures manquantes par employé
+      let hManqHtml='';
+      if(hManquantes>0.5){
+        Object.keys(EMPS).forEach(empKey=>{
+          const e=EMPS[empKey];
+          const allH=state.entries[empKey].filter(en=>en.chantier===chantier&&en.facturable&&en.heures>0&&!en.absence);
+          let hEmpFact=0;
+          [...facturesChantier,...facCourCh].forEach(f=>{
+            if(!f.dateDebut||!f.dateFin)return;
+            const fd1=new Date(f.dateDebut+'T00:00:00'),fd2=new Date(f.dateFin+'T23:59:59');
+            hEmpFact+=allH.filter(en=>{const d=new Date(en.date+'T12:00:00');return d>=fd1&&d<=fd2;}).reduce((s,en)=>s+en.heures,0);
+          });
+          const hEmpManq=allH.reduce((s,en)=>s+en.heures,0)-hEmpFact;
+          if(hEmpManq>0.25)hManqHtml+=`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:0.5px solid #F09595;">
+            <span style="color:${e.col};font-weight:500;">${e.label}</span>
+            <span style="color:#E24B4A;font-weight:600;">${hEmpManq.toFixed(1)}h${taux>0?' = '+(hEmpManq*taux).toFixed(0)+' $':''}</span>
+          </div>`;
+        });
+      }
+
+      return `<div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div class="section-label" style="margin:0;">🧾 FACTURATION</div>
+          <span style="font-size:12px;font-weight:600;color:${statusColor};">${statusIcon} ${statusLabel}</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px;">
+          <div class="stat-box"><div class="label">H. facturables</div><div class="value" style="font-size:13px;">${hFacturables.toFixed(1)}h</div></div>
+          <div class="stat-box"><div class="label">H. facturées</div><div class="value" style="font-size:13px;">${hFacturees.toFixed(1)}h</div></div>
+          <div class="stat-box ${hManquantes>0.5?'stat-nf':'stat-fact'}">
+            <div class="label">Non facturées</div>
+            <div class="value" style="font-size:13px;${hManquantes>0.5?'color:#E24B4A;':''}">${hManquantes>0.5?hManquantes.toFixed(1)+'h':'✅ 0h'}</div>
+          </div>
+        </div>
+
+        ${hManqHtml?`<div style="background:#FFF0F0;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:8px;border:1px solid #F09595;">
+          <div style="font-size:10px;font-weight:700;color:#E24B4A;margin-bottom:5px;">⚠️ HEURES SANS FACTURE PAR EMPLOYÉ</div>
+          ${hManqHtml}
+          ${montantManquant>0?`<div style="font-size:12px;font-weight:700;color:#E24B4A;margin-top:4px;padding-top:4px;border-top:1px solid #F09595;">
+            Total manquant: ${hManquantes.toFixed(1)}h = ${montantManquant.toFixed(2)} $
+          </div>`:''}
+        </div>`:''}
+
+        ${facturesChantier.length||facCourCh.length?`<div>
+          ${factureRows}
+          ${[...facCourCh].map(f=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:3px 0;border-bottom:0.5px solid var(--border);">
+            <span style="color:#EF9F27;font-weight:600;">✏️ En cours${f.numeroFacture?' #'+f.numeroFacture:''}</span>
+            <span style="color:var(--secondary);">${f.dateDebut||''}${f.dateFin?' → '+f.dateFin:''}</span>
+            <span style="font-size:10px;background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:10px;">Brouillon</span>
+          </div>`).join('')}
+          <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);">
+            <span>Total facturé</span><span style="color:#0C447C;">${totalFacture.toFixed(2)} $</span>
+          </div>
+          ${totalPaye>0?`<div style="display:flex;justify-content:space-between;font-size:12px;color:#27500A;font-weight:600;margin-top:2px;">
+            <span>✅ Payé</span><span>${totalPaye.toFixed(2)} $</span>
+          </div>`:''}
+        </div>`:'<div style="font-size:12px;color:var(--secondary);">Aucune facture créée.</div>'}
+      </div>`;
+    })()}
 
     ${totalAFacturer>0&&nonFacture>0?`<div style="margin-top:10px;background:#f9f9f9;border-radius:var(--radius-sm);padding:8px 10px;font-size:12px;">
       <div style="display:flex;justify-content:space-between;"><span>Main d'oeuvre fact.</span><span>${montantMdo.toFixed(2)} $</span></div>
