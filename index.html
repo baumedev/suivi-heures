@@ -268,7 +268,7 @@ const ROW_ID = 1;
 // ─── STATE ────────────────────────────────────────────────
 let state = {
   currentEmp:'victor',
-  currentSub:{victor:'cal',edouard:'cal',denis:'cal',guewenn:'cal',chantiers:'clients',facturation:'courantes'},
+  currentSub:{victor:'cal',edouard:'cal',denis:'cal',guewenn:'cal',guewenn:'cal',chantiers:'clients',facturation:'courantes'},
   currentHeuresEmp:'victor',
   calMonth:{victor:new Date().getMonth(),edouard:new Date().getMonth(),denis:new Date().getMonth(),guewenn:new Date().getMonth()},
   calYear:{victor:new Date().getFullYear(),edouard:new Date().getFullYear(),denis:new Date().getFullYear(),guewenn:new Date().getFullYear()},
@@ -580,7 +580,7 @@ function setEmp(emp){
   const tabBtn=document.querySelector(`.tab-${emp}`);
   if(tabBtn)tabBtn.classList.add('active');
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'){
     document.getElementById('page-heures').classList.add('active');
     document.querySelector('.tab-heures').classList.add('active');
     currentHeuresEmp=emp;
@@ -589,7 +589,7 @@ function setEmp(emp){
   }
   const page=document.getElementById('page-'+emp);
   if(page)page.classList.add('active');
-  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'){
+  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'||emp==='guewenn'){
     setHeuresEmp(emp);
   } else {
     // Trigger setSub to render correct content
@@ -614,7 +614,7 @@ function setSub(emp,sub){
     nav.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
   }
   // Update heures sub2nav and render content
-  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'){
     const btns2=document.querySelectorAll('#heures-sub2nav button');
     const subs2=['cal','liste','rapport'];
     btns2.forEach((b,i)=>b.classList.toggle('active',subs2[i]===sub));
@@ -647,6 +647,12 @@ function setSub(emp,sub){
     else if(sub==='sstfactures')sc.innerHTML=buildSstFactures();
     else if(sub==='fournisseurs')sc.innerHTML=buildFournisseurs();
   } else if(emp==='rapport'){
+    // Initialize rapport sub if not set
+    if(!window._rapportMainSub)window._rapportMainSub='dashboard';
+    // Update rapport subnav
+    const rbtns=document.querySelectorAll('#rapport-subnav button');
+    const rsubs=['dashboard','chantier','employe','paie','periode'];
+    rbtns.forEach((b,i)=>b.classList.toggle('active',rsubs[i]===(window._rapportMainSub||'dashboard')));
     renderRapportPeriode();
   } else if(emp==='entreprise'){
     renderEntreprise();
@@ -655,7 +661,7 @@ function setSub(emp,sub){
 function smartRender(){
   const emp=state.currentEmp;
   const sub=state.currentSub[emp]||'';
-  if(emp==='victor'||emp==='edouard'||emp==='denis'){
+  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'){
     const c=document.getElementById('content-heures');
     if(!c)return;
     if(sub==='cal')c.innerHTML=buildCal(emp);
@@ -1932,6 +1938,17 @@ function changerStatutFacture(id,statut){
 function voirFacture(id){
   const f=state.factures.find(f=>f.id===id);
   if(!f)return;
+  // S'assurer qu'on est sur la page facturation
+  if(state.currentEmp!=='facturation'){
+    setEmp('facturation');
+  }
+  state.currentSub['facturation']='historique';
+  // Update facturation sub-nav
+  const fnbtns=document.querySelectorAll('#page-facturation .sub-nav button');
+  const fnsubs=['courantes','historique','depenses'];
+  fnbtns.forEach((b,i)=>b.classList.toggle('active',fnsubs[i]==='historique'));
+  const fnc=document.getElementById('content-facturation');
+  if(fnc)fnc.innerHTML=buildHistoriqueFactures();
   const fiche=state.fiches[f.chantier]||{};
   const e=state.entreprise;
   const fg=parseFloat(fiche.fraisGestion)||0;
