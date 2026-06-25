@@ -268,7 +268,7 @@ const ROW_ID = 1;
 // ─── STATE ────────────────────────────────────────────────
 let state = {
   currentEmp:'victor',
-  currentSub:{victor:'cal',edouard:'cal',denis:'cal',guewenn:'cal',guewenn:'cal',chantiers:'clients',facturation:'courantes'},
+  currentSub:{victor:'cal',edouard:'cal',denis:'cal',guewenn:'cal',chantiers:'clients',facturation:'courantes'},
   currentHeuresEmp:'victor',
   calMonth:{victor:new Date().getMonth(),edouard:new Date().getMonth(),denis:new Date().getMonth(),guewenn:new Date().getMonth()},
   calYear:{victor:new Date().getFullYear(),edouard:new Date().getFullYear(),denis:new Date().getFullYear(),guewenn:new Date().getFullYear()},
@@ -589,11 +589,18 @@ function setEmp(emp){
   }
   const page=document.getElementById('page-'+emp);
   if(page)page.classList.add('active');
-  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'||emp==='guewenn'){
+  if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'){
     setHeuresEmp(emp);
+  } else if(emp==='rapport'){
+    if(!window._rapportMainSub)window._rapportMainSub='dashboard';
+    renderRapportPeriode();
+  } else if(emp==='reglages'){
+    renderReglages();
+  } else if(emp==='entreprise'){
+    renderEntreprise();
   } else {
-    // Trigger setSub to render correct content
-    setSub(emp, state.currentSub[emp]||'clients');
+    const defaultSubs={facturation:'courantes',chantiers:'clients'};
+    setSub(emp, state.currentSub[emp]||defaultSubs[emp]||'');
   }
 }
 
@@ -676,7 +683,6 @@ function renderCurrent(){
   const emp=state.currentEmp;
   if(emp==='rapport'){renderRapportPeriode();return;}
   if(emp==='entreprise'){renderEntreprise();return;}
-  if(emp==='reglages'){renderReglages();return;}
   if(emp==='reglages'){renderReglages();return;}
   const sub=state.currentSub[emp],c=document.getElementById('content-'+emp);
   if(!c)return;
@@ -1949,6 +1955,8 @@ function voirFacture(id){
   fnbtns.forEach((b,i)=>b.classList.toggle('active',fnsubs[i]==='historique'));
   const fnc=document.getElementById('content-facturation');
   if(fnc)fnc.innerHTML=buildHistoriqueFactures();
+  // Now scroll to top
+  if(fnc)fnc.scrollTop=0;
   const fiche=state.fiches[f.chantier]||{};
   const e=state.entreprise;
   const fg=parseFloat(fiche.fraisGestion)||0;
