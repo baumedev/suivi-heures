@@ -428,7 +428,11 @@ async function loadFromCloud(){
     const rows=await r.json();
     if(rows.length>0&&rows[0].data){
       const d=rows[0].data;
-      if(d.entries)state.entries=d.entries;
+      if(d.entries){
+        state.entries=d.entries;
+        // Ensure all EMPS have entries array
+        Object.keys(EMPS).forEach(k=>{if(!state.entries[k])state.entries[k]=[];});
+      }
       if(d.chantiers)state.chantiers=d.chantiers;
       if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
       if(d.fiches)state.fiches=d.fiches;
@@ -519,6 +523,7 @@ function loadLocal(andRender){
       if(d.sstFactureId)state.sstFactureId=d.sstFactureId;
       state.chantiers.forEach(c=>{if(!state.fiches[c])state.fiches[c]={};});
     }
+    initSafeState();
     if(andRender)renderCurrent();
   }catch(e){console.error('loadLocal error',e);}
 }
@@ -548,6 +553,7 @@ setInterval(async()=>{
       if(d.entreprise)state.entreprise=d.entreprise;
       if(d.sstraitants)state.sstraitants=d.sstraitants;
       if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
+      initSafeState();
       saveLocal();
       const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
       setSyncStatus('ok','Sync '+t);
@@ -593,7 +599,11 @@ function setEmp(emp){
     setHeuresEmp(emp);
   } else if(emp==='rapport'){
     if(!window._rapportMainSub)window._rapportMainSub='dashboard';
-    renderRapportPeriode();
+    // Force update subnav
+    const rbtns=document.querySelectorAll('#rapport-subnav button');
+    const rsubs=['dashboard','chantier','employe','paie','periode'];
+    rbtns.forEach((b,i)=>b.classList.toggle('active',rsubs[i]===(window._rapportMainSub||'dashboard')));
+    buildDashboard();
   } else if(emp==='reglages'){
     renderReglages();
   } else if(emp==='entreprise'){
@@ -712,6 +722,10 @@ function renderCurrent(){
 
 // ─── CALENDAR ─────────────────────────────────────────────
 function buildCal(emp){
+  // Safety: ensure entries exist for this employee
+  if(!state.entries[emp])state.entries[emp]=[];
+  if(!state.calMonth[emp]&&state.calMonth[emp]!==0)state.calMonth[emp]=new Date().getMonth();
+  if(!state.calYear[emp])state.calYear[emp]=new Date().getFullYear();
   const e=EMPS[emp],m=state.calMonth[emp],y=state.calYear[emp];
   const mN=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   const dN=['L','M','M','J','V','S','D'];
@@ -973,7 +987,15 @@ function setRapportSub(sub){
   const btns=document.querySelectorAll('#rapport-subnav button');
   const subs=['dashboard','chantier','employe','paie','periode'];
   btns.forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
-  renderRapportPeriode();
+  // Make sure content div is visible
+  const c=document.getElementById('content-rapport');
+  if(!c)return;
+  c.innerHTML='';
+  if(sub==='dashboard'){buildDashboard();}
+  else if(sub==='chantier'){buildRapportChantier();}
+  else if(sub==='employe'){buildRapportEmployes();}
+  else if(sub==='paie'){buildRapportPaie();}
+  else{renderRapportPeriode();}
 }
 
 function renderRapportPeriode(){
@@ -1954,9 +1976,6 @@ function voirFacture(id){
   const fnsubs=['courantes','historique','depenses'];
   fnbtns.forEach((b,i)=>b.classList.toggle('active',fnsubs[i]==='historique'));
   const fnc=document.getElementById('content-facturation');
-  if(fnc)fnc.innerHTML=buildHistoriqueFactures();
-  // Now scroll to top
-  if(fnc)fnc.scrollTop=0;
   const fiche=state.fiches[f.chantier]||{};
   const e=state.entreprise;
   const fg=parseFloat(fiche.fraisGestion)||0;
@@ -5419,6 +5438,38 @@ function sauvegarderPDFFacCourante(){
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
+
+// ─── SAFETY: initialiser tous les tableaux manquants ─────
+function initSafeState(){
+  // Entries pour chaque employé
+  Object.keys(EMPS).forEach(k=>{
+    if(!state.entries[k])state.entries[k]=[];
+  });
+  // Tableaux globaux
+  if(!Array.isArray(state.chantiers))state.chantiers=[];
+  if(!Array.isArray(state.typesTravaux))state.typesTravaux=[];
+  if(!Array.isArray(state.clients))state.clients=[];
+  if(!Array.isArray(state.sstraitants))state.sstraitants=[];
+  if(!Array.isArray(state.fournisseurs))state.fournisseurs=[];
+  if(!Array.isArray(state.factures))state.factures=[];
+  if(!Array.isArray(state.facturesCourantes))state.facturesCourantes=[];
+  if(!Array.isArray(state.achats))state.achats=[];
+  if(!Array.isArray(state.sstFactures))state.sstFactures=[];
+  if(!Array.isArray(state.tickets))state.tickets=[];
+  if(!Array.isArray(state.suggestions))state.suggestions=[];
+  if(!state.fiches)state.fiches={};
+  if(!state.empInfos)state.empInfos={};
+  if(!state.entreprise)state.entreprise={};
+  // CalMonth/CalYear pour chaque employé
+  Object.keys(EMPS).forEach(k=>{
+    if(state.calMonth[k]===undefined)state.calMonth[k]=new Date().getMonth();
+    if(state.calYear[k]===undefined)state.calYear[k]=new Date().getFullYear();
+  });
+  // Notes sur tickets/suggestions
+  state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
+  state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
+}
+
 // ─── INIT ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
   // 1. Show heures page immediately
@@ -5428,6 +5479,7 @@ window.addEventListener('DOMContentLoaded', function(){
   
   // 2. Load local data only (no render yet, setHeuresEmp will render)
   loadLocal(false);
+  initSafeState();
   setTimeout(()=>{
     setHeuresEmp('victor');
     // Check if user has active session
@@ -5448,7 +5500,10 @@ window.addEventListener('DOMContentLoaded', function(){
       const rows=await r.json();
       if(rows.length>0&&rows[0].data){
         const d=rows[0].data;
-        if(d.entries)state.entries=d.entries;
+        if(d.entries){
+          state.entries=d.entries;
+          Object.keys(EMPS).forEach(k=>{if(!state.entries[k])state.entries[k]=[];});
+        }
         if(d.chantiers)state.chantiers=d.chantiers;
         if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
         if(d.fiches)state.fiches=d.fiches;
