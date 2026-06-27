@@ -5604,7 +5604,7 @@ function sauvegarderPDFFacCourante(){
   const num=factCourante.numeroFacture||'facture';
   const ch=(factCourante.chantier||'').replace(/\s+/g,'-');
   const date=new Date().toISOString().slice(0,10);
-  const filename='Facture-'+num+'-'+ch+'-'+date+'.pdf';
+  const filename='Facture-'+num+'-'+ch+'-'+date;
   const css='*{box-sizing:border-box;margin:0;padding:0;}'
     +'body{font-family:-apple-system,sans-serif;padding:24px;color:#1a1a1a;background:#fff;font-size:13px;}'
     +'table{width:100%;border-collapse:collapse;}'
@@ -5614,13 +5614,17 @@ function sauvegarderPDFFacCourante(){
   html+='<meta charset="UTF-8">';
   html+='<title>'+filename+'</title>';
   html+='<style>'+css+'</style>';
-  html+='<script>window.onload=function(){document.title="'+filename+'";setTimeout(function(){window.print();},500);}<\/script>';
   html+='</head><body>';
   html+=(window._apercuHTML||'');
   html+='</body></html>';
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const win=window.open(url,'_blank');
+  if(win){
+    win.addEventListener('load',function(){
+      setTimeout(function(){win.print();},500);
+    });
+  }
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
