@@ -5573,8 +5573,8 @@ function imprimerApercuFacture(){
   const html='<!DOCTYPE html><html><head>'
     +'<meta charset="UTF-8"><title>​</title>'
     +'<style>'+css+'</style>'
-    +'</head><body>'+(window._apercuHTML||'')+'</div>
-</body></html>';
+    +'</head><body>'+(window._apercuHTML||'')+'</body></html>';
+
   // Créer un Blob et ouvrir dans nouvel onglet
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
