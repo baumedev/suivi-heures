@@ -14,6 +14,57 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:#f5f5f5;color:#1a1a1a;font-size:15px;}
 :root{--primary:#1a1a1a;--secondary:#6b6b6b;--border:#e0e0e0;--radius:10px;--radius-sm:6px;}
 .top-nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:0;z-index:100;}
+@media(min-width:900px){
+  body{overflow:hidden;}
+  #app{display:flex;flex-direction:column;height:100vh;}
+  .top-nav{
+    display:flex;flex-direction:row;align-items:center;
+    padding:0 0 0 20px;overflow:visible;flex-shrink:0;
+    height:52px;gap:0;
+  }
+  .top-nav .app-title{
+    font-size:15px;font-weight:700;color:var(--primary);
+    padding-right:20px;border-right:1px solid var(--border);
+    margin-right:8px;white-space:nowrap;letter-spacing:-0.3px;
+  }
+  .top-nav button{
+    padding:0 16px;height:52px;font-size:13px;font-weight:500;
+    border-bottom:2.5px solid transparent;border-radius:0;
+    white-space:nowrap;
+  }
+  .top-nav button.active{border-bottom-color:var(--primary);color:var(--primary);}
+  .desktop-body{display:flex;flex:1;overflow:hidden;}
+  .sub-nav{
+    flex-direction:column;width:180px;flex-shrink:0;
+    border-right:1px solid var(--border);border-bottom:none;
+    padding:10px 0;overflow-y:auto;background:#fafafa;
+    height:100%;
+  }
+  .sub-nav button{
+    border-bottom:none!important;
+    border-left:3px solid transparent;
+    border-radius:0!important;
+    padding:9px 16px;text-align:left;font-size:13px;
+    width:100%;color:#555;
+  }
+  .sub-nav button.active{
+    border-left-color:var(--primary);
+    background:#EEF3FC;color:var(--primary);font-weight:600;
+  }
+  .content{
+    flex:1;overflow-y:auto;padding:20px 28px;
+    height:100%;
+  }
+  .page{display:none!important;}
+  .page.active{display:flex!important;flex:1;overflow:hidden;}
+  .stats-row{grid-template-columns:repeat(4,1fr);}
+  .card{margin-bottom:14px;}
+  .grid2{grid-template-columns:1fr 1fr;}
+}
+@media(min-width:1200px){
+  .sub-nav{width:200px;}
+  .stats-row{grid-template-columns:repeat(5,1fr);}
+}
 .top-nav::-webkit-scrollbar{display:none;}
 .top-nav button{background:none;border:none;border-bottom:3px solid transparent;padding:14px 16px;font-size:13px;font-weight:500;color:var(--secondary);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;}
 .top-nav button.active{color:var(--primary);border-bottom-color:var(--primary);}
@@ -32,7 +83,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0
 .sub-nav button{background:none;border:none;border-bottom:2px solid transparent;padding:10px 14px;font-size:12px;color:var(--secondary);white-space:nowrap;cursor:pointer;}
 .sub-nav button.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:500;}
 .page{display:none;}.page.active{display:block;}
-.content{padding:16px;max-width:700px;margin:0 auto;padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+.content{padding:16px;max-width:100%;padding-bottom:calc(24px + env(safe-area-inset-bottom));}
 .card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:16px;margin-bottom:12px;}
 .card-title{font-size:14px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:6px;}
 .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
@@ -190,6 +241,7 @@ body{background:#fff;font-size:11px;}
   </div>
 </div>
 
+<div id="app">
 <div class="sync-bar" id="syncBar">
   <div class="sync-dot syncing" id="syncDot"></div>
   <span id="syncText">Connexion à Supabase...</span>
@@ -744,9 +796,52 @@ function buildCal(emp){
   h+='<div class="drag-hint" style="grid-column:1/-1;">Clique sur un jour ou glisse pour sélectionner plusieurs jours</div>';
   dN.forEach(d=>h+=`<div class="cal-day-name">${d}</div>`);
   for(let i=0;i<offset;i++)h+=`<div class="cal-cell empty"></div>`;
+  // Précalculer les totaux par semaine
+  const weekTotals={};
   for(let d=1;d<=dim;d++){
     const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow=(new Date(y,m,d).getDay()||7); // 1=Lun, 7=Dim
+    const weekStart=new Date(y,m,d);
+    weekStart.setDate(d-(dow-1));
+    const wk=weekStart.toISOString().slice(0,10);
+    if(!weekTotals[wk]){weekTotals[wk]={h:0,chantiers:{},days:[]};}
+    if(dm[ds]){
+      weekTotals[wk].h+=dm[ds].total;
+      state.entries[emp].filter(en=>en.date===ds&&en.heures>0&&!en.absence).forEach(en=>{
+        if(!weekTotals[wk].chantiers[en.chantier||'—'])weekTotals[wk].chantiers[en.chantier||'—']=0;
+        weekTotals[wk].chantiers[en.chantier||'—']+=en.heures;
+      });
+    }
+    weekTotals[wk].days.push(d);
+  }
+
+  let lastWk='';
+  for(let d=1;d<=dim;d++){
+    const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow=(new Date(y,m,d).getDay()||7);
+    const weekStart=new Date(y,m,d);weekStart.setDate(d-(dow-1));
+    const wk=weekStart.toISOString().slice(0,10);
     const v=dm[ds],it=ds===todayStr;
+    // Insérer barre semaine avant lundi (sauf première semaine si offset>0)
+    if(dow===1&&wk!==lastWk&&d>1){
+      const wt=weekTotals[wk]||{h:0,chantiers:{}};
+      const prevWk=Object.keys(weekTotals).find(k=>weekTotals[k].days.includes(d-1));
+      const pwt=prevWk?weekTotals[prevWk]:{h:0,chantiers:{}};
+      const chStr=Object.entries(pwt.chantiers).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([ch,h])=>`${ch}: ${h.toFixed(0)}h`).join(' · ');
+      const wkId='wk-'+emp+'-'+prevWk;
+      h+=`<div style="grid-column:1/-1;background:#f9f9f9;border-radius:6px;padding:4px 8px;margin:2px 0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;border:0.5px solid var(--border);" onclick="toggleWeekDetail('${wkId}')">
+        <span style="font-size:10px;font-weight:600;color:var(--secondary);">Sem. ${prevWk?prevWk.slice(5):''}</span>
+        <span style="font-size:11px;font-weight:700;color:${e.col};">${pwt.h.toFixed(1)}h</span>
+        <span style="font-size:10px;color:var(--secondary);display:none;" id="${wkId}-detail">${chStr}</span>
+        <span style="font-size:10px;color:var(--secondary);">›</span>
+      </div>
+      <div id="${wkId}-detail-full" style="display:none;grid-column:1/-1;background:#f0f4ff;border-radius:6px;padding:8px;margin:2px 0;font-size:11px;">
+        ${Object.entries(pwt.chantiers).sort((a,b)=>b[1]-a[1]).map(([ch,h])=>`<div style="display:flex;justify-content:space-between;padding:1px 0;"><span>${ch}</span><span style="font-weight:600;">${h.toFixed(1)}h</span></div>`).join('')}
+        <div style="display:flex;justify-content:space-between;border-top:0.5px solid var(--border);margin-top:4px;padding-top:4px;font-weight:700;"><span>Total</span><span>${pwt.h.toFixed(1)}h</span></div>
+      </div>`;
+      lastWk=wk;
+    }
+    if(!lastWk)lastWk=wk;
     let fH='';
     if(v&&v.fact>0&&v.fact<v.total)fH=`<div class="day-f" style="color:#888;">F+NF</div>`;
     else if(v&&v.fact>0)fH=`<div class="day-f" style="color:#27500A;">F</div>`;
@@ -769,6 +864,23 @@ function buildCal(emp){
         const absIcon=absType==='conge'?'🏖':absType==='maladie'?'🤒':absType==='ferie'?'⭐':'';
         return `<div class="day-h" style="color:${absColor};">${absIcon||v.total.toFixed(1)+'h'}</div>`;
       })():''}${fH}
+    </div>`;
+  }
+  // Dernière semaine
+  const lastWeekKeys=Object.keys(weekTotals);
+  if(lastWeekKeys.length){
+    const lastKey=lastWeekKeys[lastWeekKeys.length-1];
+    const lwt=weekTotals[lastKey];
+    const lwkId='wk-'+emp+'-'+lastKey;
+    const chStr=Object.entries(lwt.chantiers).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([ch,h])=>ch+': '+h.toFixed(0)+'h').join(' · ');
+    h+=`<div style="grid-column:1/-1;background:#f9f9f9;border-radius:6px;padding:4px 8px;margin:2px 0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;border:0.5px solid var(--border);" onclick="toggleWeekDetail('${lwkId}')">
+      <span style="font-size:10px;font-weight:600;color:var(--secondary);">Sem. ${lastKey.slice(5)}</span>
+      <span style="font-size:11px;font-weight:700;color:${e.col};">${lwt.h.toFixed(1)}h</span>
+      <span style="font-size:10px;color:var(--secondary);">›</span>
+    </div>
+    <div id="${lwkId}-detail-full" style="display:none;grid-column:1/-1;background:#f0f4ff;border-radius:6px;padding:8px;margin:2px 0;font-size:11px;">
+      ${Object.entries(lwt.chantiers).sort((a,b)=>b[1]-a[1]).map(([ch,h2])=>`<div style="display:flex;justify-content:space-between;padding:1px 0;"><span>${ch}</span><span style="font-weight:600;">${h2.toFixed(1)}h</span></div>`).join('')}
+      <div style="display:flex;justify-content:space-between;border-top:0.5px solid var(--border);margin-top:4px;padding-top:4px;font-weight:700;"><span>Total</span><span>${lwt.h.toFixed(1)}h</span></div>
     </div>`;
   }
   return h+'</div>';
@@ -1471,7 +1583,18 @@ function removeSst(i){if(!confirm("Supprimer ce sous-traitant?"))return;state.ss
 
 function openSstModal(idx){
   const isNew=idx===-1;
-  const s=isNew?{nom:'',contact:'',tel:'',courriel:'',specialite:'',rbq:''}:state.sstraitants[idx];
+  // idx peut être un index OU un id — chercher par les deux
+  let s;
+  if(isNew){
+    s={nom:'',contact:'',tel:'',courriel:'',specialite:'',rbq:''};
+  } else {
+    // D'abord essayer comme index direct
+    s=state.sstraitants[idx];
+    // Si undefined, chercher par id
+    if(!s)s=state.sstraitants.find(x=>x.id===idx||x.id===parseInt(idx));
+    // Si encore undefined, créer un objet vide
+    if(!s)s={nom:'',contact:'',tel:'',courriel:'',specialite:'',rbq:''};
+  }
   document.getElementById('modalBox').innerHTML=`
     <div class="modal-header"><h3>${isNew?'Nouveau sous-traitant':'Modifier sous-traitant'}</h3><button class="modal-close" onclick="closeModal()">×</button></div>
     <div class="grid2">
@@ -5450,7 +5573,8 @@ function imprimerApercuFacture(){
   const html='<!DOCTYPE html><html><head>'
     +'<meta charset="UTF-8"><title>​</title>'
     +'<style>'+css+'</style>'
-    +'</head><body>'+(window._apercuHTML||'')+'</body></html>';
+    +'</head><body>'+(window._apercuHTML||'')+'</div>
+</body></html>';
   // Créer un Blob et ouvrir dans nouvel onglet
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
@@ -5510,7 +5634,8 @@ function sauvegarderPDFFacCourante(){
     +'<\/script>'
     +'</head><body>'
     +(window._apercuHTML||'')
-    +'</body></html>';
+    +'</div>
+</body></html>';
 
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
@@ -5699,6 +5824,15 @@ function buildRapportSuivi(){
   c.innerHTML=html||'<div class="empty">Aucune donnée à afficher.</div>';
 }
 
+
+function toggleWeekDetail(id){
+  const detail=document.getElementById(id+'-detail-full');
+  const row=document.getElementById(id+'-detail');
+  if(!detail)return;
+  const isOpen=detail.style.display!=='none';
+  detail.style.display=isOpen?'none':'block';
+}
+
 // ─── INIT ─────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', function(){
   // 1. Show heures page immediately
@@ -5761,5 +5895,6 @@ window.addEventListener('DOMContentLoaded', function(){
   },1000);
 });
 </script>
+</div>
 </body>
 </html>
