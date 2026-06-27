@@ -5601,39 +5601,23 @@ function envoyerFactureCourriel(){
 
 
 function sauvegarderPDFFacCourante(){
-  const e=state.entreprise;
   const num=factCourante.numeroFacture||'facture';
   const ch=(factCourante.chantier||'').replace(/\s+/g,'-');
   const date=new Date().toISOString().slice(0,10);
   const filename='Facture-'+num+'-'+ch+'-'+date+'.pdf';
-
-  const css=[
-    '*{box-sizing:border-box;margin:0;padding:0;}',
-    'body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;padding:24px;color:#1a1a1a;background:#fff;font-size:13px;}',
-    'table{width:100%;border-collapse:collapse;}',
-    'img{max-width:100%;}',
-    '@media print{',
-    '  html,body{margin:0;padding:0;}',
-    '  @page{size:letter portrait;margin:12mm 10mm;}',
-    '  body{padding:0;}',
-    '}'
-  ].join('');
-
-  const html='<!DOCTYPE html><html><head>'
-    +'<meta charset="UTF-8">'
-    +'<title>'+filename+'</title>'
-    +'<style>'+css+'</style>'
-    +'<script>'
-    +'window.onload=function(){'
-    +'  document.title="'+filename+'";'
-    +'  setTimeout(function(){window.print();},500);'
-    +'};'
-    +'<\/script>'
-    +'</head><body>'
-    +(window._apercuHTML||'')
-    +'</div>
-</body></html>';
-
+  const css='*{box-sizing:border-box;margin:0;padding:0;}'
+    +'body{font-family:-apple-system,sans-serif;padding:24px;color:#1a1a1a;background:#fff;font-size:13px;}'
+    +'table{width:100%;border-collapse:collapse;}'
+    +'img{max-width:100%;}'
+    +'@media print{html,body{margin:0;padding:0;}@page{size:letter portrait;margin:12mm 10mm;}body{padding:0;}}';
+  let html='<!DOCTYPE html><html><head>';
+  html+='<meta charset="UTF-8">';
+  html+='<title>'+filename+'</title>';
+  html+='<style>'+css+'</style>';
+  html+='<script>window.onload=function(){document.title="'+filename+'";setTimeout(function(){window.print();},500);}<\/script>';
+  html+='</head><body>';
+  html+=(window._apercuHTML||'');
+  html+='</body></html>';
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const win=window.open(url,'_blank');
