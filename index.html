@@ -5564,22 +5564,19 @@ ${e.nom||'Notre équipe'}</textarea>
 }
 
 function imprimerApercuFacture(){
-  const css=[
-    '*{box-sizing:border-box;margin:0;padding:0;}',
-    'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px;color:#1a1a1a;background:#fff;}',
-    'table{width:100%;border-collapse:collapse;}',
-    '@media print{@page{size:letter;margin:15mm 12mm;}body{padding:0;}}'
-  ].join('');
-  const html='<!DOCTYPE html><html><head>'
-    +'<meta charset="UTF-8"><title>​</title>'
-    +'<style>'+css+'</style>'
-    +'</head><body>'+(window._apercuHTML||'')+'</body></html>';
-
-  // Créer un Blob et ouvrir dans nouvel onglet
-  const blob=new Blob([html],{type:'text/html'});
+  const css='*{box-sizing:border-box;margin:0;padding:0;}'
+    +'body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:24px;color:#1a1a1a;background:#fff;}'
+    +'table{width:100%;border-collapse:collapse;}'
+    +'@media print{@page{size:letter;margin:15mm 12mm;}body{padding:0;}}';
+  let html='<!DOCTYPE html><html><head>';
+  html+='<meta charset="UTF-8"><title>​</title>';
+  html+='<style>'+css+'</style>';
+  html+='</head><body>';
+  html+=(window._apercuHTML||'');
+  html+='</body></html>';
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const win=window.open(url,'_blank');
-  // Nettoyer après
   setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 
