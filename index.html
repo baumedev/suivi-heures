@@ -652,16 +652,6 @@ function setEmp(emp){
     const rsubs=['dashboard','chantier','employe','paie','periode'];
     rbtns.forEach((b,i)=>b.classList.toggle('active',rsubs[i]===(window._rapportMainSub||'dashboard')));
     buildDashboard();
-  } else if(emp==='soumissions'){
-    const sc=document.getElementById('content-soumissions');
-    if(!sc)return;
-    const btns=document.querySelectorAll('#soumissions-subnav button');
-    const subs2=['liste','nouvelle','suivi'];
-    btns.forEach((b,i)=>b.classList.toggle('active',subs2[i]===sub));
-    if(sub==='liste')sc.innerHTML=buildSoumissionsListe();
-    else if(sub==='nouvelle')sc.innerHTML=buildNouvelleSoumission();
-    else if(sub==='suivi')sc.innerHTML=buildSuiviCouts();
-    else sc.innerHTML=buildSoumissionsListe();
   } else if(emp==='reglages'){
     renderReglages();
   } else if(emp==='entreprise'){
@@ -685,6 +675,7 @@ function setSub(emp,sub){
     let subs;
     if(emp==='chantiers')subs=['clients','chantiersList','employes','sstraitants_fiches','fournisseurs_fiches','entreprise_fiche','listes'];
     else if(emp==='facturation')subs=['courantes','historique','depenses'];
+    else if(emp==='soumissions')subs=['liste','nouvelle','suivi'];
     else subs=['cal','liste','rapport'];
     nav.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',subs[i]===sub));
   }
@@ -733,13 +724,21 @@ function setSub(emp,sub){
     else if(sub==='sstfactures')sc.innerHTML=buildSstFactures();
     else if(sub==='fournisseurs')sc.innerHTML=buildFournisseurs();
   } else if(emp==='rapport'){
-    // Initialize rapport sub if not set
     if(!window._rapportMainSub)window._rapportMainSub='dashboard';
-    // Update rapport subnav
     const rbtns=document.querySelectorAll('#rapport-subnav button');
     const rsubs=['dashboard','chantier','employe','paie','periode'];
     rbtns.forEach((b,i)=>b.classList.toggle('active',rsubs[i]===(window._rapportMainSub||'dashboard')));
     renderRapportPeriode();
+  } else if(emp==='soumissions'){
+    const sc=document.getElementById('content-soumissions');
+    if(!sc)return;
+    const btns=document.querySelectorAll('#soumissions-subnav button');
+    const subs2=['liste','nouvelle','suivi'];
+    btns.forEach((b,i)=>b.classList.toggle('active',subs2[i]===sub));
+    if(sub==='liste')sc.innerHTML=buildSoumissionsListe();
+    else if(sub==='nouvelle')sc.innerHTML=buildNouvelleSoumission();
+    else if(sub==='suivi')sc.innerHTML=buildSuiviCouts();
+    else sc.innerHTML=buildSoumissionsListe();
   } else if(emp==='entreprise'){
     renderEntreprise();
   }
