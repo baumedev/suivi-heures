@@ -144,6 +144,22 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .logout-btn:hover{background:#f0f0f0;}
 .tab-heures.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
 .tab-reglages.active{color:#534AB7;border-bottom-color:#534AB7;}
+.tab-soumissions.active{color:#0F6E56;border-bottom-color:#0F6E56;}
+.som-classe-C{border-left:4px solid #EF9F27;}
+.som-classe-B{border-left:4px solid #185FA5;}
+.som-classe-A{border-left:4px solid #27500A;}
+.som-badge-C{background:#FAEEDA;color:#633806;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.som-badge-B{background:#E6F1FB;color:#0C447C;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.som-badge-A{background:#EAF3DE;color:#27500A;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.som-section{border:0.5px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;}
+.som-section-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f9f9;cursor:pointer;}
+.som-section-header:hover{background:#f0f0f0;}
+.som-ligne{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:0.5px solid var(--border);}
+.som-ligne input[type=number]{width:90px;text-align:right;}
+.som-ligne select{flex:1;}
+.progress-bar{height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-top:4px;}
+.progress-fill{height:100%;border-radius:4px;transition:width 0.3s;}
+.tab-soumissions.active{color:#0C447C;border-bottom-color:#0C447C;}
 .cal-cell.selecting{background:#E6F1FB!important;border-color:#185FA5!important;border-width:2px!important;}
 .cal-cell.selected{background:#EAF3DE!important;border-color:#27500A!important;border-width:2px!important;}
 .drag-hint{font-size:10px;color:var(--secondary);text-align:center;padding:4px 0;margin-bottom:4px;}
@@ -213,7 +229,9 @@ body{background:#fff;font-size:11px;}
   <button class="tab-heures active" onclick="setEmp('heures')">⏱ Heures</button>
   <button class="tab-facturation" onclick="setEmp('facturation')">🧾 Facturation</button>
   <button class="tab-chantiers" onclick="setEmp('chantiers')">📁 Fiches</button>
+  <button class="tab-soumissions" onclick="setEmp('soumissions')">📋 Soumissions</button>
   <button class="tab-rapport" onclick="setEmp('rapport')">📊 Rapport</button>
+  <button class="tab-soumissions" onclick="setEmp('soumissions')">📋 Soumissions</button>
   <button class="tab-reglages" onclick="setEmp('reglages')">⚙️ Réglages</button>
 </nav>
 
@@ -244,6 +262,22 @@ body{background:#fff;font-size:11px;}
     <button onclick="setRapportSub('periode')">📅 Par période</button>
   </nav>
   <div class="content" id="content-rapport"></div>
+</div>
+<div id="page-soumissions" class="page">
+  <nav class="sub-nav" id="soumissions-subnav">
+    <button class="active" onclick="setSub('soumissions','liste')">📋 Soumissions</button>
+    <button onclick="setSub('soumissions','nouvelle')">➕ Nouvelle</button>
+    <button onclick="setSub('soumissions','suivi')">📊 Suivi budgétaire</button>
+  </nav>
+  <div class="content" id="content-soumissions"></div>
+</div>
+<div id="page-soumissions" class="page">
+  <nav class="sub-nav" id="soumissions-subnav">
+    <button class="active" onclick="setSub('soumissions','liste')">📋 Mes soumissions</button>
+    <button onclick="setSub('soumissions','nouvelle')">➕ Nouvelle</button>
+    <button onclick="setSub('soumissions','suivi')">📊 Suivi des coûts</button>
+  </nav>
+  <div class="content" id="content-soumissions"></div>
 </div>
 <div id="page-reglages" class="page">
   <nav class="sub-nav" id="reglages-subnav">
@@ -383,6 +417,8 @@ let state = {
   fournisseurs:[],
   factures:[],
   factureId:0,
+  soumissions:[],
+  soumissionId:0,
   facturesCourantes:[],
   facturesCourantesId:0,
   achats:[],
@@ -490,8 +526,8 @@ async function saveToCloud(){
 }
 
 function getCloudPayload(){
-  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,
-  entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,facturesCourantes:state.facturesCourantes,facturesCourantesId:state.facturesCourantesId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
+  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,soumissions:state.soumissions,soumissionId:state.soumissionId,
+  entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,soumissions:state.soumissions,soumissionId:state.soumissionId,facturesCourantes:state.facturesCourantes,facturesCourantesId:state.facturesCourantesId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
 }
 
 // ─── LOCAL BACKUP ─────────────────────────────────────────
@@ -513,12 +549,16 @@ function loadLocal(andRender){
       if(d.ticketId)state.ticketId=d.ticketId;
       if(d.suggestions)state.suggestions=d.suggestions;
       if(d.suggestionId)state.suggestionId=d.suggestionId;
+      if(d.soumissions)state.soumissions=d.soumissions;
+      if(d.soumissionId)state.soumissionId=d.soumissionId;
       state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
       state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
     if(d.tickets)state.tickets=d.tickets;
     if(d.ticketId)state.ticketId=d.ticketId;
     if(d.suggestions)state.suggestions=d.suggestions;
     if(d.suggestionId)state.suggestionId=d.suggestionId;
+    if(d.soumissions)state.soumissions=d.soumissions;
+    if(d.soumissionId)state.soumissionId=d.soumissionId;
     // S'assurer que toutes les suggestions et tickets ont un tableau notes
     state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
     state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
@@ -609,6 +649,11 @@ function setEmp(emp){
   if(page)page.classList.add('active');
   if(emp==='victor'||emp==='edouard'||emp==='denis'||emp==='guewenn'){
     setHeuresEmp(emp);
+  } else if(emp==='soumissions'){
+    const page=document.getElementById('page-soumissions');
+    if(page)page.classList.add('active');
+    setSub('soumissions','liste');
+    return;
   } else if(emp==='rapport'){
     if(!window._rapportMainSub)window._rapportMainSub='dashboard';
     // Force update subnav
@@ -616,6 +661,11 @@ function setEmp(emp){
     const rsubs=['dashboard','chantier','employe','paie','periode'];
     rbtns.forEach((b,i)=>b.classList.toggle('active',rsubs[i]===(window._rapportMainSub||'dashboard')));
     buildDashboard();
+  } else if(emp==='soumissions'){
+    const c=document.getElementById('content-soumissions');
+    if(c)c.innerHTML=buildSoumissionsListe();
+    const btns=document.querySelectorAll('#soumissions-subnav button');
+    btns.forEach((b,i)=>b.classList.toggle('active',i===0));
   } else if(emp==='reglages'){
     renderReglages();
   } else if(emp==='entreprise'){
@@ -667,6 +717,17 @@ function setSub(emp,sub){
     else if(sub==='entreprise_fiche'){renderEntreprise();return;}
     else if(sub==='listes')sc.innerHTML=buildGestionListes();
   } else if(emp==='facturation'){
+    if(sub==='liste'||sub==='nouvelle'||sub==='suivi'){
+      const sc2=document.getElementById('content-soumissions');
+      if(!sc2)return;
+      const btns2=document.querySelectorAll('#soumissions-subnav button');
+      const subs2=['liste','nouvelle','suivi'];
+      btns2.forEach((b,i)=>b.classList.toggle('active',subs2[i]===sub));
+      if(sub==='liste')sc2.innerHTML=buildSoumissionsList();
+      else if(sub==='nouvelle')sc2.innerHTML=buildNouvelleSoumission();
+      else if(sub==='suivi')sc2.innerHTML=buildSuiviBudgetaire();
+      return;
+    }
     if(sub==='courantes')sc.innerHTML=buildFacturesCourantes();
     else if(sub==='nouvelle'){sc.innerHTML=buildNouvelleFacture();}
     else if(sub==='historique')sc.innerHTML=buildHistoriqueFactures();
@@ -3091,7 +3152,7 @@ function exporterDonnees(){
     typesTravaux:state.typesTravaux,
     fiches:state.fiches,
     clients:state.clients,
-    empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,
+    empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,soumissions:state.soumissions,soumissionId:state.soumissionId,
     entreprise:state.entreprise,
     sstraitants:state.sstraitants,
     fournisseurs:state.fournisseurs,
@@ -5613,11 +5674,13 @@ function initSafeState(){
   if(!Array.isArray(state.sstraitants))state.sstraitants=[];
   if(!Array.isArray(state.fournisseurs))state.fournisseurs=[];
   if(!Array.isArray(state.factures))state.factures=[];
+  if(!Array.isArray(state.soumissions))state.soumissions=[];
   if(!Array.isArray(state.facturesCourantes))state.facturesCourantes=[];
   if(!Array.isArray(state.achats))state.achats=[];
   if(!Array.isArray(state.sstFactures))state.sstFactures=[];
   if(!Array.isArray(state.tickets))state.tickets=[];
   if(!Array.isArray(state.suggestions))state.suggestions=[];
+  if(!Array.isArray(state.soumissions))state.soumissions=[];
   if(!state.fiches)state.fiches={};
   if(!state.empInfos)state.empInfos={};
   if(!state.entreprise)state.entreprise={};
@@ -5787,6 +5850,1097 @@ function toggleWeekDetail(id){
   if(!detail)return;
   const isOpen=detail.style.display!=='none';
   detail.style.display=isOpen?'none':'block';
+}
+
+
+// ─── SOUMISSIONS ──────────────────────────────────────────
+
+const CATEGORIES_CONSTRUCTION = [
+  {id:'preparation',label:'Préparation chantier',icon:'🏗'},
+  {id:'excavation',label:'Excavation',icon:'⛏'},
+  {id:'fondation',label:'Fondation',icon:'🧱'},
+  {id:'demolition',label:'Démolition',icon:'🔨'},
+  {id:'dechets',label:'Gestion des déchets',icon:'♻️'},
+  {id:'charpente',label:'Charpente',icon:'🪵'},
+  {id:'toiture',label:'Toiture',icon:'🏠'},
+  {id:'fenetres',label:'Portes & fenêtres',icon:'🪟'},
+  {id:'plomberie',label:'Plomberie',icon:'🔧'},
+  {id:'electricite',label:'Électricité',icon:'⚡'},
+  {id:'ventilation',label:'Ventilation/CVAC',icon:'💨'},
+  {id:'isolation',label:'Isolation',icon:'🌡'},
+  {id:'gypse',label:'Gypse & plâtre',icon:'🪣'},
+  {id:'carrelage',label:'Carrelage & maçonnerie',icon:'🔲'},
+  {id:'plancher',label:'Plancher',icon:'🟫'},
+  {id:'comptoir',label:'Comptoir & armoires',icon:'🗄'},
+  {id:'peinture',label:'Peinture',icon:'🎨'},
+  {id:'finition',label:'Finition',icon:'✨'},
+  {id:'amenagement',label:'Aménagement paysager',icon:'🌿'},
+  {id:'autre',label:'Autre / Divers',icon:'📦'},
+];
+
+const CLASSES_SOUMISSION = {
+  C: {label:'Classe C — Estimé budgétaire',color:'#EF9F27',bg:'#FAEEDA',desc:'Estimé rough ±30%. Idéal pour budgétisation préliminaire et faisabilité.'},
+  B: {label:'Classe B — Soumission préliminaire',color:'#185FA5',bg:'#E6F1FB',desc:'Plus précis ±15%. Basé sur plans préliminaires et discussions avec client.'},
+  A: {label:'Classe A — Soumission ferme',color:'#27500A',bg:'#EAF3DE',desc:'Prix fixe prêt à signer. Basé sur plans finaux et devis complets.'},
+};
+
+// ── Liste des soumissions ──────────────────────────────────
+function buildSoumissionsList(){
+  const list = state.soumissions || [];
+  if(!list.length) return `
+    <div class="card" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:48px;margin-bottom:12px;">📋</div>
+      <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Aucune soumission</div>
+      <div style="font-size:13px;color:var(--secondary);margin-bottom:24px;">Crée ta première soumission budgétaire</div>
+      <button class="btn btn-primary" style="width:auto;padding:12px 28px;" onclick="setSub('soumissions','nouvelle')">➕ Nouvelle soumission</button>
+    </div>`;
+
+  // Stats globales
+  const totalA = list.filter(s=>s.classe==='A').length;
+  const totalB = list.filter(s=>s.classe==='B').length;
+  const totalC = list.filter(s=>s.classe==='C').length;
+  const totalMontant = list.reduce((s,x)=>s+(x.totalAvecTaxes||0),0);
+  const acceptees = list.filter(s=>s.statut==='acceptee').reduce((s,x)=>s+(x.totalAvecTaxes||0),0);
+
+  const cartes = list.slice().sort((a,b)=>b.id-a.id).map(s=>{
+    const cl = CLASSES_SOUMISSION[s.classe]||CLASSES_SOUMISSION.C;
+    const statutColors = {brouillon:'#f0f0f0|#555',envoyee:'#E6F1FB|#0C447C',acceptee:'#EAF3DE|#27500A',refusee:'#FCEBEB|#791F1F'};
+    const [sbg,scol] = (statutColors[s.statut]||'#f0f0f0|#555').split('|');
+    const statutLabel = {brouillon:'Brouillon',envoyee:'Envoyée',acceptee:'Acceptée',refusee:'Refusée'}[s.statut]||s.statut;
+    const totalLignes = (s.lignes||[]).length;
+    const lignesRemplies = (s.lignes||[]).filter(l=>l.montant>0).length;
+    const pct = totalLignes>0?Math.round(lignesRemplies/totalLignes*100):0;
+    return `<div class="card" style="border-left:4px solid ${cl.color};cursor:pointer;margin-bottom:10px;" onclick="ouvrirSoumission(${s.id})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+            <span style="font-size:15px;font-weight:500;">${s.titre||'Sans titre'}</span>
+            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${cl.bg};color:${cl.color};">${s.classe}</span>
+            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${sbg};color:${scol};">${statutLabel}</span>
+          </div>
+          <div style="font-size:12px;color:var(--secondary);">${s.chantier||'Sans chantier'} · ${s.date||'—'}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:20px;font-weight:500;color:#0C447C;">${(s.totalAvecTaxes||0).toLocaleString('fr-CA',{minimumFractionDigits:0,maximumFractionDigits:0})} $</div>
+          <div style="font-size:11px;color:var(--secondary);">avant taxes: ${(s.totalAvantTaxes||0).toLocaleString('fr-CA',{minimumFractionDigits:0,maximumFractionDigits:0})} $</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${cl.color};border-radius:3px;transition:width 0.3s;"></div>
+        </div>
+        <span style="font-size:11px;color:var(--secondary);">${lignesRemplies}/${totalLignes} postes · ${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="stats-row" style="margin-bottom:16px;">
+      <div class="stat-box" style="border-left:3px solid #EF9F27;"><div class="label">Classe C</div><div class="value">${totalC}</div></div>
+      <div class="stat-box" style="border-left:3px solid #185FA5;"><div class="label">Classe B</div><div class="value">${totalB}</div></div>
+      <div class="stat-box" style="border-left:3px solid #27500A;"><div class="label">Classe A</div><div class="value">${totalA}</div></div>
+      <div class="stat-box stat-money"><div class="label">Total soumis</div><div class="value">${Math.round(totalMontant/1000)}k $</div></div>
+      <div class="stat-box stat-fact"><div class="label">Accepté</div><div class="value">${Math.round(acceptees/1000)}k $</div></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button class="btn btn-primary" style="width:auto;padding:9px 20px;" onclick="setSub('soumissions','nouvelle')">➕ Nouvelle soumission</button>
+    </div>
+    ${cartes}`;
+}
+
+// ── Nouvelle soumission / éditeur ─────────────────────────
+let soumCourante = null;
+
+function buildNouvelleSoumission(id){
+  if(id){
+    soumCourante = JSON.parse(JSON.stringify(state.soumissions.find(s=>s.id===id)||{}));
+  } else if(!soumCourante){
+    soumCourante = {
+      id: null, titre:'', classe:'C', chantier:'',
+      client:'', date: new Date().toISOString().slice(0,10),
+      validite:'', notes:'', statut:'brouillon',
+      margeGestion:0, appliquerTPS:true, appliquerTVQ:true,
+      lignes: CATEGORIES_CONSTRUCTION.map(c=>({
+        categorieId:c.id, label:c.label, icon:c.icon,
+        montantMain:0, montantMat:0, montantSST:0,
+        notes:'', inclus:true,
+        // Classe C = fourchette, B = estimé, A = fixe
+        min:0, max:0, montant:0
+      }))
+    };
+  }
+  const s = soumCourante;
+  const cl = CLASSES_SOUMISSION[s.classe]||CLASSES_SOUMISSION.C;
+  const chOpts = state.chantiers.map(c=>`<option value="${esc(c)}" ${c===s.chantier?'selected':''}>${c}</option>`).join('');
+  const clientOpts = state.clients.map((c,i)=>{const n=[c.prenom,c.nom].filter(Boolean).join(' ');return`<option value="${esc(n)}" ${n===s.client?'selected':''}>${n}</option>`;}).join('');
+
+  // Calculer totaux
+  const lignesActives = (s.lignes||[]).filter(l=>l.inclus);
+  const totalSansMargeNiTax = lignesActives.reduce((t,l)=>{
+    const m = s.classe==='C'?(l.min+l.max)/2:l.montant;
+    return t+(m||0);
+  },0);
+  const montantMarge = s.margeGestion>0?totalSansMargeNiTax*(s.margeGestion/100):0;
+  const avantTaxes = totalSansMargeNiTax+montantMarge;
+  const tps = s.appliquerTPS?avantTaxes*0.05:0;
+  const tvq = s.appliquerTVQ?avantTaxes*0.09975:0;
+  const avecTaxes = avantTaxes+tps+tvq;
+
+  // Lignes de postes
+  const lignesHtml = (s.lignes||[]).map((l,i)=>{
+    const isC = s.classe==='C';
+    const isA = s.classe==='A';
+    const montantAff = isC?(l.min+l.max)/2:l.montant;
+    return `<div class="card" style="padding:10px 12px;margin-bottom:8px;opacity:${l.inclus?1:0.45};">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:${l.inclus?'10px':'0'};">
+        <input type="checkbox" ${l.inclus?'checked':''} onchange="toggleLigneSoum(${i},this.checked)" style="width:18px;height:18px;cursor:pointer;flex-shrink:0;"/>
+        <span style="font-size:16px;">${l.icon}</span>
+        <span style="font-size:13px;font-weight:500;flex:1;">${l.label}</span>
+        ${montantAff>0?`<span style="font-size:14px;font-weight:500;color:#0C447C;">${Math.round(montantAff).toLocaleString('fr-CA')} $</span>`:'<span style="font-size:12px;color:var(--secondary);">—</span>'}
+      </div>
+      ${l.inclus?`
+      <div style="display:grid;grid-template-columns:${isC?'1fr 1fr':'1fr 1fr 1fr'};gap:8px;margin-left:26px;">
+        ${isC?`
+          <div class="field" style="margin:0;">
+            <label style="font-size:10px;">Min ($)</label>
+            <input type="number" value="${l.min||''}" placeholder="0" inputmode="decimal" style="font-size:13px;" onchange="updateLigneSoum(${i},'min',this.value)" oninput="updateLigneSoum(${i},'min',this.value)"/>
+          </div>
+          <div class="field" style="margin:0;">
+            <label style="font-size:10px;">Max ($)</label>
+            <input type="number" value="${l.max||''}" placeholder="0" inputmode="decimal" style="font-size:13px;" onchange="updateLigneSoum(${i},'max',this.value)" oninput="updateLigneSoum(${i},'max',this.value)"/>
+          </div>`:`
+          <div class="field" style="margin:0;">
+            <label style="font-size:10px;">Main d'oeuvre ($)</label>
+            <input type="number" value="${l.montantMain||''}" placeholder="0" inputmode="decimal" style="font-size:13px;" onchange="updateLigneSoum(${i},'montantMain',this.value)" oninput="updateLigneSoum(${i},'montantMain',this.value)"/>
+          </div>
+          <div class="field" style="margin:0;">
+            <label style="font-size:10px;">Matériaux ($)</label>
+            <input type="number" value="${l.montantMat||''}" placeholder="0" inputmode="decimal" style="font-size:13px;" onchange="updateLigneSoum(${i},'montantMat',this.value)" oninput="updateLigneSoum(${i},'montantMat',this.value)"/>
+          </div>
+          <div class="field" style="margin:0;">
+            <label style="font-size:10px;">SST ($)</label>
+            <input type="number" value="${l.montantSST||''}" placeholder="0" inputmode="decimal" style="font-size:13px;" onchange="updateLigneSoum(${i},'montantSST',this.value)" oninput="updateLigneSoum(${i},'montantSST',this.value)"/>
+          </div>`}
+      </div>
+      ${isA?`<div class="field" style="margin:4px 0 0 26px;">
+        <label style="font-size:10px;">Note / détail</label>
+        <input type="text" value="${esc(l.notes||'')}" placeholder="Détail du poste..." style="font-size:12px;" onchange="updateLigneSoum(${i},'notes',this.value)"/>
+      </div>`:''}
+      `:''}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        ${['C','B','A'].map(c=>`<button onclick="changerClasseSoum('${c}')" style="flex:1;padding:10px 6px;border:2px solid ${s.classe===c?CLASSES_SOUMISSION[c].color:'var(--border)'};border-radius:var(--radius-sm);background:${s.classe===c?CLASSES_SOUMISSION[c].bg:'#fff'};cursor:pointer;">
+          <div style="font-size:14px;font-weight:500;color:${s.classe===c?CLASSES_SOUMISSION[c].color:'var(--secondary)'};">Classe ${c}</div>
+          <div style="font-size:10px;color:${s.classe===c?CLASSES_SOUMISSION[c].color:'var(--secondary)'};">${c==='C'?'±30%':c==='B'?'±15%':'Ferme'}</div>
+        </button>`).join('')}
+      </div>
+      <div style="font-size:11px;color:${cl.color};background:${cl.bg};border-radius:var(--radius-sm);padding:6px 10px;margin-bottom:12px;">${cl.desc}</div>
+      <div class="grid2">
+        <div class="field"><label>Titre de la soumission</label><input type="text" id="soum-titre" value="${esc(s.titre||'')}" placeholder="Ex: Rénovation cuisine Tremblay" onchange="soumCourante.titre=this.value"/></div>
+        <div class="field"><label>Chantier associé</label><select id="soum-ch" onchange="soumCourante.chantier=this.value"><option value="">— Nouveau chantier —</option>${chOpts}</select></div>
+        <div class="field"><label>Client</label><select id="soum-client" onchange="soumCourante.client=this.value"><option value="">— Choisir —</option>${clientOpts}</select></div>
+        <div class="field"><label>Date</label><input type="date" id="soum-date" value="${s.date||''}" style="color:var(--primary);" onchange="soumCourante.date=this.value"/></div>
+        <div class="field"><label>Validité jusqu'au</label><input type="date" id="soum-valid" value="${s.validite||''}" style="color:var(--primary);" onchange="soumCourante.validite=this.value"/></div>
+        <div class="field"><label>Frais de gestion (%)</label><input type="number" id="soum-marge" value="${s.margeGestion||''}" placeholder="0" min="0" max="30" step="0.5" onchange="soumCourante.margeGestion=parseFloat(this.value)||0;refreshTotauxSoum()"/></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" ${s.appliquerTPS?'checked':''} onchange="soumCourante.appliquerTPS=this.checked;refreshTotauxSoum()" style="width:16px;height:16px;"/>TPS (5%)
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" ${s.appliquerTVQ?'checked':''} onchange="soumCourante.appliquerTVQ=this.checked;refreshTotauxSoum()" style="width:16px;height:16px;"/>TVQ (9.975%)
+        </label>
+      </div>
+    </div>
+
+    <div id="soum-totaux" style="background:#f9f9f9;border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">
+        <div class="stat-box"><div class="label">Postes actifs</div><div class="value" id="st-postes">${lignesActives.length}</div></div>
+        <div class="stat-box"><div class="label">Avant taxes</div><div class="value" id="st-avant" style="font-size:15px;">${Math.round(avantTaxes).toLocaleString('fr-CA')} $</div></div>
+        <div class="stat-box stat-money"><div class="label">Total avec taxes</div><div class="value" id="st-total" style="font-size:15px;color:#0C447C;">${Math.round(avecTaxes).toLocaleString('fr-CA')} $</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--secondary);display:flex;gap:16px;flex-wrap:wrap;">
+        <span>TPS: <strong id="st-tps">${Math.round(tps).toLocaleString('fr-CA')} $</strong></span>
+        <span>TVQ: <strong id="st-tvq">${Math.round(tvq).toLocaleString('fr-CA')} $</strong></span>
+        ${montantMarge>0?`<span>Frais gestion (${s.margeGestion}%): <strong>${Math.round(montantMarge).toLocaleString('fr-CA')} $</strong></span>`:''}
+      </div>
+    </div>
+
+    <div style="margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px;">Postes de travaux</div>
+      ${lignesHtml}
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label>Notes / conditions</label>
+      <textarea id="soum-notes" rows="3" placeholder="Conditions particulières, exclusions, hypothèses..." style="width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;font-family:inherit;" onchange="soumCourante.notes=this.value">${esc(s.notes||'')}</textarea>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="flex:2;" onclick="sauvegarderSoumission()">💾 Sauvegarder</button>
+      <button class="btn-pdf" onclick="apercuSoumission()">👁 Aperçu PDF</button>
+      ${s.id?`<button class="btn btn-sm" style="background:#EAF3DE;color:#27500A;border-color:#27500A;" onclick="changerStatutSoum('acceptee')">✅ Acceptée</button>`:''}
+      ${s.id?`<button class="btn btn-sm" style="background:#E6F1FB;color:#0C447C;border-color:#185FA5;" onclick="changerStatutSoum('envoyee')">📤 Envoyée</button>`:''}
+      <button class="btn btn-sm" onclick="soumCourante=null;setSub('soumissions','liste')">↺ Annuler</button>
+    </div>`;
+}
+
+function changerClasseSoum(classe){
+  soumCourante.classe = classe;
+  setSub('soumissions','nouvelle');
+}
+
+function toggleLigneSoum(i, val){
+  soumCourante.lignes[i].inclus = val;
+  refreshTotauxSoum();
+}
+
+function updateLigneSoum(i, champ, val){
+  const v = parseFloat(val)||0;
+  soumCourante.lignes[i][champ] = v;
+  // Calculer montant total de la ligne pour B et A
+  if(soumCourante.classe !== 'C'){
+    const l = soumCourante.lignes[i];
+    l.montant = (l.montantMain||0)+(l.montantMat||0)+(l.montantSST||0);
+  }
+  refreshTotauxSoum();
+}
+
+function refreshTotauxSoum(){
+  if(!soumCourante)return;
+  const s = soumCourante;
+  const lignesActives = (s.lignes||[]).filter(l=>l.inclus);
+  const totalBase = lignesActives.reduce((t,l)=>{
+    const m = s.classe==='C'?(l.min+l.max)/2:l.montant;
+    return t+(m||0);
+  },0);
+  const marge = s.margeGestion>0?totalBase*(s.margeGestion/100):0;
+  const avantTaxes = totalBase+marge;
+  const tps = s.appliquerTPS?avantTaxes*0.05:0;
+  const tvq = s.appliquerTVQ?avantTaxes*0.09975:0;
+  const avecTaxes = avantTaxes+tps+tvq;
+  soumCourante._totaux = {totalBase,marge,avantTaxes,tps,tvq,avecTaxes};
+  const fmt = v=>Math.round(v).toLocaleString('fr-CA')+' $';
+  const el = id=>document.getElementById(id);
+  if(el('st-postes'))el('st-postes').textContent=lignesActives.length;
+  if(el('st-avant'))el('st-avant').textContent=fmt(avantTaxes);
+  if(el('st-total'))el('st-total').textContent=fmt(avecTaxes);
+  if(el('st-tps'))el('st-tps').textContent=fmt(tps);
+  if(el('st-tvq'))el('st-tvq').textContent=fmt(tvq);
+}
+
+function sauvegarderSoumission(){
+  if(!soumCourante)return;
+  const s = soumCourante;
+  s.titre = document.getElementById('soum-titre')?.value||s.titre;
+  s.notes = document.getElementById('soum-notes')?.value||s.notes;
+  s.date = document.getElementById('soum-date')?.value||s.date;
+  s.validite = document.getElementById('soum-valid')?.value||s.validite;
+  refreshTotauxSoum();
+  const t = s._totaux||{};
+  s.totalAvantTaxes = Math.round(t.avantTaxes||0);
+  s.totalAvecTaxes = Math.round(t.avecTaxes||0);
+  if(!s.id){
+    s.id = ++state.soumissionId;
+    s.statut = s.statut||'brouillon';
+    state.soumissions.push({...s});
+  } else {
+    const idx = state.soumissions.findIndex(x=>x.id===s.id);
+    if(idx>=0)state.soumissions[idx]={...s};
+  }
+  saveToCloud();
+  soumCourante = null;
+  setSub('soumissions','liste');
+}
+
+function ouvrirSoumission(id){
+  setSub('soumissions','nouvelle');
+  setTimeout(()=>{
+    const s = state.soumissions.find(x=>x.id===id);
+    if(s){soumCourante=JSON.parse(JSON.stringify(s));setSub('soumissions','nouvelle');}
+  },50);
+}
+
+function changerStatutSoum(statut){
+  if(!soumCourante)return;
+  soumCourante.statut=statut;
+  sauvegarderSoumission();
+}
+
+// ── Suivi budgétaire ──────────────────────────────────────
+function buildSuiviBudgetaire(){
+  const soumA = state.soumissions.filter(s=>s.statut==='acceptee');
+  if(!soumA.length) return `<div class="empty">Aucune soumission acceptée.<br><br>Accepte une soumission pour commencer le suivi budgétaire.</div>`;
+
+  const chOpts = ['<option value="">— Toutes —</option>',
+    ...soumA.map(s=>`<option value="${s.id}">${s.titre} — ${s.chantier||'Sans chantier'}</option>`)
+  ].join('');
+
+  const soumId = window._suiviSoumId||soumA[0].id;
+  const soum = state.soumissions.find(s=>s.id===soumId)||soumA[0];
+  if(!soum)return '<div class="empty">Soumission introuvable.</div>';
+  const cl = CLASSES_SOUMISSION[soum.classe]||CLASSES_SOUMISSION.C;
+
+  // Calculer coûts réels depuis le chantier associé
+  const chantier = soum.chantier;
+  let reelMDO=0, reelMat=0, reelSST=0;
+  if(chantier){
+    const fiche = state.fiches[chantier]||{};
+    const taux = parseFloat(fiche.taux)||0;
+    Object.keys(EMPS).forEach(empKey=>{
+      const h = (state.entries[empKey]||[]).filter(en=>en.chantier===chantier&&en.heures>0&&!en.absence).reduce((s,en)=>s+en.heures,0);
+      reelMDO += taux>0?h*taux:0;
+    });
+    reelMat = state.achats.filter(a=>a.chantier===chantier).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    reelSST = state.sstFactures.filter(a=>a.chantier===chantier).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+  }
+  const reelTotal = reelMDO+reelMat+reelSST;
+  const budget = soum.totalAvantTaxes||0;
+  const ecart = budget-reelTotal;
+  const pctUtilise = budget>0?Math.min(100,Math.round(reelTotal/budget*100)):0;
+  const barColor = pctUtilise>100?'#E24B4A':pctUtilise>85?'#EF9F27':'#27500A';
+
+  // Lignes de postes avec comparaison
+  const lignesHtml = (soum.lignes||[]).filter(l=>l.inclus).map(l=>{
+    const budgetLigne = soum.classe==='C'?(l.min+l.max)/2:l.montant;
+    // On ne peut pas savoir le réel par poste sans tracking par type de travaux
+    // On affiche juste le budget et un champ pour saisir le réel manuellement
+    const reelLigne = l.coutReel||0;
+    const ecartLigne = budgetLigne-reelLigne;
+    const pctL = budgetLigne>0?Math.min(100,Math.round(reelLigne/budgetLigne*100)):0;
+    const col = pctL>100?'#E24B4A':pctL>85?'#EF9F27':'#27500A';
+    return `<tr style="border-bottom:0.5px solid var(--border);">
+      <td style="padding:8px 8px;"><span style="margin-right:4px;">${l.icon}</span>${l.label}</td>
+      <td style="padding:8px 6px;text-align:right;font-size:12px;">${Math.round(budgetLigne||0).toLocaleString('fr-CA')} $</td>
+      <td style="padding:8px 6px;text-align:right;">
+        <input type="number" value="${reelLigne||''}" placeholder="0" inputmode="decimal"
+          style="width:90px;font-size:12px;text-align:right;border:1px solid var(--border);border-radius:4px;padding:4px 6px;"
+          onchange="mettreAJourReelPoste(${soum.id},'${l.categorieId}',this.value)"/>
+      </td>
+      <td style="padding:8px 6px;text-align:right;font-size:12px;font-weight:500;color:${ecartLigne>=0?'#27500A':'#E24B4A'};">
+        ${ecartLigne>=0?'+':''}${Math.round(ecartLigne).toLocaleString('fr-CA')} $
+      </td>
+      <td style="padding:8px 6px;min-width:60px;">
+        <div style="height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${pctL}%;background:${col};border-radius:3px;"></div>
+        </div>
+        <div style="font-size:9px;color:${col};margin-top:2px;text-align:center;">${pctL}%</div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <div>
+          <select style="font-size:14px;font-weight:500;border:none;background:transparent;color:var(--primary);margin-bottom:4px;" onchange="window._suiviSoumId=parseInt(this.value);setSub('soumissions','suivi')">${chOpts.replace(`value="${soumId}"`,`value="${soumId}" selected`)}</select>
+          <div style="font-size:11px;color:var(--secondary);">${chantier||'—'} · Soumission ${soum.classe} · ${soum.date||''}</div>
+        </div>
+        <button class="btn btn-sm" onclick="ouvrirSoumission(${soum.id})">✏️ Modifier</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+        <div class="stat-box" style="border-left:3px solid ${cl.color};"><div class="label">Budget prévu</div><div class="value" style="font-size:14px;">${Math.round(budget).toLocaleString('fr-CA')} $</div></div>
+        <div class="stat-box"><div class="label">Coûts réels</div><div class="value" style="font-size:14px;">${Math.round(reelTotal).toLocaleString('fr-CA')} $</div></div>
+        <div class="stat-box ${ecart>=0?'stat-fact':'stat-nf'}"><div class="label">${ecart>=0?'Économie':'Dépassement'}</div><div class="value" style="font-size:14px;">${Math.abs(Math.round(ecart)).toLocaleString('fr-CA')} $</div></div>
+        <div class="stat-box"><div class="label">% utilisé</div><div class="value" style="font-size:14px;color:${barColor};">${pctUtilise}%</div></div>
+      </div>
+
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--secondary);margin-bottom:4px;">
+          <span>Budget consommé</span><span style="color:${barColor};font-weight:500;">${Math.round(reelTotal).toLocaleString('fr-CA')} / ${Math.round(budget).toLocaleString('fr-CA')} $</span>
+        </div>
+        <div style="height:10px;background:#f0f0f0;border-radius:5px;overflow:hidden;">
+          <div style="height:100%;width:${pctUtilise}%;background:${barColor};border-radius:5px;transition:width 0.5s;"></div>
+        </div>
+      </div>
+
+      ${chantier?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px;">
+        <div style="text-align:center;padding:8px;background:#f9f9f9;border-radius:var(--radius-sm);font-size:11px;color:var(--secondary);">Main d'oeuvre<div style="font-size:13px;font-weight:500;color:var(--primary);margin-top:2px;">${Math.round(reelMDO).toLocaleString('fr-CA')} $</div></div>
+        <div style="text-align:center;padding:8px;background:#f9f9f9;border-radius:var(--radius-sm);font-size:11px;color:var(--secondary);">Matériaux<div style="font-size:13px;font-weight:500;color:var(--primary);margin-top:2px;">${Math.round(reelMat).toLocaleString('fr-CA')} $</div></div>
+        <div style="text-align:center;padding:8px;background:#f9f9f9;border-radius:var(--radius-sm);font-size:11px;color:var(--secondary);">Sous-traitants<div style="font-size:13px;font-weight:500;color:var(--primary);margin-top:2px;">${Math.round(reelSST).toLocaleString('fr-CA')} $</div></div>
+      </div>`:'<div style="font-size:12px;color:var(--secondary);margin-top:8px;">Associe cette soumission à un chantier pour voir les coûts réels automatiquement.</div>'}
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:10px 12px;background:#f9f9f9;border-bottom:1px solid var(--border);font-size:12px;font-weight:500;">Suivi par poste — Entrer les coûts réels</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#fafafa;border-bottom:1px solid var(--border);">
+          <th style="padding:8px;text-align:left;font-size:10px;color:var(--secondary);">POSTE</th>
+          <th style="padding:8px;text-align:right;font-size:10px;color:var(--secondary);">BUDGET</th>
+          <th style="padding:8px;text-align:right;font-size:10px;color:var(--secondary);">RÉEL $</th>
+          <th style="padding:8px;text-align:right;font-size:10px;color:var(--secondary);">ÉCART</th>
+          <th style="padding:8px;font-size:10px;color:var(--secondary);">%</th>
+        </tr></thead>
+        <tbody>${lignesHtml}</tbody>
+        <tfoot><tr style="background:#f9f9f9;border-top:1px solid var(--border);">
+          <td style="padding:8px;font-weight:500;">TOTAL</td>
+          <td style="padding:8px;text-align:right;font-weight:500;">${Math.round(budget).toLocaleString('fr-CA')} $</td>
+          <td style="padding:8px;text-align:right;font-weight:500;">${Math.round(reelTotal).toLocaleString('fr-CA')} $</td>
+          <td style="padding:8px;text-align:right;font-weight:500;color:${ecart>=0?'#27500A':'#E24B4A'};">${ecart>=0?'+':''}${Math.round(ecart).toLocaleString('fr-CA')} $</td>
+          <td style="padding:8px;font-weight:500;color:${barColor};">${pctUtilise}%</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+}
+
+function mettreAJourReelPoste(soumId, categorieId, val){
+  const soum = state.soumissions.find(s=>s.id===soumId);
+  if(!soum)return;
+  const ligne = (soum.lignes||[]).find(l=>l.categorieId===categorieId);
+  if(ligne)ligne.coutReel = parseFloat(val)||0;
+  saveToCloud();
+}
+
+// ── Aperçu PDF soumission ─────────────────────────────────
+function apercuSoumission(){
+  if(!soumCourante)return;
+  refreshTotauxSoum();
+  const s = soumCourante;
+  const e = state.entreprise||{};
+  const cl = CLASSES_SOUMISSION[s.classe]||CLASSES_SOUMISSION.C;
+  const t = s._totaux||{};
+  const lignesActives = (s.lignes||[]).filter(l=>l.inclus&&((s.classe==='C'?(l.min+l.max)/2:l.montant)>0));
+
+  const lignesHtml = lignesActives.map(l=>{
+    const m = s.classe==='C'?(l.min+l.max)/2:l.montant;
+    const detail = s.classe==='C'
+      ?`<td style="font-size:12px;color:#666;">${(l.min||0).toLocaleString('fr-CA')} $ – ${(l.max||0).toLocaleString('fr-CA')} $</td>`
+      :`<td style="font-size:12px;color:#666;">${l.notes||''}</td>`;
+    return `<tr style="border-bottom:1px solid #eee;">
+      <td style="padding:7px 0;">${l.icon} ${l.label}</td>
+      ${detail}
+      <td style="text-align:right;font-weight:500;">${Math.round(m).toLocaleString('fr-CA')} $</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Soumission — ${s.titre||''}</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:-apple-system,sans-serif;padding:32px;color:#1a1a1a;font-size:13px;}
+  table{width:100%;border-collapse:collapse;}@media print{@page{size:letter;margin:15mm;}body{padding:0;}}</style>
+  </head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #1a1a1a;">
+    <div>${e.logo?`<img src="${e.logo}" style="height:50px;margin-bottom:6px;display:block;"/>`:''}
+      <div style="font-size:18px;font-weight:600;">${e.nom||'Mon entreprise'}</div>
+      ${e.adresse?`<div style="font-size:11px;color:#666;">${e.adresse}</div>`:''}
+      ${e.telephone?`<div style="font-size:11px;color:#666;">${e.telephone}</div>`:''}
+      ${e.noRBQ?`<div style="font-size:10px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:20px;font-weight:700;color:#185FA5;">SOUMISSION</div>
+      <div style="font-size:12px;background:${cl.bg};color:${cl.color};padding:3px 10px;border-radius:4px;margin:4px 0;display:inline-block;font-weight:600;">${cl.label}</div>
+      <div style="font-size:11px;color:#666;">Date: ${s.date||''}</div>
+      ${s.validite?`<div style="font-size:11px;color:#666;">Valide jusqu'au: ${s.validite}</div>`:''}
+    </div>
+  </div>
+  <div style="margin-bottom:20px;background:#f9f9f9;padding:14px;border-radius:6px;">
+    <div style="font-weight:600;margin-bottom:4px;">${s.titre||'Soumission'}</div>
+    ${s.client?`<div style="font-size:12px;">Client: ${s.client}</div>`:''}
+    ${s.chantier?`<div style="font-size:12px;">Chantier: ${s.chantier}</div>`:''}
+  </div>
+  <table style="margin-bottom:20px;">
+    <thead><tr style="border-bottom:2px solid #1a1a1a;font-size:11px;color:#666;">
+      <th style="padding:6px 0;text-align:left;">POSTE DE TRAVAIL</th>
+      <th style="padding:6px 0;">${s.classe==='C'?'FOURCHETTE':'DÉTAIL'}</th>
+      <th style="padding:6px 0;text-align:right;">MONTANT</th>
+    </tr></thead>
+    <tbody>${lignesHtml}</tbody>
+  </table>
+  <div style="display:flex;justify-content:flex-end;">
+    <table style="width:240px;">
+      ${t.marge>0?`<tr><td>Frais de gestion (${s.margeGestion}%)</td><td style="text-align:right;">${Math.round(t.marge).toLocaleString('fr-CA')} $</td></tr>`:''}
+      <tr><td style="padding:4px 0;"><strong>Avant taxes</strong></td><td style="text-align:right;"><strong>${Math.round(t.avantTaxes||0).toLocaleString('fr-CA')} $</strong></td></tr>
+      ${t.tps>0?`<tr style="color:#666;"><td style="font-size:12px;">TPS (5%)${e.noTPS?' — '+e.noTPS:''}</td><td style="text-align:right;font-size:12px;">${Math.round(t.tps).toLocaleString('fr-CA')} $</td></tr>`:''}
+      ${t.tvq>0?`<tr style="color:#666;"><td style="font-size:12px;">TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</td><td style="text-align:right;font-size:12px;">${Math.round(t.tvq).toLocaleString('fr-CA')} $</td></tr>`:''}
+      <tr style="background:#185FA5;color:#fff;"><td style="padding:10px;font-weight:600;font-size:15px;border-radius:4px 0 0 4px;">TOTAL</td><td style="text-align:right;padding:10px;font-weight:700;font-size:15px;border-radius:0 4px 4px 0;">${Math.round(t.avecTaxes||0).toLocaleString('fr-CA')} $</td></tr>
+    </table>
+  </div>
+  ${s.classe==='C'?`<div style="margin-top:16px;padding:10px;background:#FAEEDA;border-radius:6px;font-size:11px;color:#633806;"><strong>Note estimé Classe C:</strong> Cet estimé budgétaire est fourni à titre indicatif avec une marge d'erreur de ±30%. Les montants finaux pourront varier selon les plans détaillés et les conditions de chantier.</div>`:''}
+  ${s.notes?`<div style="margin-top:16px;padding:10px;background:#f5f5f5;border-radius:6px;font-size:12px;"><strong>Conditions:</strong> ${s.notes}</div>`:''}
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#888;">
+    ${e.nom||''} · ${e.courriel||''} · ${e.telephone||''}
+  </div>
+  </body></html>`;
+
+  const blob = new Blob([html],{type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url,'_blank');
+  if(win)win.addEventListener('load',function(){setTimeout(function(){win.print();},600);});
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
+
+
+// ─── SOUMISSIONS ──────────────────────────────────────────
+
+const SECTIONS_DEFAUT = [
+  {id:'prep',      label:'Préparation du chantier',    icon:'🏗'},
+  {id:'demo',      label:'Démolition',                  icon:'🔨'},
+  {id:'dechets',   label:'Gestion des déchets',         icon:'♻️'},
+  {id:'excav',     label:'Excavation',                  icon:'🚜'},
+  {id:'fond',      label:'Fondation',                   icon:'🧱'},
+  {id:'charp',     label:'Charpente',                   icon:'🪚'},
+  {id:'toiture',   label:'Toiture',                     icon:'🏠'},
+  {id:'plomb',     label:'Plomberie',                   icon:'🔧'},
+  {id:'elec',      label:'Électricité',                 icon:'⚡'},
+  {id:'vent',      label:'Ventilation / CVAC',          icon:'💨'},
+  {id:'gypse',     label:'Gypse & plâtre',              icon:'🪣'},
+  {id:'portefen',  label:'Portes & fenêtres',           icon:'🚪'},
+  {id:'carreau',   label:'Carrelage & maçonnerie',      icon:'🪨'},
+  {id:'plancher',  label:'Plancher',                    icon:'🟫'},
+  {id:'comptoir',  label:'Comptoirs & armoires',        icon:'🍳'},
+  {id:'peint',     label:'Peinture',                    icon:'🎨'},
+  {id:'finition',  label:'Finitions intérieures',       icon:'✨'},
+  {id:'amenag',    label:'Aménagement paysager',        icon:'🌿'},
+  {id:'autre',     label:'Autres / Divers',             icon:'📦'},
+];
+
+function totalSoumission(s){
+  let total=0;
+  (s.sections||[]).forEach(sec=>{
+    (sec.lignes||[]).forEach(l=>{
+      total+=(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0);
+    });
+  });
+  return total;
+}
+
+function totalSection(sec){
+  return (sec.lignes||[]).reduce((sum,l)=>{
+    return sum+(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0);
+  },0);
+}
+
+function totalReel(s){
+  if(!s.chantier)return 0;
+  // Heures réelles
+  const fiche=state.fiches[s.chantier]||{};
+  const taux=parseFloat(fiche.taux)||0;
+  let h=0;
+  Object.keys(EMPS).forEach(k=>{
+    h+=state.entries[k].filter(en=>en.chantier===s.chantier&&en.heures>0).reduce((sum,en)=>sum+en.heures,0);
+  });
+  const mdo=taux>0?h*taux:0;
+  const mat=state.achats.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montantAvantTax)||0),0);
+  const sst=state.sstFactures.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montant)||0),0);
+  return mdo+mat+sst;
+}
+
+// ── LISTE ──────────────────────────────────────────────────
+function buildSoumissionsListe(){
+  const list=state.soumissions.slice().sort((a,b)=>b.id-a.id);
+  if(!list.length)return`
+    <div class="card" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:48px;margin-bottom:12px;">📋</div>
+      <div style="font-size:15px;font-weight:500;margin-bottom:8px;">Aucune soumission</div>
+      <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;">Crée ta première soumission budgétaire pour commencer à suivre tes coûts.</div>
+      <button class="btn btn-primary" style="width:auto;padding:12px 24px;" onclick="setSub('soumissions','nouvelle')">➕ Nouvelle soumission</button>
+    </div>`;
+
+  const cards=list.map(s=>{
+    const total=totalSoumission(s);
+    const reel=s.chantier?totalReel(s):0;
+    const pct=total>0?Math.round(reel/total*100):0;
+    const pctColor=pct>100?'#E24B4A':pct>80?'#EF9F27':'#27500A';
+    const badgeClass='som-badge-'+s.classe;
+    const cardClass='som-classe-'+s.classe;
+    const nbSections=(s.sections||[]).filter(sec=>(sec.lignes||[]).length>0).length;
+    return`<div class="card ${cardClass}" style="margin-bottom:10px;cursor:pointer;" onclick="ouvrirSoumission(${s.id})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:15px;font-weight:700;">${s.titre||'Sans titre'}</span>
+            <span class="${badgeClass}">Classe ${s.classe}</span>
+            ${s.statut==='acceptee'?'<span style="font-size:10px;background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:20px;">✅ Acceptée</span>':''}
+            ${s.statut==='refusee'?'<span style="font-size:10px;background:#FCEBEB;color:#791F1F;padding:2px 8px;border-radius:20px;">❌ Refusée</span>':''}
+            ${s.statut==='envoyee'?'<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:2px 8px;border-radius:20px;">📤 Envoyée</span>':''}
+          </div>
+          <div style="font-size:11px;color:var(--secondary);">
+            ${s.client||''}${s.chantier?' · 🏗 '+s.chantier:''}
+            ${s.dateCreation?' · '+s.dateCreation:''}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--secondary);">Budget estimé</div>
+          <div style="font-size:20px;font-weight:700;color:#0C447C;">${total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} $</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:${s.chantier?'10px':'0'};">
+        <div class="stat-box"><div class="label">Sections</div><div class="value" style="font-size:14px;">${nbSections}</div></div>
+        <div class="stat-box"><div class="label">TPS+TVQ</div><div class="value" style="font-size:14px;">${(total*0.14975).toFixed(0)} $</div></div>
+        <div class="stat-box"><div class="label">Total+taxes</div><div class="value" style="font-size:14px;color:#0C447C;">${(total*1.14975).toFixed(0)} $</div></div>
+      </div>
+      ${s.chantier&&reel>0?`<div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
+          <span style="color:var(--secondary);">Coûts réels vs estimé</span>
+          <span style="color:${pctColor};font-weight:600;">${reel.toFixed(0)} $ / ${total.toFixed(0)} $ (${pct}%)</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${pctColor};"></div></div>
+      </div>`:''}
+    </div>`;
+  }).join('');
+
+  // Résumé stats
+  const totalBudgets=list.reduce((s,x)=>s+totalSoumission(x),0);
+  const nbAcceptees=list.filter(x=>x.statut==='acceptee').length;
+  const nbEnCours=list.filter(x=>!x.statut||x.statut==='brouillon'||x.statut==='envoyee').length;
+
+  return`
+    <div class="stats-row" style="margin-bottom:14px;">
+      <div class="stat-box stat-money"><div class="label">Budget total</div><div class="value">${(totalBudgets/1000).toFixed(0)}k $</div></div>
+      <div class="stat-box stat-fact"><div class="label">Acceptées</div><div class="value">${nbAcceptees}</div></div>
+      <div class="stat-box"><div class="label">En cours</div><div class="value">${nbEnCours}</div></div>
+      <div class="stat-box stat-nf"><div class="label">Total</div><div class="value">${list.length}</div></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+      <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:13px;" onclick="setSub('soumissions','nouvelle')">➕ Nouvelle soumission</button>
+    </div>
+    ${cards}`;
+}
+
+// ── OUVRIR SOUMISSION ─────────────────────────────────────
+function ouvrirSoumission(id){
+  const s=state.soumissions.find(x=>x.id===id);
+  if(!s)return;
+  window._somEdit=JSON.parse(JSON.stringify(s));
+  const c=document.getElementById('content-soumissions');
+  if(c)c.innerHTML=buildEditorSoumission(s.id);
+  // Update subnav
+  document.querySelectorAll('#soumissions-subnav button').forEach((b,i)=>b.classList.toggle('active',i===1));
+}
+
+// ── NOUVELLE SOUMISSION ────────────────────────────────────
+function buildNouvelleSOumission(){
+  window._somEdit={
+    id:null,titre:'',client:'',chantier:'',classe:'C',
+    statut:'brouillon',dateCreation:new Date().toISOString().slice(0,10),
+    notes:'',
+    sections:SECTIONS_DEFAUT.map(s=>({
+      id:s.id,label:s.label,icon:s.icon,
+      incluse:true,open:false,
+      lignes:[]
+    }))
+  };
+  return buildEditorSoumission(null);
+}
+
+function buildEditorSoumission(editId){
+  const s=window._somEdit;
+  const chOpts=state.chantiers.map(c=>`<option value="${esc(c)}" ${c===s.chantier?'selected':''}>${c}</option>`).join('');
+  const clientOpts=state.clients.map((c,i)=>`<option value="${esc([c.prenom,c.nom].filter(Boolean).join(' '))}" ${[c.prenom,c.nom].filter(Boolean).join(' ')===s.client?'selected':''}>${[c.prenom,c.nom].filter(Boolean).join(' ')}</option>`).join('');
+
+  const totalEst=totalSoumission(s);
+  const tps=totalEst*0.05;
+  const tvq=totalEst*0.09975;
+  const grandTotal=totalEst+tps+tvq;
+
+  const sectionsHtml=(s.sections||[]).map((sec,si)=>{
+    const secTotal=totalSection(sec);
+    const lignesHtml=(sec.lignes||[]).map((l,li)=>`
+      <div class="som-ligne">
+        <input type="text" value="${esc(l.desc||'')}" placeholder="Description" style="flex:2;font-size:12px;" onchange="updateSomLigne(${si},${li},'desc',this.value)"/>
+        <select style="width:90px;font-size:12px;" onchange="updateSomLigne(${si},${li},'unite',this.value)">
+          <option ${l.unite==='forfait'?'selected':''}>forfait</option>
+          <option ${l.unite==='h'?'selected':''}>h</option>
+          <option ${l.unite==='pi2'?'selected':''}>pi2</option>
+          <option ${l.unite==='pi3'?'selected':''}>pi3</option>
+          <option ${l.unite==='pi'?'selected':''}>pi</option>
+          <option ${l.unite==='u'?'selected':''}>u</option>
+          <option ${l.unite==='kg'?'selected':''}>kg</option>
+          <option ${l.unite==='m'?'selected':''}>m</option>
+        </select>
+        <input type="number" value="${l.quantite||''}" placeholder="Qté" min="0" step="0.5" style="width:60px;font-size:12px;text-align:right;" onchange="updateSomLigne(${si},${li},'quantite',this.value)"/>
+        <input type="number" value="${l.prixUnit||''}" placeholder="$/u" min="0" step="1" style="width:80px;font-size:12px;text-align:right;" onchange="updateSomLigne(${si},${li},'prixUnit',this.value)"/>
+        <span style="width:80px;text-align:right;font-size:12px;font-weight:600;color:#0C447C;">${((parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0)).toFixed(0)} $</span>
+        <button onclick="supprimerSomLigne(${si},${li})" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 2px;">✕</button>
+      </div>`).join('');
+
+    return`<div class="som-section">
+      <div class="som-section-header" onclick="toggleSomSection(${si})">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span>${sec.icon}</span>
+          <span style="font-size:13px;font-weight:500;">${sec.label}</span>
+          <span style="font-size:11px;color:var(--secondary);">${sec.lignes.length} ligne${sec.lignes.length>1?'s':''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${secTotal>0?`<span style="font-size:13px;font-weight:700;color:#0C447C;">${secTotal.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} $</span>`:''}
+          <span style="font-size:16px;color:var(--secondary);">${sec.open?'▾':'›'}</span>
+        </div>
+      </div>
+      ${sec.open?`
+        <div style="padding:8px 12px;background:#fafafa;border-top:0.5px solid var(--border);">
+          <div style="display:flex;gap:4px;font-size:10px;font-weight:600;color:var(--secondary);padding:0 0 4px 0;">
+            <span style="flex:2;">DESCRIPTION</span>
+            <span style="width:90px;">UNITÉ</span>
+            <span style="width:60px;text-align:right;">QTÉ</span>
+            <span style="width:80px;text-align:right;">$/UNITÉ</span>
+            <span style="width:80px;text-align:right;">TOTAL</span>
+            <span style="width:22px;"></span>
+          </div>
+          ${lignesHtml}
+          <button onclick="ajouterSomLigne(${si})" class="btn btn-sm" style="margin-top:6px;width:100%;background:#f0f0f0;">+ Ajouter une ligne</button>
+        </div>
+        ${secTotal>0?`<div style="display:flex;justify-content:space-between;padding:6px 12px;background:#f0f4ff;font-size:12px;font-weight:600;border-top:0.5px solid var(--border);">
+          <span>Sous-total ${sec.label}</span>
+          <span style="color:#0C447C;">${secTotal.toFixed(2)} $</span>
+        </div>`:''}
+      `:''}
+    </div>`;
+  }).join('');
+
+  return`
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div style="flex:1;">
+          <input type="text" id="som-titre" value="${esc(s.titre)}" placeholder="Titre de la soumission..." style="font-size:16px;font-weight:600;border:none;border-bottom:2px solid var(--primary);border-radius:0;width:100%;padding:4px 0;background:transparent;" oninput="window._somEdit.titre=this.value"/>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="sauvegarderSoumission()" class="btn btn-primary" style="width:auto;padding:8px 14px;">💾 Sauvegarder</button>
+          ${editId?`<button onclick="apercuSoumission()" class="btn-pdf" style="padding:8px 14px;">👁 Aperçu</button>`:''}
+          <button onclick="setSub('soumissions','liste')" class="btn btn-sm">← Retour</button>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Client</label>
+          <select id="som-client" style="width:100%;" onchange="window._somEdit.client=this.value">
+            <option value="">-- Choisir --</option>${clientOpts}
+          </select>
+        </div>
+        <div class="field"><label>Chantier associé</label>
+          <select id="som-chantier" style="width:100%;" onchange="window._somEdit.chantier=this.value">
+            <option value="">-- Choisir (optionnel) --</option>${chOpts}
+          </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Classe de soumission</label>
+          <div class="toggle-group">
+            <button class="${s.classe==='C'?'active':''}" onclick="setClasseSom('C')" style="flex:1;font-size:12px;">C · Estimé rough</button>
+            <button class="${s.classe==='B'?'active':''}" onclick="setClasseSom('B')" style="flex:1;font-size:12px;">B · Détaillé</button>
+            <button class="${s.classe==='A'?'active':''}" onclick="setClasseSom('A')" style="flex:1;font-size:12px;">A · Final</button>
+          </div>
+          <div style="font-size:11px;color:var(--secondary);margin-top:4px;">
+            ${s.classe==='C'?'⚠️ Estimé budgétaire préliminaire — précision ±30 à 50%':
+              s.classe==='B'?'📐 Soumission détaillée — précision ±15%':
+              '✅ Soumission finale — prix ferme pour signature'}
+          </div>
+        </div>
+        <div class="field"><label>Statut</label>
+          <select id="som-statut" style="width:100%;" onchange="window._somEdit.statut=this.value">
+            <option value="brouillon" ${s.statut==='brouillon'?'selected':''}>📝 Brouillon</option>
+            <option value="envoyee" ${s.statut==='envoyee'?'selected':''}>📤 Envoyée au client</option>
+            <option value="acceptee" ${s.statut==='acceptee'?'selected':''}>✅ Acceptée</option>
+            <option value="refusee" ${s.statut==='refusee'?'selected':''}>❌ Refusée</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Notes / Conditions</label>
+        <textarea id="som-notes" style="width:100%;min-height:60px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:12px;font-family:inherit;" onchange="window._somEdit.notes=this.value">${s.notes||''}</textarea>
+      </div>
+    </div>
+
+    <div style="background:#f0f4ff;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
+      <div><div style="font-size:11px;color:var(--secondary);">Sous-total</div><div style="font-size:16px;font-weight:700;" id="som-subtotal">${totalEst.toFixed(0)} $</div></div>
+      <div><div style="font-size:11px;color:var(--secondary);">TPS (5%)</div><div style="font-size:16px;font-weight:700;" id="som-tps">${tps.toFixed(0)} $</div></div>
+      <div><div style="font-size:11px;color:var(--secondary);">TVQ (9.975%)</div><div style="font-size:16px;font-weight:700;" id="som-tvq">${tvq.toFixed(0)} $</div></div>
+      <div><div style="font-size:11px;color:var(--secondary);">TOTAL</div><div style="font-size:20px;font-weight:700;color:#0C447C;" id="som-grand-total">${grandTotal.toFixed(0)} $</div></div>
+    </div>
+
+    <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;font-weight:600;">Sections de travaux</span>
+      <button onclick="ouvrirToutSom()" class="btn btn-sm">Tout ouvrir / fermer</button>
+    </div>
+    <div id="som-sections">${sectionsHtml}</div>`;
+}
+
+// ── FONCTIONS EDITOR ──────────────────────────────────────
+function setClasseSom(c){
+  window._somEdit.classe=c;
+  const c2=document.getElementById('content-soumissions');
+  if(c2)c2.innerHTML=buildEditorSoumission(window._somEdit.id);
+}
+
+function toggleSomSection(si){
+  window._somEdit.sections[si].open=!window._somEdit.sections[si].open;
+  const c=document.getElementById('content-soumissions');
+  if(c)c.innerHTML=buildEditorSoumission(window._somEdit.id);
+}
+
+function ouvrirToutSom(){
+  const anyOpen=window._somEdit.sections.some(s=>s.open);
+  window._somEdit.sections.forEach(s=>s.open=!anyOpen);
+  const c=document.getElementById('content-soumissions');
+  if(c)c.innerHTML=buildEditorSoumission(window._somEdit.id);
+}
+
+function ajouterSomLigne(si){
+  if(!window._somEdit.sections[si].lignes)window._somEdit.sections[si].lignes=[];
+  window._somEdit.sections[si].lignes.push({desc:'',unite:'forfait',quantite:1,prixUnit:0});
+  window._somEdit.sections[si].open=true;
+  const c=document.getElementById('content-soumissions');
+  if(c)c.innerHTML=buildEditorSoumission(window._somEdit.id);
+}
+
+function supprimerSomLigne(si,li){
+  window._somEdit.sections[si].lignes.splice(li,1);
+  const c=document.getElementById('content-soumissions');
+  if(c)c.innerHTML=buildEditorSoumission(window._somEdit.id);
+}
+
+function updateSomLigne(si,li,field,val){
+  window._somEdit.sections[si].lignes[li][field]=val;
+  // Update totals display
+  const s=window._somEdit;
+  const totalEst=totalSoumission(s);
+  const t1=document.getElementById('som-subtotal');
+  const t2=document.getElementById('som-tps');
+  const t3=document.getElementById('som-tvq');
+  const t4=document.getElementById('som-grand-total');
+  if(t1)t1.textContent=totalEst.toFixed(0)+' $';
+  if(t2)t2.textContent=(totalEst*0.05).toFixed(0)+' $';
+  if(t3)t3.textContent=(totalEst*0.09975).toFixed(0)+' $';
+  if(t4)t4.textContent=(totalEst*1.14975).toFixed(0)+' $';
+}
+
+function sauvegarderSoumission(){
+  const s=window._somEdit;
+  s.titre=document.getElementById('som-titre').value.trim()||'Sans titre';
+  s.client=document.getElementById('som-client').value;
+  s.chantier=document.getElementById('som-chantier').value;
+  s.statut=document.getElementById('som-statut').value;
+  s.notes=document.getElementById('som-notes').value.trim();
+  if(!s.id){
+    s.id=++state.soumissionId;
+    s.dateCreation=new Date().toISOString().slice(0,10);
+    state.soumissions.push(JSON.parse(JSON.stringify(s)));
+  } else {
+    const idx=state.soumissions.findIndex(x=>x.id===s.id);
+    if(idx>=0)state.soumissions[idx]=JSON.parse(JSON.stringify(s));
+  }
+  saveToCloud();
+  // Notif
+  const notif=document.createElement('div');
+  notif.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;';
+  notif.textContent='✅ Soumission sauvegardée!';
+  document.body.appendChild(notif);
+  setTimeout(()=>notif.remove(),2500);
+}
+
+function supprimerSoumission(id){
+  if(!confirm("Supprimer cette soumission?"))return;
+  state.soumissions=state.soumissions.filter(x=>x.id!==id);
+  saveToCloud();
+  setSub('soumissions','liste');
+}
+
+// ── APERÇU / PDF ──────────────────────────────────────────
+function apercuSoumission(){
+  const s=window._somEdit;
+  const e=state.entreprise;
+  const totalEst=totalSoumission(s);
+  const tps=totalEst*0.05;
+  const tvq=totalEst*0.09975;
+  const grandTotal=totalEst+tps+tvq;
+
+  const sectionsHtml=(s.sections||[]).filter(sec=>totalSection(sec)>0).map(sec=>{
+    const lignesHtml=(sec.lignes||[]).filter(l=>(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0)>0).map(l=>`
+      <tr>
+        <td style="padding:5px 8px;font-size:12px;">${l.desc||'—'}</td>
+        <td style="padding:5px 8px;font-size:12px;text-align:center;">${l.quantite} ${l.unite}</td>
+        <td style="padding:5px 8px;font-size:12px;text-align:right;">${parseFloat(l.prixUnit||0).toFixed(2)} $</td>
+        <td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:500;">${((parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0)).toFixed(2)} $</td>
+      </tr>`).join('');
+    const secTotal=totalSection(sec);
+    return`<div style="margin-bottom:16px;">
+      <div style="background:#f5f5f5;padding:8px 12px;font-size:12px;font-weight:700;color:#1a1a1a;border-left:4px solid #185FA5;">${sec.icon} ${sec.label}</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#fafafa;">
+          <th style="padding:5px 8px;text-align:left;font-size:11px;color:#888;">DESCRIPTION</th>
+          <th style="padding:5px 8px;text-align:center;font-size:11px;color:#888;">QTÉ</th>
+          <th style="padding:5px 8px;text-align:right;font-size:11px;color:#888;">PRIX UNIT.</th>
+          <th style="padding:5px 8px;text-align:right;font-size:11px;color:#888;">TOTAL</th>
+        </tr></thead>
+        <tbody>${lignesHtml}</tbody>
+        <tfoot><tr style="background:#f0f0f0;">
+          <td colspan="3" style="padding:6px 8px;font-size:12px;font-weight:700;">Sous-total ${sec.label}</td>
+          <td style="padding:6px 8px;text-align:right;font-size:12px;font-weight:700;color:#185FA5;">${secTotal.toFixed(2)} $</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+
+  const classeDesc=s.classe==='C'?'Estimé budgétaire préliminaire (±30 à 50%)':
+    s.classe==='B'?'Soumission détaillée (±15%)':'Soumission finale — prix ferme';
+
+  const apercuHTML=`<div style="font-family:-apple-system,sans-serif;max-width:800px;margin:0 auto;padding:24px;color:#1a1a1a;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+      <div>
+        ${e.logo?`<img src="${e.logo}" style="height:50px;margin-bottom:8px;display:block;" onerror="this.style.display='none'"/>`:''}
+        <div style="font-size:18px;font-weight:700;">${e.nom||'Mon entreprise'}</div>
+        ${e.adresse?`<div style="font-size:11px;color:#666;">${e.adresse}</div>`:''}
+        ${e.telephone?`<div style="font-size:11px;color:#666;">${e.telephone}</div>`:''}
+        ${e.courriel?`<div style="font-size:11px;color:#666;">${e.courriel}</div>`:''}
+        ${e.noRBQ?`<div style="font-size:10px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:22px;font-weight:700;color:#185FA5;">SOUMISSION</div>
+        <div style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;margin:4px 0;
+          background:${s.classe==='C'?'#FAEEDA':s.classe==='B'?'#E6F1FB':'#EAF3DE'};
+          color:${s.classe==='C'?'#633806':s.classe==='B'?'#0C447C':'#27500A'};">
+          Classe ${s.classe} — ${classeDesc}
+        </div>
+        <div style="font-size:11px;color:#666;">Date: ${s.dateCreation||new Date().toISOString().slice(0,10)}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div style="background:#f9f9f9;padding:12px;border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:4px;">SOUMIS À</div>
+        <div style="font-size:14px;font-weight:600;">${s.client||'—'}</div>
+      </div>
+      <div style="background:#f9f9f9;padding:12px;border-radius:8px;">
+        <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:4px;">PROJET / CHANTIER</div>
+        <div style="font-size:14px;font-weight:600;">${s.titre||'—'}</div>
+        ${s.chantier?`<div style="font-size:12px;color:#666;">${s.chantier}</div>`:''}
+      </div>
+    </div>
+    ${sectionsHtml}
+    <div style="border-top:2px solid #1a1a1a;padding-top:12px;margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total avant taxes</span><span>${totalEst.toFixed(2)} $</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>
+      <div style="display:flex;justify-content:space-between;background:#185FA5;color:#fff;padding:12px;border-radius:8px;margin-top:8px;font-size:16px;font-weight:700;">
+        <span>TOTAL</span><span>${grandTotal.toFixed(2)} $</span>
+      </div>
+    </div>
+    ${s.notes?`<div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:8px;font-size:12px;color:#666;border-left:3px solid #ccc;">${s.notes}</div>`:''}
+    ${s.classe==='C'?`<div style="margin-top:16px;padding:10px;background:#FAEEDA;border-radius:8px;font-size:11px;color:#633806;">⚠️ Cette soumission est un estimé budgétaire préliminaire. Les prix sont approximatifs (±30 à 50%) et sujets à révision après inspection détaillée du chantier.</div>`:''}
+    ${s.classe==='B'?`<div style="margin-top:16px;padding:10px;background:#E6F1FB;border-radius:8px;font-size:11px;color:#0C447C;">📐 Cette soumission est basée sur les informations disponibles. Une visite finale peut modifier certains prix (±15%).</div>`:''}
+  </div>`;
+
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>👁 Aperçu soumission — ${s.titre||'Sans titre'}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div style="max-height:60vh;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:12px;">
+      ${apercuHTML}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" style="flex:1;" onclick="exporterSoumissionPDF('${esc(s.titre)}')">📥 Sauvegarder PDF</button>
+      <button class="btn btn-sm" onclick="closeModal()">Fermer</button>
+    </div>`;
+  window._somApercuHTML=apercuHTML;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function exporterSoumissionPDF(titre){
+  const css='*{box-sizing:border-box;margin:0;padding:0;}'
+    +'body{font-family:-apple-system,sans-serif;padding:24px;color:#1a1a1a;background:#fff;}'
+    +'table{width:100%;border-collapse:collapse;}'
+    +'@media print{html,body{margin:0;padding:0;}@page{size:letter portrait;margin:12mm 10mm;}body{padding:0;}}';
+  let html='<!DOCTYPE html><html><head>';
+  html+='<meta charset="UTF-8"><title>Soumission - '+titre+'</title>';
+  html+='<style>'+css+'</style>';
+  html+='</head><body>';
+  html+=(window._somApercuHTML||'');
+  html+='</body></html>';
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const win=window.open(url,'_blank');
+  if(win){win.addEventListener('load',function(){setTimeout(function(){win.print();},500);});}
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
+
+// ── SUIVI DES COÛTS ────────────────────────────────────────
+function buildSuiviCouts(){
+  const avecChantier=state.soumissions.filter(s=>s.chantier&&s.statut==='acceptee');
+  if(!avecChantier.length)return`
+    <div class="card" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:48px;margin-bottom:12px;">📊</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:8px;">Aucun suivi disponible</div>
+      <div style="font-size:13px;color:var(--secondary);">Pour voir le suivi des coûts, crée une soumission, associe-la à un chantier et marque-la comme Acceptée.</div>
+    </div>`;
+
+  const cards=avecChantier.map(s=>{
+    const totalEst=totalSoumission(s);
+    const fiche=state.fiches[s.chantier]||{};
+    const taux=parseFloat(fiche.taux)||0;
+    // Heures réelles
+    let hTotal=0;
+    Object.keys(EMPS).forEach(k=>{
+      hTotal+=state.entries[k].filter(en=>en.chantier===s.chantier&&en.heures>0&&!en.absence).reduce((sum,en)=>sum+en.heures,0);
+    });
+    const mdoReel=taux>0?hTotal*taux:0;
+    const matReel=state.achats.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montantAvantTax)||0),0);
+    const sstReel=state.sstFactures.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montant)||0),0);
+    const totalReel=mdoReel+matReel+sstReel;
+    const pct=totalEst>0?Math.round(totalReel/totalEst*100):0;
+    const pctColor=pct>100?'#E24B4A':pct>85?'#EF9F27':'#27500A';
+    const restant=totalEst-totalReel;
+
+    // Suivi par section
+    const sectionsHtml=(s.sections||[]).filter(sec=>totalSection(sec)>0).map(sec=>{
+      const estSec=totalSection(sec);
+      // Rough % basé sur le poids dans l'estimé total
+      const poidsEst=totalEst>0?estSec/totalEst:0;
+      const reelSec=totalReel*poidsEst;
+      const pctSec=estSec>0?Math.round(reelSec/estSec*100):0;
+      const colSec=pctSec>100?'#E24B4A':pctSec>80?'#EF9F27':'#27500A';
+      return`<div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+          <span>${sec.icon} ${sec.label}</span>
+          <span><span style="color:${colSec};font-weight:600;">${reelSec.toFixed(0)} $</span> / ${estSec.toFixed(0)} $</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pctSec,100)}%;background:${colSec};"></div></div>
+      </div>`;
+    }).join('');
+
+    return`<div class="card som-classe-${s.classe}" style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-size:15px;font-weight:700;">${s.titre}</div>
+          <div style="font-size:12px;color:var(--secondary);">🏗 ${s.chantier} · Classe ${s.classe}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--secondary);">Budget estimé</div>
+          <div style="font-size:20px;font-weight:700;color:#0C447C;">${totalEst.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} $</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+        <div class="stat-box"><div class="label">MDO réelle</div><div class="value" style="font-size:13px;">${mdoReel.toFixed(0)} $</div></div>
+        <div class="stat-box"><div class="label">Matériaux</div><div class="value" style="font-size:13px;">${matReel.toFixed(0)} $</div></div>
+        <div class="stat-box"><div class="label">SST</div><div class="value" style="font-size:13px;">${sstReel.toFixed(0)} $</div></div>
+        <div class="stat-box ${pct>100?'stat-nf':pct>85?'':'stat-fact'}"><div class="label">Total réel</div><div class="value" style="font-size:13px;color:${pctColor};">${totalReel.toFixed(0)} $</div></div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px;">
+          <span>Coûts réels vs estimé</span>
+          <span style="color:${pctColor};">${pct}% utilisé</span>
+        </div>
+        <div class="progress-bar" style="height:12px;"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${pctColor};"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--secondary);margin-top:4px;">
+          <span>${totalReel.toFixed(0)} $ dépensé</span>
+          <span>${restant>=0?'Reste: '+restant.toFixed(0)+' $':'DÉPASSEMENT: '+Math.abs(restant).toFixed(0)+' $'}</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--secondary);margin-bottom:8px;">SUIVI PAR SECTION (estimé)</div>
+        ${sectionsHtml}
+      </div>
+    </div>`;
+  }).join('');
+
+  return`
+    <div class="card" style="margin-bottom:12px;background:#f0f4ff;">
+      <div style="font-size:13px;font-weight:500;color:#0C447C;margin-bottom:4px;">📊 Suivi des coûts réels vs estimés</div>
+      <div style="font-size:12px;color:#185FA5;">Visible uniquement pour les soumissions <strong>Acceptées</strong> liées à un chantier actif.</div>
+    </div>
+    ${cards}`;
 }
 
 // ─── INIT ─────────────────────────────────────────────────
