@@ -5944,6 +5944,37 @@ function buildSoumissionsList(){
 }
 
 // ── Nouvelle soumission / éditeur ─────────────────────────
+
+function totalSoumission(s){
+  let total=0;
+  (s.sections||[]).forEach(sec=>{
+    (sec.lignes||[]).forEach(l=>{
+      total+=(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0);
+    });
+  });
+  return total;
+}
+
+function totalSection(sec){
+  return (sec.lignes||[]).reduce((sum,l)=>{
+    return sum+(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0);
+  },0);
+}
+
+function totalReel(s){
+  if(!s.chantier)return 0;
+  const fiche=state.fiches[s.chantier]||{};
+  const taux=parseFloat(fiche.taux)||0;
+  let h=0;
+  Object.keys(EMPS).forEach(k=>{
+    h+=state.entries[k].filter(en=>en.chantier===s.chantier&&en.heures>0).reduce((sum,en)=>sum+en.heures,0);
+  });
+  const mdo=taux>0?h*taux:0;
+  const mat=state.achats.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montantAvantTax)||0),0);
+  const sst=state.sstFactures.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montant)||0),0);
+  return mdo+mat+sst;
+}
+
 // ── LISTE ──────────────────────────────────────────────────
 function buildSoumissionsListe(){
   const list=state.soumissions.slice().sort((a,b)=>b.id-a.id);
