@@ -6035,7 +6035,7 @@ function buildNouvelleSOumission(){
     id:null,titre:'',client:'',chantier:'',classe:'C',
     statut:'brouillon',dateCreation:new Date().toISOString().slice(0,10),
     notes:'',
-    sections:SECTIONS_DEFAUT.map(s=>({
+    sections:CATEGORIES_CONSTRUCTION.map(s=>({
       id:s.id,label:s.label,icon:s.icon,
       incluse:true,open:false,
       lignes:[]
@@ -6050,7 +6050,7 @@ function buildNouvelleSoumission(){
     id:null,titre:'',client:'',chantier:'',classe:'C',
     statut:'brouillon',dateCreation:new Date().toISOString().slice(0,10),
     notes:'',
-    sections:SECTIONS_DEFAUT.map(s=>({
+    sections:CATEGORIES_CONSTRUCTION.map(s=>({
       id:s.id,label:s.label,icon:s.icon,
       incluse:true,open:false,
       lignes:[]
