@@ -265,14 +265,6 @@ body{background:#fff;font-size:11px;}
 </div>
 <div id="page-soumissions" class="page">
   <nav class="sub-nav" id="soumissions-subnav">
-    <button class="active" onclick="setSub('soumissions','liste')">📋 Soumissions</button>
-    <button onclick="setSub('soumissions','nouvelle')">➕ Nouvelle</button>
-    <button onclick="setSub('soumissions','suivi')">📊 Suivi budgétaire</button>
-  </nav>
-  <div class="content" id="content-soumissions"></div>
-</div>
-<div id="page-soumissions" class="page">
-  <nav class="sub-nav" id="soumissions-subnav">
     <button class="active" onclick="setSub('soumissions','liste')">📋 Mes soumissions</button>
     <button onclick="setSub('soumissions','nouvelle')">➕ Nouvelle</button>
     <button onclick="setSub('soumissions','suivi')">📊 Suivi des coûts</button>
@@ -662,10 +654,15 @@ function setEmp(emp){
     rbtns.forEach((b,i)=>b.classList.toggle('active',rsubs[i]===(window._rapportMainSub||'dashboard')));
     buildDashboard();
   } else if(emp==='soumissions'){
-    const c=document.getElementById('content-soumissions');
-    if(c)c.innerHTML=buildSoumissionsListe();
+    const sc=document.getElementById('content-soumissions');
+    if(!sc)return;
     const btns=document.querySelectorAll('#soumissions-subnav button');
-    btns.forEach((b,i)=>b.classList.toggle('active',i===0));
+    const subs2=['liste','nouvelle','suivi'];
+    btns.forEach((b,i)=>b.classList.toggle('active',subs2[i]===sub));
+    if(sub==='liste')sc.innerHTML=buildSoumissionsListe();
+    else if(sub==='nouvelle')sc.innerHTML=buildNouvelleSoumission();
+    else if(sub==='suivi')sc.innerHTML=buildSuiviCouts();
+    else sc.innerHTML=buildSoumissionsListe();
   } else if(emp==='reglages'){
     renderReglages();
   } else if(emp==='entreprise'){
