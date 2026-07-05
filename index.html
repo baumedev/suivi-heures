@@ -6612,13 +6612,16 @@ function fmtMoisAn(d){
 }
 
 function getHoraireEntries(empKey, dateStr){
-  // From manual horaire assignments
   if(!state.horaire)state.horaire={};
   const h=state.horaire[dateStr]||{};
-  const chantier=h[empKey]||null;
-  // Also check actual time entries for that day
+  const raw=h[empKey]||null;
+  // Normalize: can be string (old format) or array (new format)
+  let lignes=[];
+  if(Array.isArray(raw)) lignes=raw;
+  else if(raw&&typeof raw==='string') lignes=[{chantier:raw,periode:'jour'}];
+  const chantier=lignes.length?lignes[0].chantier:null; // Premier pour compat
   const entries=state.entries[empKey]?state.entries[empKey].filter(e=>e.date===dateStr&&e.heures>0&&!e.absence):[];
-  return {chantier, entries};
+  return {chantier, lignes, entries};
 }
 
 function buildHoraireChantier(){
@@ -6698,11 +6701,13 @@ function buildHoraireChantier(){
           const icons={conge:'🏖',maladie:'🤒',ferie:'⭐'};
           chips=`<span class="horaire-chip" style="background:#f0f0f0;color:#666;">${icons[absence.absence]||'—'} ${absence.type}</span>`;
         } else {
-          // From manual horaire
-          if(chantier){
-            const [bg,col]=chantierColor(chantier);
-            chips+=`<span class="horaire-chip" style="background:${bg};color:${col};" onclick="ouvrirHoraireModal('${empKey}','${ds}')">${chantier}</span>`;
-          }
+          // From manual horaire - show all lignes with AM/PM
+          lignes.forEach(l=>{
+            if(!l.chantier)return;
+            const [bg,col]=chantierColor(l.chantier);
+            const periodeLabel=l.periode==='am'?' AM':l.periode==='pm'?' PM':'';
+            chips+=`<span class="horaire-chip" style="background:${bg};color:${col};">${l.chantier}${periodeLabel}</span>`;
+          });
           // From actual entries (different chantiers)
           const chantiersDuJour=[...new Set(entries.map(en=>en.chantier).filter(Boolean))];
           chantiersDuJour.forEach(ch=>{
@@ -6787,11 +6792,38 @@ function refreshHoraire(){
 // ── MODAL ASSIGNATION ────────────────────────────────────
 function ouvrirHoraireModal(empKey,ds){
   const e=EMPS[empKey];
-  const h=state.horaire[ds]||{};
-  const current=h[empKey]||'';
-  const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}" ${ch===current?'selected':''}>${ch}</option>`).join('');
+  if(!state.horaire)state.horaire={};
+  if(!state.horaire[ds])state.horaire[ds]={};
+  // Format: state.horaire[ds][empKey] = [{chantier, periode:'jour'|'am'|'pm'}]
+  const current=state.horaire[ds][empKey]||[];
+  const lignes=Array.isArray(current)?current:(current?[{chantier:current,periode:'jour'}]:[]);
   const entries=state.entries[empKey]?state.entries[empKey].filter(en=>en.date===ds&&en.heures>0):[];
   const absence=entries.find(en=>en.absence);
+
+  function buildLignes(ligs){
+    return ligs.map((l,i)=>{
+      const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}" ${ch===l.chantier?'selected':''}>${ch}</option>`).join('');
+      return`<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;background:#f9f9f9;padding:8px;border-radius:6px;">
+        <select onchange="updateHoraireLigne(${i},'chantier',this.value)" style="flex:1;font-size:13px;">
+          <option value="">-- Chantier --</option>${chOpts}
+        </select>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button onclick="updateHoraireLigne(${i},'periode','am')" style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1.5px solid ${l.periode==='am'?'var(--primary)':'var(--border)'};background:${l.periode==='am'?'#E6F1FB':'#fff'};color:${l.periode==='am'?'var(--primary)':'#666'};cursor:pointer;">AM</button>
+          <button onclick="updateHoraireLigne(${i},'periode','pm')" style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1.5px solid ${l.periode==='pm'?'var(--primary)':'var(--border)'};background:${l.periode==='pm'?'#E6F1FB':'#fff'};color:${l.periode==='pm'?'var(--primary)':'#666'};cursor:pointer;">PM</button>
+          <button onclick="updateHoraireLigne(${i},'periode','jour')" style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1.5px solid ${l.periode==='jour'||!l.periode?'var(--primary)':'var(--border)'};background:${l.periode==='jour'||!l.periode?'#E6F1FB':'#fff'};color:${l.periode==='jour'||!l.periode?'var(--primary)':'#666'};cursor:pointer;">Jour</button>
+        </div>
+        <button onclick="supprimerHoraireLigne(${i})" style="background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;padding:0;">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  window._horaireLignes=JSON.parse(JSON.stringify(lignes));
+  window._horaireEmpKey=empKey;
+  window._horaireDs=ds;
+
+  function renderModal(){
+    document.getElementById('horaire-lignes-container').innerHTML=buildLignes(window._horaireLignes);
+  }
 
   document.getElementById('modalBox').innerHTML=`
     <div class="modal-header">
@@ -6801,29 +6833,54 @@ function ouvrirHoraireModal(empKey,ds){
     ${absence?`<div style="background:#f0f0f0;border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;text-align:center;font-size:13px;">
       ${absence.absence==='conge'?'🏖 Congé':absence.absence==='maladie'?'🤒 Maladie':'⭐ Jour férié'}
     </div>`:''}
-    <div class="field">
-      <label>Chantier assigné</label>
-      <select id="horaire-ch-select" style="width:100%;">
-        <option value="">-- Aucun --</option>
-        ${chOpts}
-      </select>
-    </div>
+    <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Chantiers ce jour</div>
+    <div id="horaire-lignes-container">${buildLignes(window._horaireLignes)}</div>
+    <button onclick="ajouterHoraireLigne()" class="btn btn-sm" style="width:100%;margin-bottom:12px;">+ Ajouter un chantier</button>
     ${entries.filter(en=>!en.absence).length?`
-      <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;">
-        <div style="font-size:11px;font-weight:600;color:var(--secondary);margin-bottom:6px;">HEURES ENREGISTRÉES</div>
-        ${entries.filter(en=>!en.absence).map(en=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">
+      <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:12px;font-size:11px;">
+        <div style="font-weight:600;color:var(--secondary);margin-bottom:4px;">HEURES ENREGISTRÉES</div>
+        ${entries.filter(en=>!en.absence).map(en=>`<div style="display:flex;justify-content:space-between;padding:1px 0;">
           <span>${en.chantier||'—'} · ${en.type||'—'}</span>
           <span style="font-weight:600;">${en.heures}h</span>
         </div>`).join('')}
-        <div style="font-size:12px;font-weight:700;border-top:0.5px solid var(--border);margin-top:4px;padding-top:4px;">
-          Total: ${entries.filter(en=>!en.absence).reduce((s,en)=>s+en.heures,0).toFixed(1)}h
-        </div>
       </div>`:''}
     <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderHoraire('${empKey}','${ds}')">💾 Sauvegarder</button>
-      <button class="btn btn-sm" style="background:#FCEBEB;color:#791F1F;border:1px solid #F09595;" onclick="effacerHoraire('${empKey}','${ds}')">🗑 Effacer</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderHoraire()">💾 Sauvegarder</button>
+      <button class="btn btn-sm" style="background:#FCEBEB;color:#791F1F;border:1px solid #F09595;" onclick="effacerHoraire()">🗑 Effacer tout</button>
     </div>`;
   document.getElementById('modalOverlay').classList.add('open');
+}
+
+function ajouterHoraireLigne(){
+  window._horaireLignes.push({chantier:'',periode:'jour'});
+  document.getElementById('horaire-lignes-container').innerHTML=
+    window._horaireLignes.map((l,i)=>{
+      const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}" ${ch===l.chantier?'selected':''}>${ch}</option>`).join('');
+      return`<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;background:#f9f9f9;padding:8px;border-radius:6px;">
+        <select onchange="updateHoraireLigne(${i},'chantier',this.value)" style="flex:1;font-size:13px;">
+          <option value="">-- Chantier --</option>${chOpts}
+        </select>
+        <div style="display:flex;gap:4px;flex-shrink:0;">
+          <button onclick="updateHoraireLigne(${i},'periode','am')" style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1.5px solid ${l.periode==='am'?'var(--primary)':'var(--border)'};background:${l.periode==='am'?'#E6F1FB':'#fff'};color:${l.periode==='am'?'var(--primary)':'#666'};cursor:pointer;">AM</button>
+          <button onclick="updateHoraireLigne(${i},'periode','pm')" style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1.5px solid ${l.periode==='pm'?'var(--primary)':'var(--border)'};background:${l.periode==='pm'?'#E6F1FB':'#fff'};color:${l.periode==='pm'?'var(--primary)':'#666'};cursor:pointer;">PM</button>
+          <button onclick="updateHoraireLigne(${i},'periode','jour')" style="padding:4px 8px;font-size:11px;font-weight:600;border-radius:4px;border:1.5px solid ${l.periode==='jour'||!l.periode?'var(--primary)':'var(--border)'};background:${l.periode==='jour'||!l.periode?'#E6F1FB':'#fff'};color:${l.periode==='jour'||!l.periode?'var(--primary)':'#666'};cursor:pointer;">Jour</button>
+        </div>
+        <button onclick="supprimerHoraireLigne(${i})" style="background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;padding:0;">✕</button>
+      </div>`;
+    }).join('');
+}
+
+function updateHoraireLigne(i,field,val){
+  if(!window._horaireLignes[i])return;
+  window._horaireLignes[i][field]=val;
+  // Re-render just the buttons for period
+  if(field==='periode') ajouterHoraireLigne.call(null); // Trick: re-render all
+  // Actually just update the state, user sees it on save
+}
+
+function supprimerHoraireLigne(i){
+  window._horaireLignes.splice(i,1);
+  ajouterHoraireLigne.call(null);
 }
 
 function ouvrirHoraireJour(ds){
@@ -6840,9 +6897,11 @@ function ouvrirHoraireJour(ds){
         <span style="font-size:13px;font-weight:500;">${e.label}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
-        ${absence?`<span style="font-size:12px;background:#f0f0f0;padding:2px 8px;border-radius:20px;">${absence.absence==='conge'?'🏖':absence.absence==='maladie'?'🤒':'⭐'} ${absence.type}</span>`:
-          chantier?`<span style="font-size:12px;background:${bg};color:${col};padding:2px 8px;border-radius:20px;font-weight:600;">${chantier}</span>`:
-          `<span style="font-size:12px;color:#ccc;">Non assigné</span>`}
+        ${(()=>{
+          if(absence)return`<span style="font-size:12px;background:#f0f0f0;padding:2px 8px;border-radius:20px;">${absence.absence==='conge'?'🏖':absence.absence==='maladie'?'🤒':'⭐'} ${absence.type}</span>`;
+          if(lignes.length)return lignes.filter(l=>l.chantier).map(l=>{const [bg2,col2]=chantierColor(l.chantier);return`<span style="font-size:11px;background:${bg2};color:${col2};padding:2px 6px;border-radius:20px;font-weight:600;">${l.chantier}${l.periode==='am'?' AM':l.periode==='pm'?' PM':''}</span>`;}).join(' ');
+          return`<span style="font-size:12px;color:#ccc;">Non assigné</span>`;
+        })()}
         <button onclick="closeModal();setTimeout(()=>ouvrirHoraireModal('${empKey}','${ds}'),100)" class="btn-edit">✏️</button>
       </div>
     </div>`;
@@ -6857,18 +6916,23 @@ function ouvrirHoraireJour(ds){
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function sauvegarderHoraire(empKey,ds){
-  const ch=document.getElementById('horaire-ch-select').value;
+function sauvegarderHoraire(){
+  const empKey=window._horaireEmpKey;
+  const ds=window._horaireDs;
+  const lignes=(window._horaireLignes||[]).filter(l=>l.chantier);
+  if(!state.horaire)state.horaire={};
   if(!state.horaire[ds])state.horaire[ds]={};
-  if(ch) state.horaire[ds][empKey]=ch;
+  if(lignes.length) state.horaire[ds][empKey]=lignes;
   else delete state.horaire[ds][empKey];
   closeModal();
   saveToCloud();
   refreshHoraire();
 }
 
-function effacerHoraire(empKey,ds){
-  if(state.horaire[ds])delete state.horaire[ds][empKey];
+function effacerHoraire(){
+  const empKey=window._horaireEmpKey;
+  const ds=window._horaireDs;
+  if(state.horaire&&state.horaire[ds])delete state.horaire[ds][empKey];
   closeModal();
   saveToCloud();
   refreshHoraire();
