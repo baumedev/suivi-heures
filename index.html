@@ -145,6 +145,21 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .tab-heures.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
 .tab-reglages.active{color:#534AB7;border-bottom-color:#534AB7;}
 .tab-soumissions.active{color:#0F6E56;border-bottom-color:#0F6E56;}
+.horaire-grid{display:grid;grid-template-columns:120px repeat(7,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.horaire-cell{border-right:0.5px solid var(--border);border-bottom:0.5px solid var(--border);padding:6px;min-height:70px;}
+.horaire-cell.header{background:#f9f9f9;font-size:11px;font-weight:600;color:var(--secondary);text-align:center;min-height:auto;padding:8px 4px;}
+.horaire-cell.emp-label{background:#fafafa;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;min-height:60px;}
+.horaire-cell.weekend{background:#fafafa;}
+.horaire-cell.today-col{background:#f0f4ff;}
+.horaire-chip{font-size:10px;font-weight:600;padding:3px 6px;border-radius:4px;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+.horaire-chip:hover{opacity:0.8;}
+.horaire-drop-zone{min-height:40px;border:1.5px dashed #ddd;border-radius:4px;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ccc;}
+.horaire-drop-zone.drag-over{border-color:var(--primary);background:#f0f4ff;color:var(--primary);}
+.vue-semaine-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.horaire-mois-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.horaire-mois-cell{border:1px solid var(--border);border-radius:6px;padding:6px;min-height:80px;background:#fff;}
+.horaire-mois-cell.today{border-color:var(--primary);background:#f0f4ff;}
+.horaire-mois-cell.other-month{background:#fafafa;opacity:0.6;}
 .som-classe-C{border-left:4px solid #EF9F27;}
 .som-classe-B{border-left:4px solid #185FA5;}
 .som-classe-A{border-left:4px solid #27500A;}
@@ -240,6 +255,7 @@ body{background:#fff;font-size:11px;}
     <button onclick="setHeuresEmp('edouard')"><span class="avatar av-e" style="width:20px;height:20px;font-size:9px;margin-right:4px;">ED</span>Edouard</button>
     <button onclick="setHeuresEmp('denis')"><span class="avatar av-d" style="width:20px;height:20px;font-size:9px;margin-right:4px;">DE</span>Denis</button>
     <button onclick="setHeuresEmp('guewenn')"><span class="avatar av-g" style="width:20px;height:20px;font-size:9px;margin-right:4px;">GU</span>Guewenn</button>
+    <button onclick="setHeuresEmp('horaire')" style="border-left:1px solid var(--border);margin-left:4px;padding-left:12px;">🗓 Horaire</button>
   </nav>
   <nav class="sub-nav" id="heures-sub2nav">
     <button class="active" onclick="setSub(currentHeuresEmp,'cal')">📅 Calendrier</button>
@@ -420,12 +436,17 @@ let state = {
 let currentHeuresEmp='victor';
 
 function setHeuresEmp(emp){
-  currentHeuresEmp=emp;
-  state.currentEmp=emp;
+  currentHeuresEmp=emp==='horaire'?'victor':emp;
+  state.currentEmp=emp==='horaire'?'heures':emp;
   // Update employee sub-nav
   const btns=document.querySelectorAll('#heures-subnav button');
-  const emps=['victor','edouard','denis','guewenn'];
+  const emps=['victor','edouard','denis','guewenn','horaire'];
   btns.forEach((b,i)=>b.classList.toggle('active',emps[i]===emp));
+  if(emp==='horaire'){
+    const c=document.getElementById('content-heures');
+    if(c)c.innerHTML=buildHoraireChantier();
+    return;
+  }
   // Update action sub-nav
   const sub=state.currentSub[emp]||'cal';
   const btns2=document.querySelectorAll('#heures-sub2nav button');
@@ -517,7 +538,7 @@ async function saveToCloud(){
 }
 
 function getCloudPayload(){
-  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,soumissions:state.soumissions,soumissionId:state.soumissionId,
+  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,horaire:state.horaire||{},soumissions:state.soumissions,soumissionId:state.soumissionId,
   entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,soumissions:state.soumissions,soumissionId:state.soumissionId,facturesCourantes:state.facturesCourantes,facturesCourantesId:state.facturesCourantesId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
 }
 
@@ -548,6 +569,7 @@ function loadLocal(andRender){
     if(d.ticketId)state.ticketId=d.ticketId;
     if(d.suggestions)state.suggestions=d.suggestions;
     if(d.suggestionId)state.suggestionId=d.suggestionId;
+    if(d.horaire)state.horaire=d.horaire;
     if(d.soumissions)state.soumissions=d.soumissions;
     if(d.soumissionId)state.soumissionId=d.soumissionId;
     // S'assurer que toutes les suggestions et tickets ont un tableau notes
@@ -3147,7 +3169,7 @@ function exporterDonnees(){
     typesTravaux:state.typesTravaux,
     fiches:state.fiches,
     clients:state.clients,
-    empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,soumissions:state.soumissions,soumissionId:state.soumissionId,
+    empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,horaire:state.horaire||{},soumissions:state.soumissions,soumissionId:state.soumissionId,
     entreprise:state.entreprise,
     sstraitants:state.sstraitants,
     fournisseurs:state.fournisseurs,
@@ -6171,9 +6193,12 @@ function buildEditorSoumission(editId){
           </select>
         </div>
         <div class="field"><label>Chantier associé</label>
-          <select id="som-chantier" style="width:100%;" onchange="window._somEdit.chantier=this.value">
+          <select id="som-chantier" style="width:100%;" onchange="window._somEdit.chantier=this.value;afficherFGSoumission(this.value)">
             <option value="">-- Choisir (optionnel) --</option>${chOpts}
           </select>
+          <div id="som-fg-info" style="${(()=>{const f=state.fiches[s.chantier]||{};const fg=parseFloat(f.fraisGestion)||0;return fg>0?'':'display:none;'})()}background:#EAF3DE;border-radius:var(--radius-sm);padding:6px 10px;margin-top:4px;font-size:12px;color:#27500A;">
+            ${(()=>{const f=state.fiches[s.chantier]||{};const fg=parseFloat(f.fraisGestion)||0;const total=totalSoumission(s);const montantFG=total*(fg/100);return fg>0?'📊 Frais de gestion '+fg+'% = '+montantFG.toFixed(2)+' $ (sous-total: '+total.toFixed(2)+' $)':''})()}
+          </div>
         </div>
       </div>
       <div class="grid2">
@@ -6503,6 +6528,359 @@ function buildSuiviCouts(){
       <div style="font-size:12px;color:#185FA5;">Visible uniquement pour les soumissions <strong>Acceptées</strong> liées à un chantier actif.</div>
     </div>
     ${cards}`;
+}
+
+
+function afficherFGSoumission(chantier){
+  const el=document.getElementById('som-fg-info');
+  if(!el)return;
+  if(!chantier){el.style.display='none';return;}
+  const fiche=state.fiches[chantier]||{};
+  const fg=parseFloat(fiche.fraisGestion)||0;
+  if(fg>0){
+    const total=totalSoumission(window._somEdit);
+    const montantFG=total*(fg/100);
+    const avecFG=total+montantFG;
+    const tps=avecFG*0.05;
+    const tvq=avecFG*0.09975;
+    el.innerHTML='📊 Frais de gestion '+fg+'% = '+montantFG.toFixed(2)+' $'
+      +'<br><span style="font-size:11px;">Sous-total: '+total.toFixed(2)+' $ → Avec FG: '+avecFG.toFixed(2)+' $ → Total+taxes: '+(avecFG+tps+tvq).toFixed(2)+' $</span>';
+    el.style.display='block';
+  } else {
+    el.style.display='none';
+  }
+}
+
+
+// ─── HORAIRE CHANTIER ────────────────────────────────────
+
+let _horaireVue='semaine'; // 'semaine' ou 'mois'
+let _horaireWeekOffset=0;  // 0 = semaine courante
+let _horaireMonthOffset=0; // 0 = mois courant
+let _horaireDragEmp=null;
+let _horaireDragDate=null;
+
+function chantierColor(ch){
+  const idx=state.chantiers.indexOf(ch);
+  if(idx<0)return['#f0f0f0','#333'];
+  const c=[('#E6F1FB', '#0C447C'), ('#EAF3DE', '#27500A'), ('#FAEEDA', '#633806'), ('#F3E8FF', '#6B21A8'), ('#FCE8E8', '#791F1F'), ('#E8F5E9', '#1B5E20'), ('#FFF8E1', '#F57F17'), ('#E3F2FD', '#0D47A1'), ('#FCE4EC', '#880E4F')];
+  return c[idx%c.length];
+}
+
+function getWeekDates(offset){
+  const today=new Date();
+  const day=today.getDay()||7; // 1=Lun
+  const monday=new Date(today);
+  monday.setDate(today.getDate()-(day-1)+(offset*7));
+  monday.setHours(0,0,0,0);
+  const days=[];
+  for(let i=0;i<7;i++){
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    days.push(d);
+  }
+  return days;
+}
+
+function dateStr(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function fmtJour(d){
+  const jours=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  return jours[d.getDay()]+' '+d.getDate();
+}
+
+function fmtMoisAn(d){
+  const mois=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  return mois[d.getMonth()]+' '+d.getFullYear();
+}
+
+function getHoraireEntries(empKey, dateStr){
+  // From manual horaire assignments
+  const h=state.horaire[dateStr]||{};
+  const chantier=h[empKey]||null;
+  // Also check actual time entries for that day
+  const entries=state.entries[empKey]?state.entries[empKey].filter(e=>e.date===dateStr&&e.heures>0&&!e.absence):[];
+  return {chantier, entries};
+}
+
+function buildHoraireChantier(){
+  const isWeek=_horaireVue==='semaine';
+  const today=new Date();
+  const todayStr=dateStr(today);
+
+  // Header with view toggle and navigation
+  const moisLabel=(()=>{
+    if(isWeek){
+      const days=getWeekDates(_horaireWeekOffset);
+      return fmtMoisAn(days[0])+(days[0].getMonth()!==days[6].getMonth()?' / '+fmtMoisAn(days[6]):'');
+    } else {
+      const d=new Date(today.getFullYear(),today.getMonth()+_horaireMonthOffset,1);
+      return fmtMoisAn(d);
+    }
+  })();
+
+  const header=`
+    <div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-sm" onclick="_horaireVue='semaine';refreshHoraire()" style="${isWeek?'background:#1a1a1a;color:#fff;':''}">Semaine</button>
+          <button class="btn btn-sm" onclick="_horaireVue='mois';refreshHoraire()" style="${!isWeek?'background:#1a1a1a;color:#fff;':''}">Mois</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-sm" onclick="${isWeek?'_horaireWeekOffset--':'_horaireMonthOffset--'};refreshHoraire()">‹</button>
+          <span style="font-size:13px;font-weight:600;min-width:160px;text-align:center;">${moisLabel}</span>
+          <button class="btn btn-sm" onclick="${isWeek?'_horaireWeekOffset++':'_horaireMonthOffset++'};refreshHoraire()">›</button>
+          <button class="btn btn-sm" onclick="${isWeek?'_horaireWeekOffset=0':'_horaireMonthOffset=0'};refreshHoraire()">Aujourd&#39;hui</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${state.chantiers.map(ch=>{const [bg,col]=chantierColor(ch);return`<span style="font-size:10px;background:${bg};color:${col};padding:2px 8px;border-radius:20px;font-weight:500;">${ch}</span>`;}).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  let body='';
+
+  if(isWeek){
+    // ── VUE SEMAINE ──
+    const days=getWeekDates(_horaireWeekOffset);
+    const joursLabels=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    const isWeekend=(d)=>d.getDay()===0||d.getDay()===6;
+
+    // Header row
+    let gridHtml=`<div class="horaire-cell header" style="text-align:left;padding-left:8px;">Employé</div>`;
+    days.forEach(d=>{
+      const ds=dateStr(d);
+      const isWE=isWeekend(d);
+      const isToday=ds===todayStr;
+      gridHtml+=`<div class="horaire-cell header${isToday?' today-col':''}" style="${isWE?'background:#f5f5f5;':''}">
+        <div>${fmtJour(d)}</div>
+        <div style="font-size:9px;color:var(--secondary);">${d.toLocaleDateString('fr-CA',{month:'short'})}</div>
+      </div>`;
+    });
+
+    // Employee rows
+    Object.entries(EMPS).forEach(([empKey,e])=>{
+      gridHtml+=`<div class="horaire-cell emp-label">
+        <div style="width:28px;height:28px;border-radius:50%;background:${e.bg};color:${e.col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;">${e.label.slice(0,2).toUpperCase()}</div>
+        <span style="font-size:12px;font-weight:600;color:${e.col};">${e.label}</span>
+      </div>`;
+
+      days.forEach(d=>{
+        const ds=dateStr(d);
+        const isWE=isWeekend(d);
+        const isToday=ds===todayStr;
+        const {chantier,entries}=getHoraireEntries(empKey,ds);
+        
+        // Check absences
+        const absence=state.entries[empKey]?state.entries[empKey].find(en=>en.date===ds&&en.absence):null;
+        
+        // Build chips
+        let chips='';
+        if(absence){
+          const icons={conge:'🏖',maladie:'🤒',ferie:'⭐'};
+          chips=`<span class="horaire-chip" style="background:#f0f0f0;color:#666;">${icons[absence.absence]||'—'} ${absence.type}</span>`;
+        } else {
+          // From manual horaire
+          if(chantier){
+            const [bg,col]=chantierColor(chantier);
+            chips+=`<span class="horaire-chip" style="background:${bg};color:${col};" onclick="ouvrirHoraireModal('${empKey}','${ds}')">${chantier}</span>`;
+          }
+          // From actual entries (different chantiers)
+          const chantiersDuJour=[...new Set(entries.map(en=>en.chantier).filter(Boolean))];
+          chantiersDuJour.forEach(ch=>{
+            if(ch!==chantier){
+              const [bg,col]=chantierColor(ch);
+              const h=entries.filter(en=>en.chantier===ch).reduce((s,en)=>s+en.heures,0);
+              chips+=`<span class="horaire-chip" style="background:${bg};color:${col};opacity:0.8;">${ch} ${h.toFixed(1)}h</span>`;
+            }
+          });
+        }
+
+        gridHtml+=`<div class="horaire-cell${isToday?' today-col':''}${isWE?' weekend':''}"
+          style="cursor:pointer;"
+          ondragover="event.preventDefault();this.querySelector('.horaire-drop-zone')&&this.querySelector('.horaire-drop-zone').classList.add('drag-over')"
+          ondragleave="this.querySelector('.horaire-drop-zone')&&this.querySelector('.horaire-drop-zone').classList.remove('drag-over')"
+          ondrop="dropHoraire(event,'${empKey}','${ds}')"
+          onclick="ouvrirHoraireModal('${empKey}','${ds}')">
+          ${chips}
+          ${!absence&&!chantier?`<div class="horaire-drop-zone" style="min-height:30px;font-size:9px;">+ Assigner</div>`:''}
+        </div>`;
+      });
+    });
+
+    body=`<div class="horaire-grid" id="horaire-grid" style="margin-bottom:16px;">${gridHtml}</div>`;
+
+  } else {
+    // ── VUE MOIS ──
+    const refDate=new Date(today.getFullYear(),today.getMonth()+_horaireMonthOffset,1);
+    const year=refDate.getFullYear();
+    const month=refDate.getMonth();
+    const firstDay=(new Date(year,month,1).getDay()||7)-1; // 0=Lun
+    const daysInMonth=new Date(year,month+1,0).getDate();
+    const joursNoms=['L','M','M','J','V','S','D'];
+
+    let moisHtml=joursNoms.map(j=>`<div style="text-align:center;font-size:11px;font-weight:600;color:var(--secondary);padding:4px 0;">${j}</div>`).join('');
+    // Empty cells
+    for(let i=0;i<firstDay;i++) moisHtml+=`<div></div>`;
+
+    for(let d=1;d<=daysInMonth;d++){
+      const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isToday=ds===todayStr;
+      const dow=new Date(year,month,d).getDay();
+      const isWE=dow===0||dow===6;
+
+      // Who's on what chantier this day?
+      const assignments={};
+      Object.keys(EMPS).forEach(empKey=>{
+        const {chantier,entries}=getHoraireEntries(empKey,ds);
+        const absence=state.entries[empKey]?state.entries[empKey].find(en=>en.date===ds&&en.absence):null;
+        if(absence) assignments[empKey]={type:'absence',label:absence.type,icon:{conge:'🏖',maladie:'🤒',ferie:'⭐'}[absence.absence]||'—'};
+        else if(chantier) assignments[empKey]={type:'chantier',chantier};
+        else if(entries.length>0){
+          const ch=entries[0].chantier;
+          if(ch)assignments[empKey]={type:'chantier',chantier:ch};
+        }
+      });
+
+      const chips=Object.entries(assignments).map(([empKey,a])=>{
+        const e=EMPS[empKey];
+        if(a.type==='absence') return`<span style="font-size:9px;color:#666;">${a.icon} ${e.label.slice(0,1)}</span>`;
+        const [bg,col]=chantierColor(a.chantier);
+        return`<span style="font-size:9px;font-weight:600;background:${bg};color:${col};padding:1px 4px;border-radius:3px;display:inline-block;margin:1px 0;">${e.label.slice(0,1)}: ${a.chantier.slice(0,8)}</span>`;
+      }).join('');
+
+      moisHtml+=`<div class="horaire-mois-cell${isToday?' today':''}${isWE?' weekend':''}" onclick="ouvrirHoraireJour('${ds}')" style="cursor:pointer;${isWE?'background:#fafafa;':''}">
+        <div style="font-size:11px;font-weight:${isToday?'700':'400'};color:${isToday?'var(--primary)':'var(--secondary)'};margin-bottom:4px;">${d}</div>
+        <div style="display:flex;flex-direction:column;gap:1px;">${chips}</div>
+      </div>`;
+    }
+
+    body=`<div class="horaire-mois-grid">${moisHtml}</div>`;
+  }
+
+  return header+body;
+}
+
+function refreshHoraire(){
+  const c=document.getElementById('content-heures');
+  if(c)c.innerHTML=buildHoraireChantier();
+}
+
+// ── MODAL ASSIGNATION ────────────────────────────────────
+function ouvrirHoraireModal(empKey,ds){
+  const e=EMPS[empKey];
+  const h=state.horaire[ds]||{};
+  const current=h[empKey]||'';
+  const chOpts=state.chantiers.map(ch=>`<option value="${esc(ch)}" ${ch===current?'selected':''}>${ch}</option>`).join('');
+  const entries=state.entries[empKey]?state.entries[empKey].filter(en=>en.date===ds&&en.heures>0):[];
+  const absence=entries.find(en=>en.absence);
+
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>🗓 ${e.label} — ${ds}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    ${absence?`<div style="background:#f0f0f0;border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;text-align:center;font-size:13px;">
+      ${absence.absence==='conge'?'🏖 Congé':absence.absence==='maladie'?'🤒 Maladie':'⭐ Jour férié'}
+    </div>`:''}
+    <div class="field">
+      <label>Chantier assigné</label>
+      <select id="horaire-ch-select" style="width:100%;">
+        <option value="">-- Aucun --</option>
+        ${chOpts}
+      </select>
+    </div>
+    ${entries.filter(en=>!en.absence).length?`
+      <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:10px;margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;color:var(--secondary);margin-bottom:6px;">HEURES ENREGISTRÉES</div>
+        ${entries.filter(en=>!en.absence).map(en=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;">
+          <span>${en.chantier||'—'} · ${en.type||'—'}</span>
+          <span style="font-weight:600;">${en.heures}h</span>
+        </div>`).join('')}
+        <div style="font-size:12px;font-weight:700;border-top:0.5px solid var(--border);margin-top:4px;padding-top:4px;">
+          Total: ${entries.filter(en=>!en.absence).reduce((s,en)=>s+en.heures,0).toFixed(1)}h
+        </div>
+      </div>`:''}
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="sauvegarderHoraire('${empKey}','${ds}')">💾 Sauvegarder</button>
+      <button class="btn btn-sm" style="background:#FCEBEB;color:#791F1F;border:1px solid #F09595;" onclick="effacerHoraire('${empKey}','${ds}')">🗑 Effacer</button>
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function ouvrirHoraireJour(ds){
+  // Ouvrir un résumé du jour avec tous les employés
+  const empsHtml=Object.entries(EMPS).map(([empKey,e])=>{
+    const h=state.horaire[ds]||{};
+    const chantier=h[empKey]||'';
+    const entries=state.entries[empKey]?state.entries[empKey].filter(en=>en.date===ds&&en.heures>0):[];
+    const absence=entries.find(en=>en.absence);
+    const [bg,col]=chantier?chantierColor(chantier):['#f0f0f0','#666'];
+    return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:${e.bg};color:${e.col};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">${e.label.slice(0,2).toUpperCase()}</div>
+        <span style="font-size:13px;font-weight:500;">${e.label}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${absence?`<span style="font-size:12px;background:#f0f0f0;padding:2px 8px;border-radius:20px;">${absence.absence==='conge'?'🏖':absence.absence==='maladie'?'🤒':'⭐'} ${absence.type}</span>`:
+          chantier?`<span style="font-size:12px;background:${bg};color:${col};padding:2px 8px;border-radius:20px;font-weight:600;">${chantier}</span>`:
+          `<span style="font-size:12px;color:#ccc;">Non assigné</span>`}
+        <button onclick="closeModal();setTimeout(()=>ouvrirHoraireModal('${empKey}','${ds}'),100)" class="btn-edit">✏️</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('modalBox').innerHTML=`
+    <div class="modal-header">
+      <h3>🗓 ${ds}</h3>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    ${empsHtml}`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function sauvegarderHoraire(empKey,ds){
+  const ch=document.getElementById('horaire-ch-select').value;
+  if(!state.horaire[ds])state.horaire[ds]={};
+  if(ch) state.horaire[ds][empKey]=ch;
+  else delete state.horaire[ds][empKey];
+  closeModal();
+  saveToCloud();
+  refreshHoraire();
+}
+
+function effacerHoraire(empKey,ds){
+  if(state.horaire[ds])delete state.horaire[ds][empKey];
+  closeModal();
+  saveToCloud();
+  refreshHoraire();
+}
+
+// ── DRAG & DROP ──────────────────────────────────────────
+function startHoraireDrag(empKey,ds,event){
+  _horaireDragEmp=empKey;
+  _horaireDragDate=ds;
+  event.dataTransfer.setData('text/plain',empKey+'|'+ds);
+}
+
+function dropHoraire(event,empKey,ds){
+  event.preventDefault();
+  const data=event.dataTransfer.getData('text/plain');
+  // Drop from chantier chip: reassign
+  const [srcEmp,srcDate]=data.split('|');
+  if(srcEmp&&srcDate){
+    const srcCh=(state.horaire[srcDate]||{})[srcEmp];
+    if(srcCh){
+      // Assign same chantier to new cell
+      if(!state.horaire[ds])state.horaire[ds]={};
+      state.horaire[ds][empKey]=srcCh;
+      saveToCloud();
+      refreshHoraire();
+    }
+  }
+  event.target.closest('.horaire-cell')?.querySelector('.horaire-drop-zone')?.classList.remove('drag-over');
 }
 
 // ─── INIT ─────────────────────────────────────────────────
