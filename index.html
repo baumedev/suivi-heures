@@ -6690,7 +6690,7 @@ function buildHoraireChantier(){
         const ds=dateStr(d);
         const isWE=isWeekend(d);
         const isToday=ds===todayStr;
-        const {chantier,entries}=getHoraireEntries(empKey,ds);
+        const {chantier,lignes,entries}=getHoraireEntries(empKey,ds);
         
         // Check absences
         const absence=state.entries[empKey]?state.entries[empKey].find(en=>en.date===ds&&en.absence):null;
@@ -6755,7 +6755,7 @@ function buildHoraireChantier(){
       // Who's on what chantier this day?
       const assignments={};
       Object.keys(EMPS).forEach(empKey=>{
-        const {chantier,entries}=getHoraireEntries(empKey,ds);
+        const {chantier,lignes,entries}=getHoraireEntries(empKey,ds);
         const absence=state.entries[empKey]?state.entries[empKey].find(en=>en.date===ds&&en.absence):null;
         if(absence) assignments[empKey]={type:'absence',label:absence.type,icon:{conge:'🏖',maladie:'🤒',ferie:'⭐'}[absence.absence]||'—'};
         else if(chantier) assignments[empKey]={type:'chantier',chantier};
