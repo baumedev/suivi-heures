@@ -4106,6 +4106,19 @@ function doLogin(){
   const logoutBtn=document.getElementById('logoutBtn');
   if(badge){badge.textContent='👤 '+found.nom;badge.style.display='inline';}
   if(logoutBtn)logoutBtn.style.display='inline-block';
+  // Rediriger vers la feuille de temps de l'employé connecté
+  const empMap={
+    'victor':'victor','edouard':'edouard','denis':'denis','guewenn':'guewenn',
+    'dom':'victor' // Dom reste sur victor par défaut
+  };
+  const empKey=empMap[found.username.toLowerCase()]||null;
+  if(empKey&&Object.keys(EMPS).includes(empKey)){
+    setHeuresEmp(empKey);
+    setEmp(empKey);
+  } else {
+    // Admin ou utilisateur sans feuille de temps → rester sur heures/victor
+    setHeuresEmp('victor');
+  }
 }
 
 function doLogout(){
@@ -5692,12 +5705,14 @@ function initSafeState(){
   if(!Array.isArray(state.fournisseurs))state.fournisseurs=[];
   if(!Array.isArray(state.factures))state.factures=[];
   if(!Array.isArray(state.soumissions))state.soumissions=[];
+  if(!state.horaire||typeof state.horaire!=='object')state.horaire={};
   if(!Array.isArray(state.facturesCourantes))state.facturesCourantes=[];
   if(!Array.isArray(state.achats))state.achats=[];
   if(!Array.isArray(state.sstFactures))state.sstFactures=[];
   if(!Array.isArray(state.tickets))state.tickets=[];
   if(!Array.isArray(state.suggestions))state.suggestions=[];
   if(!Array.isArray(state.soumissions))state.soumissions=[];
+  if(!state.horaire||typeof state.horaire!=='object')state.horaire={};
   if(!state.fiches)state.fiches={};
   if(!state.empInfos)state.empInfos={};
   if(!state.entreprise)state.entreprise={};
@@ -6598,6 +6613,7 @@ function fmtMoisAn(d){
 
 function getHoraireEntries(empKey, dateStr){
   // From manual horaire assignments
+  if(!state.horaire)state.horaire={};
   const h=state.horaire[dateStr]||{};
   const chantier=h[empKey]||null;
   // Also check actual time entries for that day
