@@ -312,12 +312,25 @@ body{background:#fff;font-size:11px;}
   <div class="modal-box" id="modalBox"></div>
 </div>
 
+
 <script>
+
 // ─── SUPABASE CONFIG ──────────────────────────────────────
 const SB_URL = 'https://vlagqxkyvzoerpuajgcn.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsYWdxeGt5dnpvZXJwdWFqZ2NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNjAxMzcsImV4cCI6MjA5MzgzNjEzN30.CGgfjqUzH3mXP9wxHfQnrariJL61VheXU6_kVO7E4VQ';
 const SB_HEADERS = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
 const ROW_ID = 1;
+
+// Hash SHA-256 (hex) — utilisé pour ne jamais stocker/afficher un mot de passe en clair.
+// NOTE SÉCURITÉ: ceci reste une vérification côté client. Un hash non salé n'est pas
+// une protection suffisante pour un vrai système multi-utilisateurs sensible — la
+// vraie protection doit venir des policies RLS de Supabase (voir README) ou d'une
+// migration vers Supabase Auth. Ce correctif retire au moins les mots de passe en
+// clair du code source et de l'écran d'administration.
+async function hashPassword(str){
+  const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 
 // ─── STATE ────────────────────────────────────────────────
 let state = {
@@ -335,13 +348,16 @@ let state = {
   clients:[],
   clientId:0,
   empInfos:{},
+  // Mots de passe hashés (SHA-256) — ne jamais remettre de mot de passe en clair ici.
+  // Ces valeurs ne servent que d'amorçage initial : dès la 1re synchronisation,
+  // la liste réelle vit dans Supabase (table `donnees`, champ `utilisateurs`).
   utilisateurs:[
-    {username:'admin',password:'Admin2024!',nom:'Administrateur',role:'admin'},
-    {username:'victor',password:'Victor2024!',nom:'Victor',role:'employe'},
-    {username:'edouard',password:'Edouard2024!',nom:'Edouard',role:'employe'},
-    {username:'denis',password:'Denis2024!',nom:'Denis',role:'employe'},
-    {username:'dom',password:'Dom2024!',nom:'Dom',role:'employe'},
-    {username:'guewenn',password:'Guewenn2024!',nom:'Guewenn',role:'admin'}
+    {username:'admin',passwordHash:'5a55c7873ed7338f35d782adb513d336a36086ddec0fa4b6444fda6d440387c2',nom:'Administrateur',role:'admin'},
+    {username:'victor',passwordHash:'f486e35debe21679cda2f0f72b3fbf5d45b14c7415a4380ea9fa4d4101ef4fc7',nom:'Victor',role:'employe'},
+    {username:'edouard',passwordHash:'4f90377bc1785e99fa9856e2c471674ea34b790a5581c891d61176cdad57c5d5',nom:'Edouard',role:'employe'},
+    {username:'denis',passwordHash:'f7ad4df0b6eb546a08bbf33e5808d887c8f289e032d57072a7512509006204b7',nom:'Denis',role:'employe'},
+    {username:'dom',passwordHash:'d7dcab6bb795df3d77dd5ed1e4518b2f35275e8182006eb1d618a14b7eec5315',nom:'Dom',role:'employe'},
+    {username:'guewenn',passwordHash:'80c4e1a428b46eab54c2f592ef6970bd92d4160511d878e6805d127aff92c591',nom:'Guewenn',role:'admin'}
   ],
   currentUser:null,
   tickets:[],
@@ -488,21 +504,11 @@ async function loadFromCloud(){
     }
     const rows=await r.json();
     if(rows.length>0&&rows[0].data){
-      const d=rows[0].data;
-      if(d.entries){
-        state.entries=d.entries;
-        // Ensure all EMPS have entries array
-        Object.keys(EMPS).forEach(k=>{if(!state.entries[k])state.entries[k]=[];});
-      }
-      if(d.chantiers)state.chantiers=d.chantiers;
-      if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
-      if(d.fiches)state.fiches=d.fiches;
-      if(d.entryId)state.entryId=d.entryId;
+      mergeStateFrom(rows[0].data);
     } else {
       // First time — insert empty row
       await fetch(`${SB_URL}/rest/v1/donnees`,{method:'POST',headers:{...SB_HEADERS,'Prefer':'return=minimal'},body:JSON.stringify({id:ROW_ID,data:getCloudPayload()})});
     }
-    state.chantiers.forEach(c=>{if(!state.fiches[c])state.fiches[c]={};});
     saveLocal();
     const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
     setSyncStatus('ok',`Synchronisé à ${t}`);
@@ -539,8 +545,61 @@ async function saveToCloud(){
 }
 
 function getCloudPayload(){
-  return{entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,horaire:state.horaire||{},soumissions:state.soumissions,soumissionId:state.soumissionId,
-  entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,factures:state.factures,factureId:state.factureId,soumissions:state.soumissions,soumissionId:state.soumissionId,facturesCourantes:state.facturesCourantes,facturesCourantesId:state.facturesCourantesId,achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId};
+  return{
+    entries:state.entries,chantiers:state.chantiers,typesTravaux:state.typesTravaux,fiches:state.fiches,entryId:state.entryId,
+    clients:state.clients,clientId:state.clientId,empInfos:state.empInfos||{},
+    tickets:state.tickets,ticketId:state.ticketId,suggestions:state.suggestions,suggestionId:state.suggestionId,
+    horaire:state.horaire||{},soumissions:state.soumissions,soumissionId:state.soumissionId,
+    entreprise:state.entreprise,sstraitants:state.sstraitants,fournisseurs:state.fournisseurs,
+    factures:state.factures,factureId:state.factureId,
+    facturesCourantes:state.facturesCourantes,facturesCourantesId:state.facturesCourantesId,
+    achats:state.achats,achatId:state.achatId,sstFactures:state.sstFactures,sstFactureId:state.sstFactureId,
+    utilisateurs:state.utilisateurs
+  };
+}
+
+// ─── FUSION D'UN PAYLOAD DANS LE STATE (utilisé par loadLocal, loadFromCloud,
+// le sync auto 30s, et le sync de démarrage) — avant, ces 4 endroits avaient
+// chacun leur propre liste de champs à copier, et chacune en oubliait une
+// partie différente (tickets/suggestions/soumissions/horaire/utilisateurs
+// n'étaient pas rechargés partout). Résultat : selon le chemin de code
+// emprunté, certaines données ne se synchronisaient pas entre appareils.
+// Une seule fonction, une seule liste de champs, plus d'oubli possible.
+function mergeStateFrom(d){
+  if(!d)return;
+  if(d.entries){
+    state.entries=d.entries;
+    Object.keys(EMPS).forEach(k=>{if(!state.entries[k])state.entries[k]=[];});
+  }
+  if(d.chantiers)state.chantiers=d.chantiers;
+  if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
+  if(d.fiches)state.fiches=d.fiches;
+  if(d.entryId)state.entryId=d.entryId;
+  if(d.clients)state.clients=d.clients;
+  if(d.clientId)state.clientId=d.clientId;
+  if(d.empInfos)state.empInfos=d.empInfos;
+  if(d.tickets)state.tickets=d.tickets;
+  if(d.ticketId)state.ticketId=d.ticketId;
+  if(d.suggestions)state.suggestions=d.suggestions;
+  if(d.suggestionId)state.suggestionId=d.suggestionId;
+  if(d.horaire)state.horaire=d.horaire;
+  if(d.soumissions)state.soumissions=d.soumissions;
+  if(d.soumissionId)state.soumissionId=d.soumissionId;
+  if(d.entreprise)state.entreprise=d.entreprise;
+  if(d.sstraitants)state.sstraitants=d.sstraitants;
+  if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
+  if(d.factures)state.factures=d.factures;
+  if(d.factureId)state.factureId=d.factureId;
+  if(d.facturesCourantes)state.facturesCourantes=d.facturesCourantes;
+  if(d.facturesCourantesId)state.facturesCourantesId=d.facturesCourantesId;
+  if(d.achats)state.achats=d.achats;
+  if(d.achatId)state.achatId=d.achatId;
+  if(d.sstFactures)state.sstFactures=d.sstFactures;
+  if(d.sstFactureId)state.sstFactureId=d.sstFactureId;
+  if(d.utilisateurs&&d.utilisateurs.length)state.utilisateurs=d.utilisateurs;
+  state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
+  state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
+  state.chantiers.forEach(c=>{if(!state.fiches[c])state.fiches[c]={};});
 }
 
 // ─── LOCAL BACKUP ─────────────────────────────────────────
@@ -548,47 +607,7 @@ function saveLocal(){try{localStorage.setItem('sh_v3',JSON.stringify(getCloudPay
 function loadLocal(andRender){
   try{
     const s=localStorage.getItem('sh_v3');
-    if(s){
-      const d=JSON.parse(s);
-      if(d.entries)state.entries=d.entries;
-      if(d.chantiers)state.chantiers=d.chantiers;
-      if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
-      if(d.fiches)state.fiches=d.fiches;
-      if(d.entryId)state.entryId=d.entryId;
-      if(d.clients)state.clients=d.clients;
-      if(d.clientId)state.clientId=d.clientId;
-      if(d.empInfos)state.empInfos=d.empInfos;
-      if(d.tickets)state.tickets=d.tickets;
-      if(d.ticketId)state.ticketId=d.ticketId;
-      if(d.suggestions)state.suggestions=d.suggestions;
-      if(d.suggestionId)state.suggestionId=d.suggestionId;
-      if(d.soumissions)state.soumissions=d.soumissions;
-      if(d.soumissionId)state.soumissionId=d.soumissionId;
-      state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
-      state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
-    if(d.tickets)state.tickets=d.tickets;
-    if(d.ticketId)state.ticketId=d.ticketId;
-    if(d.suggestions)state.suggestions=d.suggestions;
-    if(d.suggestionId)state.suggestionId=d.suggestionId;
-    if(d.horaire)state.horaire=d.horaire;
-    if(d.soumissions)state.soumissions=d.soumissions;
-    if(d.soumissionId)state.soumissionId=d.soumissionId;
-    // S'assurer que toutes les suggestions et tickets ont un tableau notes
-    state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
-    state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
-      if(d.entreprise)state.entreprise=d.entreprise;
-      if(d.sstraitants)state.sstraitants=d.sstraitants;
-      if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
-      if(d.factures)state.factures=d.factures;
-      if(d.factureId)state.factureId=d.factureId;
-      if(d.facturesCourantes)state.facturesCourantes=d.facturesCourantes;
-      if(d.facturesCourantesId)state.facturesCourantesId=d.facturesCourantesId;
-      if(d.achats)state.achats=d.achats;
-      if(d.achatId)state.achatId=d.achatId;
-      if(d.sstFactures)state.sstFactures=d.sstFactures;
-      if(d.sstFactureId)state.sstFactureId=d.sstFactureId;
-      state.chantiers.forEach(c=>{if(!state.fiches[c])state.fiches[c]={};});
-    }
+    if(s)mergeStateFrom(JSON.parse(s));
     initSafeState();
     if(andRender)renderCurrent();
   }catch(e){console.error('loadLocal error',e);}
@@ -606,19 +625,7 @@ setInterval(async()=>{
     if(!r.ok)return;
     const rows=await r.json();
     if(rows.length>0&&rows[0].data){
-      const d=rows[0].data;
-      if(d.entries)state.entries=d.entries;
-      if(d.chantiers)state.chantiers=d.chantiers;
-      if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
-      if(d.fiches)state.fiches=d.fiches;
-      if(d.entryId)state.entryId=d.entryId;
-      if(d.clients)state.clients=d.clients;
-      if(d.factures)state.factures=d.factures;
-      if(d.achats)state.achats=d.achats;
-      if(d.sstFactures)state.sstFactures=d.sstFactures;
-      if(d.entreprise)state.entreprise=d.entreprise;
-      if(d.sstraitants)state.sstraitants=d.sstraitants;
-      if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
+      mergeStateFrom(rows[0].data);
       initSafeState();
       saveLocal();
       const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
@@ -1436,18 +1443,8 @@ function resetRapport(){
 }
 
 // ─── FICHES ───────────────────────────────────────────────
-function buildFiches(){
-  if(!state.chantiers.length)return`<div class="empty">Aucun chantier configuré.</div>`;
-  return state.chantiers.map(ch=>{const f=state.fiches[ch]||{};return`<div class="card"><div class="card-title">🏗 ${ch}</div>
-    <div class="grid2"><div class="field"><label>Prénom</label><input type="text" value="${f.prenom||''}" oninput="sf('${esc(ch)}','prenom',this.value)" placeholder="Prénom"/></div><div class="field"><label>Nom</label><input type="text" value="${f.nom||''}" oninput="sf('${esc(ch)}','nom',this.value)" placeholder="Nom"/></div></div>
-    <div class="field"><label>Téléphone</label><input type="tel" value="${f.tel||''}" oninput="sf('${esc(ch)}','tel',this.value)" placeholder="514 000-0000" inputmode="tel"/></div>
-    <div class="field"><label>Courriel</label><input type="email" value="${f.courriel||''}" oninput="sf('${esc(ch)}','courriel',this.value)" placeholder="client@example.com" inputmode="email"/></div>
-    <div class="field"><label>Adresse</label><input type="text" value="${f.adresse||''}" oninput="sf('${esc(ch)}','adresse',this.value)" placeholder="123 rue Exemple, Montréal"/></div>
-    <div class="fiche-section"><div class="grid2">
-      <div class="field"><label>💰 Taux horaire ($)</label><input type="number" min="0" step="0.5" value="${f.taux||''}" oninput="sf('${esc(ch)}','taux',this.value)" placeholder="85" inputmode="decimal"/></div>
-      <div class="field"><label>% Frais de gestion</label><input type="number" min="0" step="0.5" value="${f.fraisGestion||''}" oninput="sf('${esc(ch)}','fraisGestion',this.value)" placeholder="15" inputmode="decimal"/></div>
-    </div></div></div>`;}).join('');
-}
+// (buildFiches: implémentation active plus bas, celle-ci était morte —
+// écrasée silencieusement par la redéclaration plus loin dans le fichier)
 function sf(ch,field,val){if(!state.fiches[ch])state.fiches[ch]={};state.fiches[ch][field]=val;saveToCloud();}
 
 // ─── GESTION LISTES ───────────────────────────────────────
@@ -2752,14 +2749,7 @@ function saveAchat(editId){
   refreshMateriaux();
 }
 
-function editAchat(id){openModalAchat(id);}
-
-function deleteAchat(id){
-  if(!confirm("Supprimer cette dépense?"))return;
-  state.achats=state.achats.filter(a=>a.id!==id);
-  saveToCloud();
-  refreshMateriaux();
-}
+// (editAchat/deleteAchat: implémentations actives plus bas, redéclarées — celles-ci étaient mortes)
 
 
 // ─── FACTURES SOUS-TRAITANTS ──────────────────────────────
@@ -2924,11 +2914,7 @@ function saveSstFacture(editId){
   closeModal();saveToCloud();refreshSstFactures();
 }
 
-function deleteSstFacture(id){
-  if(!confirm("Supprimer cette facture?"))return;
-  state.sstFactures=state.sstFactures.filter(a=>a.id!==id);
-  saveToCloud();refreshSstFactures();
-}
+// (deleteSstFacture: implémentation active plus bas, redéclarée — celle-ci était morte)
 
 
 // ─── EMPLOYÉS ─────────────────────────────────────────────
@@ -4088,10 +4074,11 @@ function imprimerRapport(){
 
 
 // ─── AUTHENTIFICATION ─────────────────────────────────────
-function doLogin(){
+async function doLogin(){
   const user=document.getElementById('login-user').value.trim().toLowerCase();
   const pass=document.getElementById('login-pass').value;
-  const found=state.utilisateurs.find(u=>u.username.toLowerCase()===user&&u.password===pass);
+  const passHash=await hashPassword(pass);
+  const found=state.utilisateurs.find(u=>u.username.toLowerCase()===user&&u.passwordHash===passHash);
   const errEl=document.getElementById('loginError');
   if(!found){
     errEl.style.display='block';
@@ -4194,14 +4181,13 @@ function buildUtilisateurs(){
       </table>
     </div>
     <div style="background:#FEF3C7;border-radius:var(--radius-sm);padding:10px 12px;margin-top:12px;font-size:12px;color:#92400E;">
-      ⚠️ Les mots de passe par défaut sont indiqués ci-dessous. Demandez à chaque utilisateur de les changer.<br><br>
-      ${state.utilisateurs.map(u=>`<strong>${u.nom}</strong>: ${u.password}`).join(' · ')}
+      ⚠️ Les mots de passe sont hashés et ne peuvent plus être affichés ici. Utilisez "✏️ Modifier" pour en définir un nouveau si un utilisateur l'a oublié.
     </div>`;
 }
 
 function openUserModal(idx){
   const isNew=idx===-1;
-  const u=isNew?{username:'',password:'',nom:'',role:'employe'}:state.utilisateurs[idx];
+  const u=isNew?{username:'',nom:'',role:'employe'}:state.utilisateurs[idx];
   document.getElementById('modalBox').innerHTML=`
     <div class="modal-header">
       <h3>${isNew?'Nouvel utilisateur':'Modifier utilisateur'}</h3>
@@ -4211,7 +4197,7 @@ function openUserModal(idx){
       <div class="field"><label>Nom affiché</label><input type="text" id="u-nom" value="${u.nom||''}" placeholder="Ex: Victor"/></div>
       <div class="field"><label>Nom d'utilisateur</label><input type="text" id="u-user" value="${u.username||''}" placeholder="Ex: victor" autocapitalize="none"/></div>
     </div>
-    <div class="field"><label>Mot de passe</label><input type="password" id="u-pass" value="${u.password||''}" placeholder="Mot de passe"/></div>
+    <div class="field"><label>Mot de passe${isNew?'':' (laisser vide pour ne pas changer)'}</label><input type="password" id="u-pass" value="" placeholder="${isNew?'Mot de passe':'••••••••'}"/></div>
     <div class="field"><label>Rôle</label>
       <select id="u-role" style="width:100%;">
         <option value="employe" ${u.role==='employe'?'selected':''}>Employé</option>
@@ -4225,16 +4211,19 @@ function openUserModal(idx){
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function saveUserModal(idx){
+async function saveUserModal(idx){
   const nom=document.getElementById('u-nom').value.trim();
   const username=document.getElementById('u-user').value.trim().toLowerCase();
   const password=document.getElementById('u-pass').value;
   const role=document.getElementById('u-role').value;
-  if(!nom||!username||!password){alert("Tous les champs sont obligatoires.");return;}
-  if(idx===-1&&state.utilisateurs.find(u=>u.username===username)){alert("Ce nom utilisateur existe deja.");return;}
-  const user={username,password,nom,role};
-  if(idx===-1)state.utilisateurs.push(user);
+  const isNew=idx===-1;
+  if(!nom||!username||(isNew&&!password)){alert("Tous les champs sont obligatoires.");return;}
+  if(isNew&&state.utilisateurs.find(u=>u.username===username)){alert("Ce nom utilisateur existe deja.");return;}
+  const passwordHash=password?await hashPassword(password):(isNew?'':state.utilisateurs[idx].passwordHash);
+  const user={username,passwordHash,nom,role};
+  if(isNew)state.utilisateurs.push(user);
   else state.utilisateurs[idx]=user;
+  saveToCloud();
   closeModal();
   buildUtilisateurs();
 }
@@ -4242,6 +4231,7 @@ function saveUserModal(idx){
 function supprimerUser(idx){
   if(!confirm("Supprimer cet utilisateur?"))return;
   state.utilisateurs.splice(idx,1);
+  saveToCloud();
   buildUtilisateurs();
 }
 
@@ -6994,31 +6984,7 @@ window.addEventListener('DOMContentLoaded', function(){
       if(!r.ok)return;
       const rows=await r.json();
       if(rows.length>0&&rows[0].data){
-        const d=rows[0].data;
-        if(d.entries){
-          state.entries=d.entries;
-          Object.keys(EMPS).forEach(k=>{if(!state.entries[k])state.entries[k]=[];});
-        }
-        if(d.chantiers)state.chantiers=d.chantiers;
-        if(d.typesTravaux)state.typesTravaux=d.typesTravaux;
-        if(d.fiches)state.fiches=d.fiches;
-        if(d.entryId)state.entryId=d.entryId;
-        if(d.clients)state.clients=d.clients;
-        if(d.factures)state.factures=d.factures;
-        if(d.achats)state.achats=d.achats;
-        if(d.factureId)state.factureId=d.factureId;
-        if(d.achatId)state.achatId=d.achatId;
-        if(d.entreprise)state.entreprise=d.entreprise;
-        if(d.sstraitants)state.sstraitants=d.sstraitants;
-        if(d.fournisseurs)state.fournisseurs=d.fournisseurs;
-        if(d.tickets)state.tickets=d.tickets;
-        if(d.ticketId)state.ticketId=d.ticketId;
-        if(d.suggestions)state.suggestions=d.suggestions;
-        if(d.suggestionId)state.suggestionId=d.suggestionId;
-        state.tickets.forEach(t=>{if(!t.notes)t.notes=[];});
-        state.suggestions.forEach(s=>{if(!s.notes)s.notes=[];});
-        if(d.facturesCourantes)state.facturesCourantes=d.facturesCourantes;
-        if(d.facturesCourantesId)state.facturesCourantesId=d.facturesCourantesId;
+        mergeStateFrom(rows[0].data);
         saveLocal();
         const t=new Date().toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit'});
         setSyncStatus('ok',`Synchronisé à ${t}`);
@@ -7026,7 +6992,9 @@ window.addEventListener('DOMContentLoaded', function(){
     }catch(e){setSyncStatus('err','Hors ligne');}
   },1000);
 });
+
 </script>
+
 </div>
 </body>
 </html>
