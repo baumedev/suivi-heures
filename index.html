@@ -9,208 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Suivi Heures">
 <meta name="theme-color" content="#ffffff">
 <title>Suivi des heures</title>
-<style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:#f5f5f5;color:#1a1a1a;font-size:15px;}
-:root{--primary:#1a1a1a;--secondary:#6b6b6b;--border:#e0e0e0;--radius:10px;--radius-sm:6px;}
-.top-nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:0;z-index:100;flex-wrap:nowrap;}
-@media(min-width:900px){
-  .content{padding:16px 32px;}
-  .stats-row{grid-template-columns:repeat(4,1fr);}
-  .grid2{grid-template-columns:1fr 1fr;}
-}
-@media(min-width:1200px){
-  .content{padding:16px 56px;}
-  .stats-row{grid-template-columns:repeat(5,1fr);}
-}
-
-}
-.top-nav::-webkit-scrollbar{display:none;}
-.top-nav button{background:none;border:none;border-bottom:3px solid transparent;padding:12px 14px;font-size:13px;font-weight:500;color:var(--secondary);white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0;}
-.top-nav button.active{color:var(--primary);border-bottom-color:var(--primary);}
-.top-nav button.tab-victor.active{color:#0C447C;border-bottom-color:#185FA5;}
-.top-nav button.tab-edouard.active{color:#085041;border-bottom-color:#0F6E56;}
-.top-nav button.tab-denis.active{color:#633806;border-bottom-color:#854F0B;}
-.top-nav button.tab-guewenn.active{color:#6B21A8;border-bottom-color:#9333EA;}
-.top-nav button.tab-rapport.active{color:#3C3489;border-bottom-color:#534AB7;}
-.avatar{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;}
-.av-v{background:#E6F1FB;color:#0C447C;}
-.av-e{background:#E1F5EE;color:#085041;}
-.av-d{background:#FAEEDA;color:#633806;}
-.av-g{background:#F3E8FF;color:#6B21A8;}
-.sub-nav{background:#fff;border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
-.sub-nav::-webkit-scrollbar{display:none;}
-.sub-nav button{background:none;border:none;border-bottom:2px solid transparent;padding:9px 11px 14px;font-size:12px;color:var(--secondary);white-space:nowrap;cursor:pointer;}
-.sub-nav button.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:500;}
-.page{display:none;}.page.active{display:block;}
-.content{padding:16px;padding-bottom:calc(24px + env(safe-area-inset-bottom));}
-.card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:16px;margin-bottom:12px;}
-.card-title{font-size:14px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:6px;}
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
-.stats-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;}
-.stat-box{background:#f9f9f9;border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--border);}
-.stat-box .label{font-size:10px;color:var(--secondary);margin:0 0 3px;}
-.stat-box .value{font-size:16px;font-weight:600;margin:0;}
-.stat-fact{background:#EAF3DE;border-color:#C0DD97;}.stat-fact .label{color:#3B6D11;}.stat-fact .value{color:#27500A;}
-.stat-nf{background:#FCEBEB;border-color:#F09595;}.stat-nf .label{color:#A32D2D;}.stat-nf .value{color:#791F1F;}
-.stat-money{background:#E6F1FB;border-color:#85B7EB;}.stat-money .label{color:#185FA5;}.stat-money .value{color:#0C447C;}
-.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-.cal-header h2{font-size:16px;font-weight:600;margin:0;}
-.cal-nav button{background:#f0f0f0;border:none;border-radius:var(--radius-sm);width:36px;height:36px;font-size:16px;cursor:pointer;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-.cal-day-name{text-align:center;font-size:10px;font-weight:600;color:var(--secondary);padding:4px 0;}
-.cal-cell{border:1px solid var(--border);border-radius:6px;padding:4px 3px;min-height:52px;cursor:pointer;text-align:center;background:#fff;}
-.cal-cell:active{background:#f0f0f0;}
-.cal-cell.empty{background:none;border-color:transparent;cursor:default;}
-.cal-cell.today{background:#f0f4ff;}
-.cal-cell.has-data{border-width:2px;}
-.day-num{font-size:12px;font-weight:600;}
-.day-h{font-size:10px;font-weight:600;margin-top:2px;}
-.day-f{font-size:9px;margin-top:1px;}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;overflow-y:auto;}
-.modal-overlay.open{display:flex;align-items:flex-end;justify-content:center;}
-.modal-box{background:#fff;border-radius:18px 18px 0 0;padding:20px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
-@media(min-width:500px){.modal-overlay.open{align-items:center;}.modal-box{border-radius:18px;margin:16px;}}
-.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-.modal-header h3{font-size:15px;font-weight:600;margin:0;text-transform:capitalize;}
-.modal-close{background:none;border:none;font-size:22px;color:var(--secondary);cursor:pointer;padding:0;}
-.entry-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);}
-.entry-item:last-child{border-bottom:none;}
-.entry-h{font-size:13px;font-weight:700;min-width:34px;}
-.entry-info{flex:1;overflow:hidden;}
-.entry-info .e1{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.entry-info .e2{font-size:11px;color:var(--secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.btn-del{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:4px;}
-.btn-del:active{color:#e24b4a;}
-.btn-edit{background:none;border:none;color:#888;font-size:14px;cursor:pointer;padding:4px;}
-.btn-edit:active{color:#185FA5;}
-.fbadge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;}
-.fb-y{background:#EAF3DE;color:#27500A;}
-.fb-n{background:#FCEBEB;color:#791F1F;}
-.form-section{border-top:1px solid var(--border);padding-top:14px;margin-top:4px;}
-.form-section h4{font-size:12px;font-weight:600;color:var(--secondary);letter-spacing:.05em;margin:0 0 12px;}
-.field{margin-bottom:12px;}
-.field label{display:block;font-size:11px;color:var(--secondary);margin-bottom:4px;font-weight:500;}
-.field input,.field select{width:100%;border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;font-size:14px;background:#fff;color:var(--primary);-webkit-appearance:none;}
-.field input:focus,.field select:focus{outline:none;border-color:#888;}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.toggle-group{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:12px;}
-.toggle-group button{flex:1;padding:10px;font-size:13px;font-weight:500;border:none;background:#fff;color:var(--secondary);cursor:pointer;}
-.toggle-group button.on-f{background:#EAF3DE;color:#27500A;}
-.toggle-group button.on-nf{background:#FCEBEC;color:#791F1F;}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 20px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:600;cursor:pointer;}
-.btn-primary{background:#1a1a1a;color:#fff;width:100%;}
-.btn-sm{padding:8px 14px;font-size:12px;background:#f0f0f0;color:var(--primary);border:1px solid var(--border);cursor:pointer;border-radius:var(--radius-sm);}
-.btn-pdf{background:#0C447C;color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
-.list-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border);}
-.list-item:last-child{border-bottom:none;}
-.li-date{font-size:11px;color:var(--secondary);min-width:70px;}
-.li-h{font-size:13px;font-weight:700;min-width:34px;}
-.li-info{flex:1;overflow:hidden;}
-.li-info .t1{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.li-info .t2{font-size:11px;color:var(--secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.rp-result-header{background:#f0f0f0;border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;}
-.emp-result-card{border-left:4px solid #ddd;padding-left:12px;margin-bottom:14px;}
-.emp-result-card.ev{border-left-color:#185FA5;}
-.emp-result-card.ee{border-left-color:#0F6E56;}
-.emp-result-card.ed{border-left-color:#854F0B;}
-.mini-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px;}
-.mini-table td{padding:4px 0;border-bottom:1px solid var(--border);}
-.mini-table td:last-child{text-align:right;}
-.mini-table tr:last-child td{border-bottom:none;}
-.section-label{font-size:10px;font-weight:600;color:var(--secondary);letter-spacing:.05em;margin:10px 0 6px;}
-details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px 0;}
-.tag{display:inline-flex;align-items:center;gap:5px;background:#f0f0f0;border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;margin:3px;}
-.tag button{background:none;border:none;cursor:pointer;color:var(--secondary);font-size:13px;padding:0;}
-.fiche-section{border-top:1px solid var(--border);padding-top:12px;margin-top:12px;}
-.empty{text-align:center;padding:40px 20px;color:var(--secondary);font-size:13px;}
-.total-facture-bar{background:#0C447C;color:#fff;border-radius:var(--radius-sm);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-.total-facture-bar .tf-label{font-size:13px;font-weight:500;opacity:0.85;}
-.total-facture-bar .tf-value{font-size:22px;font-weight:700;}
-.sync-bar{display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;font-size:11px;background:#f0f0f0;border-bottom:1px solid var(--border);}
-.sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;}
-.sync-dot.syncing{background:#EF9F27;animation:pulse 1s infinite;}
-.sync-dot.ok{background:#639922;}
-.sync-dot.err{background:#E24B4A;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
-.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e 0%,#0C447C 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;}
-.login-box{background:#fff;border-radius:18px;padding:32px 24px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,0.3);}
-.login-logo{text-align:center;margin-bottom:24px;}
-.login-logo .logo-icon{font-size:48px;display:block;margin-bottom:8px;}
-.login-logo h1{font-size:20px;font-weight:700;margin:0;color:#1a1a1a;}
-.login-logo p{font-size:13px;color:var(--secondary);margin:4px 0 0;}
-.login-error{background:#FCEBEB;color:#791F1F;border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;margin-bottom:12px;display:none;}
-.logout-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;cursor:pointer;color:var(--secondary);}
-.logout-btn:hover{background:#f0f0f0;}
-.tab-heures.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
-.tab-reglages.active{color:#534AB7;border-bottom-color:#534AB7;}
-.tab-soumissions.active{color:#0F6E56;border-bottom-color:#0F6E56;}
-.horaire-grid{display:grid;grid-template-columns:120px repeat(7,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.horaire-cell{border-right:0.5px solid var(--border);border-bottom:0.5px solid var(--border);padding:6px;min-height:70px;}
-.horaire-cell.header{background:#f9f9f9;font-size:11px;font-weight:600;color:var(--secondary);text-align:center;min-height:auto;padding:8px 4px;}
-.horaire-cell.emp-label{background:#fafafa;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;min-height:60px;}
-.horaire-cell.weekend{background:#fafafa;}
-.horaire-cell.today-col{background:#f0f4ff;}
-.horaire-chip{font-size:10px;font-weight:600;padding:3px 6px;border-radius:4px;margin-bottom:3px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
-.horaire-chip:hover{opacity:0.8;}
-.horaire-drop-zone{min-height:40px;border:1.5px dashed #ddd;border-radius:4px;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#ccc;}
-.horaire-drop-zone.drag-over{border-color:var(--primary);background:#f0f4ff;color:var(--primary);}
-.horaire-cell.drag-over-cell{background:#e8f0fe!important;outline:2px dashed var(--primary);}
-.vue-semaine-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.horaire-mois-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
-.horaire-mois-cell{border:1px solid var(--border);border-radius:6px;padding:6px;min-height:80px;background:#fff;}
-.horaire-mois-cell.today{border-color:var(--primary);background:#f0f4ff;}
-.horaire-mois-cell.other-month{background:#fafafa;opacity:0.6;}
-.som-classe-C{border-left:4px solid #EF9F27;}
-.som-classe-B{border-left:4px solid #185FA5;}
-.som-classe-A{border-left:4px solid #27500A;}
-.som-badge-C{background:#FAEEDA;color:#633806;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.som-badge-B{background:#E6F1FB;color:#0C447C;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.som-badge-A{background:#EAF3DE;color:#27500A;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.som-section{border:0.5px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;}
-.som-section-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f9f9;cursor:pointer;}
-.som-section-header:hover{background:#f0f0f0;}
-.som-ligne{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:0.5px solid var(--border);}
-.som-ligne input[type=number]{width:90px;text-align:right;}
-.som-ligne select{flex:1;}
-.progress-bar{height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-top:4px;}
-.progress-fill{height:100%;border-radius:4px;transition:width 0.3s;}
-
-.cal-cell.selecting{background:#E6F1FB!important;border-color:#185FA5!important;border-width:2px!important;}
-.cal-cell.selected{background:#EAF3DE!important;border-color:#27500A!important;border-width:2px!important;}
-.drag-hint{font-size:10px;color:var(--secondary);text-align:center;padding:4px 0;margin-bottom:4px;}
-.tab-facturation.active{color:#1a6b3a;border-bottom-color:#2ea15a;}
-.tab-entreprise.active{color:#6b3a1a;border-bottom-color:#a15a2e;}
-.facture-section{background:#f9f9f9;border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;border:1px solid var(--border);}
-.facture-section-title{font-size:12px;font-weight:700;color:var(--secondary);letter-spacing:.05em;margin:0 0 10px;display:flex;align-items:center;gap:6px;}
-.facture-line{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);}
-.facture-line:last-child{border-bottom:none;}
-.facture-total-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;}
-.facture-total-row.grand{font-size:16px;font-weight:700;border-top:2px solid var(--primary);margin-top:6px;padding-top:10px;}
-.facture-grand-total{background:#0C447C;color:#fff;border-radius:var(--radius-sm);padding:16px;display:flex;justify-content:space-between;align-items:center;margin-top:12px;}
-.historique-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;}
-.historique-item:last-child{border-bottom:none;}
-.hist-num{font-size:11px;font-weight:700;color:#0C447C;min-width:50px;}
-.hist-info{flex:1;}
-.hist-info .h1{font-size:13px;font-weight:500;}
-.hist-info .h2{font-size:11px;color:var(--secondary);}
-.hist-montant{font-size:14px;font-weight:700;color:#0C447C;}
-.statut-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.statut-brouillon{background:#f0f0f0;color:#666;}
-.statut-envoye{background:#E6F1FB;color:#0C447C;}
-.statut-paye{background:#EAF3DE;color:#27500A;}
-.logo-preview{width:100px;height:60px;object-fit:contain;border-radius:6px;border:1px solid var(--border);}
-@media print{
-.top-nav,.sub-nav,.sync-bar,.no-print,.login-screen{display:none!important;}
-body{background:#fff;font-size:11px;}
-.page{display:block!important;}
-.content{padding:0;max-width:100%;}
-.card{break-inside:avoid;border:none;padding:8px 0;}
-.btn-pdf,.btn-del,.btn-edit{display:none!important;}
-.facture-grand-total{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-.modal-overlay{display:none!important;}
-}
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -311,7 +110,6 @@ body{background:#fff;font-size:11px;}
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
   <div class="modal-box" id="modalBox"></div>
 </div>
-
 
 <script>
 
@@ -651,6 +449,81 @@ function esc(s){return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 function selOpts(list,sel='',ph='-- Choisir --'){return`<option value="">${ph}</option>`+list.map(i=>`<option value="${esc(i)}"${i===sel?' selected':''}>${i}</option>`).join('');}
 function calcMontant(hFact,ch){const f=state.fiches[ch]||{};const t=parseFloat(f.taux)||0,fg=parseFloat(f.fraisGestion)||0;if(!t)return null;return hFact*t*(1+fg/100);}
 function fmtMoney(v){return v!=null?v.toFixed(2)+' $':'—';}
+
+// Formate un numéro de licence RBQ (10 chiffres) au format officiel XXXX-XXXX-XX
+function formatRBQ(v){
+  if(!v)return'';
+  const digits=String(v).replace(/\D/g,'');
+  if(digits.length===10)return`${digits.slice(0,4)}-${digits.slice(4,8)}-${digits.slice(8,10)}`;
+  return String(v);
+}
+
+// Gabarit HTML professionnel partagé pour toutes les factures (historique et brouillon courant).
+// Centralise la mise en page + les mentions obligatoires (Revenu Québec / RBQ) pour éviter
+// que l'historique et l'aperçu de facture divergent avec le temps.
+function renderFactureHTML(p){
+  const e=p.e||{};
+  const rbq=formatRBQ(e.noRBQ);
+  const mdoSection=p.mdoHtml?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MAIN D'ŒUVRE</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Employé</td><td style="text-align:right;font-weight:600;">Heures</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${p.mdoHtml}</tbody>
+    <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${fmtMoney(p.mdoTotal)}</td></tr></tfoot></table></div>`:'';
+  const sstSection=p.sstTotal>0?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">SOUS-TRAITANTS</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${p.sstHtml}</tbody>
+    <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${fmtMoney(p.sstTotal)}</td></tr></tfoot></table></div>`:'';
+  const matSection=p.matTotal>0?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MATÉRIAUX</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Fournisseur</td><td style="font-weight:600;text-align:center;">Qté</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${p.matHtml}</tbody>
+    <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${fmtMoney(p.matTotal)}</td></tr></tfoot></table></div>`:'';
+  return`
+    <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#1a1a1a;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          ${e.logo?`<img src="${e.logo}" style="height:56px;object-fit:contain;margin-bottom:8px;display:block;" onerror="this.style.display='none'"/>`:''}
+          <div style="font-size:19px;font-weight:700;">${e.nom||'Mon entreprise'}</div>
+          ${e.adresse?`<div style="font-size:12px;color:#666;">${e.adresse}</div>`:''}
+          ${[e.telephone,e.courriel].filter(Boolean).length?`<div style="font-size:12px;color:#666;">${[e.telephone,e.courriel].filter(Boolean).join(' · ')}</div>`:''}
+          <div style="font-size:11px;color:#888;margin-top:4px;line-height:1.6;">
+            ${e.noTPS?`TPS: ${e.noTPS}<br>`:''}${e.noTVQ?`TVQ: ${e.noTVQ}<br>`:''}${rbq?`RBQ: ${rbq}`:''}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:22px;font-weight:800;color:#0C447C;letter-spacing:.03em;">FACTURE</div>
+          <div style="font-size:14px;font-weight:600;">${p.numero?'N° '+p.numero:'(Numéro à confirmer)'}</div>
+          <div style="font-size:12px;color:#666;">Date d'émission: ${p.dateCreation}</div>
+          ${p.periodeDebut?`<div style="font-size:12px;color:#666;">Période: ${p.periodeDebut} → ${p.periodeFin}</div>`:''}
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:#f5f5f5;border-radius:var(--radius-sm);padding:12px;">
+          <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px;">FACTURER À</div>
+          <div style="font-weight:600;">${p.clientNom||p.chantier||''}</div>
+          ${p.clientAdresse?`<div style="font-size:12px;">${p.clientAdresse}</div>`:''}
+          ${p.clientTel?`<div style="font-size:12px;">${p.clientTel}</div>`:''}
+          ${p.clientCourriel?`<div style="font-size:12px;">${p.clientCourriel}</div>`:''}
+        </div>
+        <div style="background:#f5f5f5;border-radius:var(--radius-sm);padding:12px;">
+          <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px;">CHANTIER</div>
+          <div style="font-weight:600;">${p.chantier||'—'}</div>
+          <div style="font-size:11px;color:#888;margin-top:8px;font-weight:600;">MODALITÉS DE PAIEMENT</div>
+          <div style="font-size:12px;">${p.modalitePaiement||'—'}</div>
+        </div>
+      </div>
+      ${mdoSection}${sstSection}${matSection}
+      <div style="border-top:2px solid #1a1a1a;padding-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total</span><span>${fmtMoney(p.soustotal)}</span></div>
+        ${p.montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Frais de gestion (${p.fg}%)</span><span>${fmtMoney(p.montantFG)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;font-weight:600;"><span>Avant taxes</span><span>${fmtMoney(p.avantTaxes)}</span></div>
+        ${p.tps>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${fmtMoney(p.tps)}</span></div>`:''}
+        ${p.tvq>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${fmtMoney(p.tvq)}</span></div>`:''}
+        <div style="display:flex;justify-content:space-between;background:#0C447C;color:#fff;padding:12px;border-radius:var(--radius-sm);margin-top:8px;font-size:16px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+          <span>TOTAL</span><span>${fmtMoney(p.grandTotal)}</span>
+        </div>
+      </div>
+      ${p.notes?`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);font-size:12px;color:#666;"><div style="font-weight:600;margin-bottom:2px;color:#888;font-size:10px;">NOTES</div>${p.notes}</div>`:''}
+      <div style="margin-top:20px;padding-top:12px;border-top:1px solid #e0e0e0;font-size:10px;color:#999;line-height:1.6;">
+        Facture émise conformément aux exigences de Revenu Québec.${rbq?' Licence RBQ '+rbq+'.':''} Merci de votre confiance.
+      </div>
+    </div>`;
+}
 
 // ─── NAV ──────────────────────────────────────────────────
 function setEmp(emp){
@@ -1752,12 +1625,33 @@ function removeFournModal(idx){
 function updateFourn(i,field,val){state.fournisseurs[i][field]=val;}
 
 // ─── NOUVELLE FACTURE ─────────────────────────────────────
+// Numérotation séquentielle suggérée : cherche le plus grand numéro déjà
+// utilisé cette année (format AAAA-NNN) parmi les factures finalisées et en
+// cours, et propose le suivant. Reste modifiable manuellement au besoin.
+function getProchainNumeroFacture(){
+  const annee=new Date().getFullYear();
+  const tousLesNumeros=[
+    ...state.factures.map(f=>f.numero),
+    ...(state.facturesCourantes||[]).map(f=>f.numeroFacture)
+  ].filter(Boolean);
+  let maxSeq=0;
+  tousLesNumeros.forEach(n=>{
+    const m=String(n).match(/^(\d{4})-(\d+)$/);
+    if(m&&parseInt(m[1],10)===annee){
+      maxSeq=Math.max(maxSeq,parseInt(m[2],10));
+    }
+  });
+  return `${annee}-${String(maxSeq+1).padStart(3,'0')}`;
+}
+// Options standard de modalités de paiement (mention obligatoire sur les
+// factures de 500$ et plus selon Revenu Québec).
+const MODALITES_PAIEMENT=['Comptant à réception','Net 15 jours','Net 30 jours','50% à la commande, solde à la livraison','Selon entente contractuelle'];
 let factCourante={
   chantier:'',dateDebut:'',dateFin:'',
   lignesSst:[],lignesMat:[],
   fraisGestion:0,tpsTaux:5,tvqTaux:9.975,
   appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,
-  notes:'',numeroFacture:''
+  notes:'',numeroFacture:'',modalitePaiement:'Net 30 jours'
 };
 
 function buildNouvelleFacture(){
@@ -1953,8 +1847,13 @@ function buildNouvelleFacture(){
     </div>
 
     <div class="card">
-      <div class="field"><label>Notes / Conditions de paiement</label>
-        <textarea id="fac-notes" oninput="factCourante.notes=this.value" placeholder="Ex: Paiement dû dans 30 jours..." style="width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;min-height:80px;">${factCourante.notes||''}</textarea>
+      <div class="field"><label>Modalités de paiement <span style="font-weight:400;color:var(--secondary);">(mention obligatoire — Revenu Québec)</span></label>
+        <select id="fac-modalite" style="width:100%;" onchange="factCourante.modalitePaiement=this.value">
+          ${MODALITES_PAIEMENT.map(m=>`<option value="${esc(m)}" ${factCourante.modalitePaiement===m?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Notes additionnelles (optionnel)</label>
+        <textarea id="fac-notes" oninput="factCourante.notes=this.value" placeholder="Ex: Garantie, précisions sur les travaux..." style="width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:13px;min-height:60px;">${factCourante.notes||''}</textarea>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;" class="no-print">
         <button class="btn-pdf" onclick="apercuFactureCourante()">👁 Aperçu & Envoyer</button>
@@ -1975,7 +1874,7 @@ function updateLigneSst(i,f,v){factCourante.lignesSst[i][f]=v;if(f!=='desc')refr
 function addLigneMat(){factCourante.lignesMat.push({fourn:'',desc:'',montant:''});refreshFacture();}
 function removeLigneMat(i){factCourante.lignesMat.splice(i,1);refreshFacture();}
 function updateLigneMat(i,f,v){factCourante.lignesMat[i][f]=v;if(f!=='desc')refreshFacture();}
-function resetFacture(){factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:''};refreshFacture();}
+function resetFacture(){factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:getProchainNumeroFacture(),modalitePaiement:'Net 30 jours'};refreshFacture();}
 
 function preFillFacture(chantier,dateMin,dateMax){
   factCourante.chantier=chantier;
@@ -2037,6 +1936,7 @@ function sauvegarderFacture(){
     appliquerTVQ:factCourante.appliquerTVQ,
     appliquerFG:factCourante.appliquerFG,
     notes:factCourante.notes,
+    modalitePaiement:factCourante.modalitePaiement||'Net 30 jours',
     grandTotal:grandTotal,
     statut:'brouillon'
   };
@@ -2166,16 +2066,22 @@ function voirFacture(id){
     const typeRows=Object.entries(byType).map(([t,h])=>`<tr><td style="padding:2px 0 2px 16px;font-size:11px;color:#666;">${t}</td><td style="text-align:right;font-size:11px;">${h.toFixed(2)}h</td><td></td></tr>`).join('');
     mdoHtml+=`<tr><td style="padding:5px 0;">${emp.label}</td><td style="text-align:right;">${total.toFixed(2)}h${taux>0?' × '+taux+' $':''}</td><td style="text-align:right;font-weight:600;">${taux>0?montant.toFixed(2)+' $':'—'}</td></tr>${typeRows}`;
   });
-  let sstTotal=0;
+  let sstTotal=0,sstHtml='';
   if(f.chantier&&f.dateDebut&&f.dateFin){
     const vss1=new Date(f.dateDebut+'T00:00:00'),vss2=new Date(f.dateFin+'T23:59:59');
-    sstTotal=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=vss1&&d<=vss2;}).reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    const sstF=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=vss1&&d<=vss2;});
+    sstTotal=sstF.reduce((s,a)=>s+(parseFloat(a.montant)||0),0);
+    const parSst={};sstF.forEach(a=>{if(!parSst[a.sst])parSst[a.sst]={total:0,items:[]};parSst[a.sst].total+=(parseFloat(a.montant)||0);parSst[a.sst].items.push(a);});
+    sstHtml=Object.entries(parSst).map(([sst,d])=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;font-weight:500;">${sst}</td><td style="font-size:12px;color:#666;">${d.items.length} facture${d.items.length>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('');
   }
   const mvd1=f.matDateDebut||f.dateDebut;const mvd2=f.matDateFin||f.dateFin;
-  let matTotal=0;
+  let matTotal=0,matHtml='';
   if(f.chantier&&mvd1&&mvd2){
     const mv1=new Date(mvd1+'T00:00:00'),mv2=new Date(mvd2+'T23:59:59');
-    matTotal=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=mv1&&d<=mv2;}).reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=mv1&&d<=mv2;});
+    matTotal=achF.reduce((s,a)=>s+(parseFloat(a.montantAvantTax)||0),0);
+    const parFourn={};achF.forEach(a=>{const fn=a.magasin||'—';if(!parFourn[fn])parFourn[fn]={total:0,count:0};parFourn[fn].total+=(parseFloat(a.montantAvantTax)||0);parFourn[fn].count++;});
+    matHtml=Object.entries(parFourn).map(([fn,d])=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;">${fn}</td><td style="font-size:11px;color:#666;text-align:center;">${d.count} facture${d.count>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('');
   }
   const soustotal=mdoTotal+sstTotal+matTotal;
   const montantFG=f.appliquerFG&&fg>0?soustotal*(fg/100):0;
@@ -2189,68 +2095,17 @@ function voirFacture(id){
   const clientTel=client?client.tel:fiche.tel;
   const clientCourriel=client?client.courriel:fiche.courriel;
   const clientAdresse=client?client.adresse:fiche.adresse;
+  const factureHTML=renderFactureHTML({
+    e,numero:f.numero,dateCreation:f.dateCreation,periodeDebut:f.dateDebut,periodeFin:f.dateFin,
+    clientNom,clientAdresse,clientTel,clientCourriel,chantier:f.chantier,
+    mdoHtml,mdoTotal,sstHtml,sstTotal,matHtml,matTotal,
+    soustotal,fg,montantFG,avantTaxes,tps,tvq,grandTotal,
+    modalitePaiement:f.modalitePaiement||'Net 30 jours',notes:f.notes
+  });
   document.getElementById('content-facturation').innerHTML=`
     <div id="facture-print">
       <div class="card" style="border:none;padding:0;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-          <div>
-            ${e.logo?`<img src="${e.logo}" style="height:60px;object-fit:contain;margin-bottom:8px;display:block;" onerror="this.style.display='none'"/>`:'' }
-            <div style="font-size:18px;font-weight:700;">${e.nom||'Mon entreprise'}</div>
-            ${e.adresse?`<div style="font-size:12px;color:#666;">${e.adresse}</div>`:''}
-            ${e.telephone?`<div style="font-size:12px;color:#666;">${e.telephone}</div>`:''}
-            ${e.courriel?`<div style="font-size:12px;color:#666;">${e.courriel}</div>`:''}
-            ${e.noTPS?`<div style="font-size:11px;color:#888;">TPS: ${e.noTPS}</div>`:''}
-            ${e.noTVQ?`<div style="font-size:11px;color:#888;">TVQ: ${e.noTVQ}</div>`:''}
-            ${e.noRBQ?`<div style="font-size:11px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:22px;font-weight:700;color:#0C447C;">FACTURE</div>
-            <div style="font-size:14px;font-weight:600;">#${f.numero}</div>
-            <div style="font-size:12px;color:#666;">Date: ${f.dateCreation}</div>
-            ${f.dateDebut?`<div style="font-size:12px;color:#666;">Période: ${f.dateDebut} → ${f.dateFin}</div>`:''}
-          </div>
-        </div>
-        <div style="background:#f5f5f5;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;">
-          <div style="font-size:11px;font-weight:600;color:#888;margin-bottom:4px;">FACTURER À</div>
-          <div style="font-weight:600;">${clientNom||f.chantier}</div>
-          ${clientAdresse?`<div style="font-size:12px;">${clientAdresse}</div>`:''}
-          ${clientTel?`<div style="font-size:12px;">${clientTel}</div>`:''}
-          ${clientCourriel?`<div style="font-size:12px;">${clientCourriel}</div>`:''}
-          <div style="font-size:12px;color:#666;margin-top:4px;">Chantier: ${f.chantier}</div>
-        </div>
-        ${mdoHtml?`<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MAIN D'ŒUVRE</div>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Employé</td><td style="text-align:right;font-weight:600;">Heures</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${mdoHtml}</tbody>
-          <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${mdoTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
-        ${sstTotal>0?(()=>{
-          const vs1=new Date((f.dateDebut||'')+'T00:00:00'),vs2=new Date((f.dateFin||'')+'T23:59:59');
-          const sstF=state.sstFactures.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=vs1&&d<=vs2;});
-          const parSst={};sstF.forEach(a=>{if(!parSst[a.sst])parSst[a.sst]={total:0,items:[]};parSst[a.sst].total+=(parseFloat(a.montant)||0);parSst[a.sst].items.push(a);});
-          return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">SOUS-TRAITANTS</div>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;">
-            <thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
-            <tbody>${Object.entries(parSst).map(([sst,d])=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;font-weight:500;">${sst}</td><td style="font-size:12px;color:#666;">${d.items.length} facture${d.items.length>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('')}</tbody>
-            <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${sstTotal.toFixed(2)} $</td></tr></tfoot>
-          </table></div>`;
-        })():''}
-        ${matTotal>0?(()=>{
-          const mv1b=new Date((f.matDateDebut||f.dateDebut)+'T00:00:00'),mv2b=new Date((f.matDateFin||f.dateFin)+'T23:59:59');
-          const achF=state.achats.filter(a=>{const d=new Date(a.date+'T12:00:00');return a.chantier===f.chantier&&a.facturable===true&&d>=mv1b&&d<=mv2b;});
-          return `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;border-bottom:2px solid #1a1a1a;padding-bottom:4px;">MATÉRIAUX</div>
-          <table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:4px 0;font-weight:600;">Fournisseur</td><td style="font-weight:600;text-align:center;">Qté</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead>
-          <tbody>${(()=>{const pf={};achF.forEach(a=>{const f=a.magasin||'—';if(!pf[f])pf[f]={total:0,count:0};pf[f].total+=(parseFloat(a.montantAvantTax)||0);pf[f].count++;});return Object.entries(pf).map(([f,d])=>`<tr style="border-bottom:1px solid #eee;"><td style="padding:5px 0;">${f}</td><td style="font-size:11px;color:#666;text-align:center;">${d.count} facture${d.count>1?'s':''}</td><td style="text-align:right;">${d.total.toFixed(2)} $</td></tr>`).join('');})()}</tbody>
-          <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:6px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`;
-        })():''}
-        <div style="border-top:2px solid #1a1a1a;padding-top:12px;">
-          <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
-          ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Frais de gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
-          <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;font-weight:600;"><span>Avant taxes</span><span>${avantTaxes.toFixed(2)} $</span></div>
-          ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>`:''}
-          ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>`:''}
-          <div style="display:flex;justify-content:space-between;background:#0C447C;color:#fff;padding:12px;border-radius:var(--radius-sm);margin-top:8px;font-size:16px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
-            <span>TOTAL</span><span>${grandTotal.toFixed(2)} $</span>
-          </div>
-        </div>
-        ${f.notes?`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);font-size:12px;color:#666;">${f.notes}</div>`:''}
+        ${factureHTML}
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;" class="no-print">
@@ -2281,6 +2136,7 @@ function modifierFacture(id){
     appliquerFG:f.appliquerFG!==false,
     notes:f.notes||'',
     numeroFacture:f.numero||'',
+    modalitePaiement:f.modalitePaiement||'Net 30 jours',
     editingId:f.id
   };
   // Remove old facture
@@ -5134,7 +4990,7 @@ function buildFacturesCourantes(){
 
 function nouvelleFactureCourante(){
   // Reset factCourante and open editor
-  factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:'',_couranteId:null};
+  factCourante={chantier:'',dateDebut:'',dateFin:'',lignesSst:[],lignesMat:[],fraisGestion:0,tpsTaux:5,tvqTaux:9.975,appliquerTPS:true,appliquerTVQ:true,appliquerFG:true,notes:'',numeroFacture:getProchainNumeroFacture(),modalitePaiement:'Net 30 jours',_couranteId:null};
   state.currentSub['facturation']='nouvelle';
   const btns=document.querySelectorAll('#page-facturation .sub-nav button');
   btns.forEach(b=>b.classList.remove('active'));
@@ -5524,59 +5380,15 @@ function apercuFactureCourante(){
         </label>`).join('')}
     </div>`:'';
 
-  const factureHTML=`
-    <div style="font-family:-apple-system,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
-        <div>
-          ${e.logo?`<img src="${e.logo}" style="height:50px;object-fit:contain;margin-bottom:6px;display:block;" onerror="this.style.display='none'"/>`:''}
-          <div style="font-size:18px;font-weight:700;">${e.nom||'Mon entreprise'}</div>
-          ${e.adresse?`<div style="font-size:11px;color:#666;">${e.adresse}</div>`:''}
-          ${e.telephone?`<div style="font-size:11px;color:#666;">${e.telephone}</div>`:''}
-          ${e.courriel?`<div style="font-size:11px;color:#666;">${e.courriel}</div>`:''}
-          ${e.noTPS?`<div style="font-size:10px;color:#888;">TPS: ${e.noTPS}</div>`:''}
-          ${e.noTVQ?`<div style="font-size:10px;color:#888;">TVQ: ${e.noTVQ}</div>`:''}
-          ${e.noRBQ?`<div style="font-size:10px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:20px;font-weight:700;color:#0C447C;">FACTURE</div>
-          <div style="font-size:13px;font-weight:600;">${factCourante.numeroFacture?'#'+factCourante.numeroFacture:'(Numéro à confirmer)'}</div>
-          <div style="font-size:11px;color:#666;">Date: ${new Date().toISOString().slice(0,10)}</div>
-          ${factCourante.dateDebut?`<div style="font-size:11px;color:#666;">Période: ${factCourante.dateDebut} → ${factCourante.dateFin}</div>`:''}
-        </div>
-      </div>
-      <div style="background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:16px;">
-        <div style="font-size:10px;font-weight:700;color:#888;margin-bottom:4px;">FACTURER À</div>
-        <div style="font-weight:600;">${clientNom}</div>
-        ${client&&client.adresse?`<div style="font-size:12px;">${client.adresse}</div>`:''}
-        ${client&&client.tel?`<div style="font-size:12px;">${client.tel}</div>`:''}
-        ${clientCourriel?`<div style="font-size:12px;">${clientCourriel}</div>`:''}
-        <div style="font-size:11px;color:#666;margin-top:4px;">Chantier: ${factCourante.chantier}</div>
-      </div>
-      ${mdoHtml?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MAIN D'ŒUVRE</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Employé</td><td style="text-align:right;font-weight:600;">Heures</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${mdoHtml}</tbody>
-        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${mdoTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
-      ${sstTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">SOUS-TRAITANTS</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Sous-traitant</td><td style="font-weight:600;">Détail</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${sstHtml}</tbody>
-        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${sstTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
-      ${matTotal>0?`<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:#888;border-bottom:2px solid #1a1a1a;padding-bottom:4px;margin-bottom:8px;">MATÉRIAUX</div>
-        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="border-bottom:1px solid #ddd;"><td style="padding:3px 0;font-weight:600;">Fournisseur</td><td style="font-weight:600;text-align:center;">Qté</td><td style="text-align:right;font-weight:600;">Montant</td></tr></thead><tbody>${matHtml}</tbody>
-        <tfoot><tr style="border-top:1px solid #ddd;"><td colspan="2" style="padding:5px 0;font-weight:700;">Sous-total</td><td style="text-align:right;font-weight:700;">${matTotal.toFixed(2)} $</td></tr></tfoot></table></div>`:''}
-      <div style="border-top:2px solid #1a1a1a;padding-top:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Sous-total</span><span>${soustotal.toFixed(2)} $</span></div>
-        ${montantFG>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;"><span>Frais de gestion (${fg}%)</span><span>${montantFG.toFixed(2)} $</span></div>`:''}
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;font-weight:600;"><span>Avant taxes</span><span>${avantTaxes.toFixed(2)} $</span></div>
-        ${tps>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>`:''}
-        ${tvq>0?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>`:''}
-        <div style="display:flex;justify-content:space-between;align-items:center;background:#0a1f3d;color:#fff;padding:14px 16px;border-radius:6px;margin-top:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
-          <div>
-            <div style="font-size:10px;font-weight:600;opacity:0.75;letter-spacing:.08em;margin-bottom:2px;">TOTAL AVEC TAXES</div>
-            <div style="font-size:20px;font-weight:900;">${grandTotal.toFixed(2)} $</div>
-          </div>
-          <div style="font-size:24px;opacity:0.2;">✓</div>
-        </div>
-      </div>
-      ${factCourante.notes?`<div style="margin-top:12px;padding:10px;background:#f9f9f9;border-radius:6px;font-size:11px;color:#666;">${factCourante.notes}</div>`:''}
-    </div>`;
+  const factureHTML=renderFactureHTML({
+    e,numero:factCourante.numeroFacture,dateCreation:new Date().toISOString().slice(0,10),
+    periodeDebut:factCourante.dateDebut,periodeFin:factCourante.dateFin,
+    clientNom,clientAdresse:client&&client.adresse,clientTel:client&&client.tel,clientCourriel,
+    chantier:factCourante.chantier,
+    mdoHtml,mdoTotal,sstHtml,sstTotal,matHtml,matTotal,
+    soustotal,fg,montantFG,avantTaxes,tps,tvq,grandTotal,
+    modalitePaiement:factCourante.modalitePaiement||'Net 30 jours',notes:factCourante.notes
+  });
 
   // Ouvrir modal d'aperçu
   document.getElementById('modalBox').innerHTML=`
@@ -6375,7 +6187,7 @@ function apercuSoumission(){
         ${e.adresse?`<div style="font-size:11px;color:#666;">${e.adresse}</div>`:''}
         ${e.telephone?`<div style="font-size:11px;color:#666;">${e.telephone}</div>`:''}
         ${e.courriel?`<div style="font-size:11px;color:#666;">${e.courriel}</div>`:''}
-        ${e.noRBQ?`<div style="font-size:10px;color:#888;">RBQ: ${e.noRBQ}</div>`:''}
+        ${e.noRBQ?`<div style="font-size:10px;color:#888;">RBQ: ${formatRBQ(e.noRBQ)}</div>`:''}
       </div>
       <div style="text-align:right;">
         <div style="font-size:22px;font-weight:700;color:#185FA5;">SOUMISSION</div>
@@ -6992,7 +6804,6 @@ window.addEventListener('DOMContentLoaded', function(){
     }catch(e){setSyncStatus('err','Hors ligne');}
   },1000);
 });
-
 </script>
 
 </div>
