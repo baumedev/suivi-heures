@@ -85,6 +85,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0
 .fbadge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;}
 .fb-y{background:#EAF3DE;color:#27500A;}
 .fb-n{background:#FCEBEB;color:#791F1F;}
+.badge-code{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;background:#EAF3DE;color:#27500A;}
+select option.opt-code-main{font-weight:600;color:#27500A;}
 .form-section{border-top:1px solid var(--border);padding-top:14px;margin-top:4px;}
 .form-section h4{font-size:12px;font-weight:600;color:var(--secondary);letter-spacing:.05em;margin:0 0 12px;}
 .field{margin-bottom:12px;}
@@ -647,6 +649,121 @@ function fmtDateFr(s){if(!s)return'';return new Date(s+'T12:00:00').toLocaleDate
 function fmtDateShort(s){if(!s)return'';return new Date(s+'T12:00:00').toLocaleDateString('fr-CA',{day:'numeric',month:'short'});}
 function esc(s){return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 function selOpts(list,sel='',ph='-- Choisir --'){return`<option value="">${ph}</option>`+list.map(i=>`<option value="${esc(i)}"${i===sel?' selected':''}>${i}</option>`).join('');}
+
+// Codes de coût (catalogue fixe — phase 1)
+const CODES_COUT = [
+  {id:'00100',code:'00100',label:'Conception et mise en route du projet',isMain:true,children:[
+    {id:'00100|assurances',label:'Assurances et gestion'},
+    {id:'00100|installations',label:'Installations temporaires et entretien du chantier'},
+    {id:'00100|location',label:"Location d'équipements"},
+    {id:'00100|hivernales',label:'Conditions hivernales'}
+  ]},
+  {id:'00200',code:'00200',label:'Travaux préliminaires',isMain:true,children:[]},
+  {id:'00300',code:'00300',label:'Services et infrastructure',isMain:true,children:[
+    {id:'00300|services',label:'Services'},
+    {id:'00300|excavation',label:'Excavation et remblais'}
+  ]},
+  {id:'00400',code:'00400',label:'Fondation et béton',isMain:true,children:[
+    {id:'00400|fondation',label:'Fondation'}
+  ]},
+  {id:'00500',code:'00500',label:'Enveloppe du bâtiment et structure',isMain:true,children:[
+    {id:'00510',code:'00510',label:'Charpenterie - Structure extérieur'},
+    {id:'00520',code:'00520',label:'Isolation et étanchéité'},
+    {id:'00500|charpenterie-int',label:'Autres travaux de charpenterie - Intérieur'}
+  ]},
+  {id:'00600',code:'00600',label:'Porte et fenêtre',isMain:true,children:[
+    {id:'00600|portes',label:"Portes extérieur et portes d'accès"},
+    {id:'00600|fenetres',label:'Fenêtres'},
+    {id:'00600|installation',label:'Installation'}
+  ]},
+  {id:'00700',code:'00700',label:'Chauffage, ventilation et conditionnement de l\'air (CVAC)',isMain:true,children:[
+    {id:'00700|chauffage',label:'Chauffage'},
+    {id:'00700|ventilation',label:'Ventilation'},
+    {id:'00700|climatisation',label:'Climatisation'}
+  ]},
+  {id:'00800',code:'00800',label:'Plomberie',isMain:true,children:[]},
+  {id:'00900',code:'00900',label:'Électricité et éclairage',isMain:true,children:[
+    {id:'00900|generale',label:'Générale'},
+    {id:'00900|chauffage-elec',label:'Chauffage électrique (radiant, plinthe, ventilo-convecteur)'},
+    {id:'00900|telecom',label:'Télécommunication et multimédia'}
+  ]},
+  {id:'01000',code:'01000',label:'Finition intérieur',isMain:true,children:[
+    {id:'01000|revetement',label:'Revêtement murs et plafonds'},
+    {id:'01000|ceramique',label:'Travaux et fournitures de carreaux de céramique'},
+    {id:'01000|plancher',label:'Travaux et fourniture de plancher de bois'},
+    {id:'01000|boiserie',label:'Boiserie : portes intérieur et moulures'},
+    {id:'01000|vitrages',label:'Vitrages et miroirs'}
+  ]},
+  {id:'01100',code:'01100',label:'Mobilier intégré',isMain:true,children:[
+    {id:'01100|vanites',label:'Vanités de salles de bains'},
+    {id:'01100|cuisine',label:'Cuisine'},
+    {id:'01100|rangement',label:'Rangement et autres éléments mobilier intégré'},
+    {id:'01100|ameublement',label:'Ameublement et décoration'}
+  ]},
+  {id:'01200',code:'01200',label:'Finition extérieur et structures secondaires',isMain:true,children:[
+    {id:'01200|toiture',label:'Toiture'},
+    {id:'01200|revetement',label:'Revêtement extérieur'},
+    {id:'01200|terrasse',label:'Terrasse, balcon, auvents et escalier extérieur'}
+  ]},
+  {id:'01300',code:'01300',label:'Aménagement extérieur',isMain:true,children:[
+    {id:'01300|eaux',label:'Gestion des eaux'},
+    {id:'01300|revegetalisation',label:'Revégétalisation et valorisation du site'}
+  ]},
+  {id:'01400',code:'01400',label:'Autres frais et avenant',isMain:true,children:[]},
+  {id:'01400-AV',code:'01400-AV',label:'Avenant / extra',isMain:true,children:[]}
+];
+
+function findCodeCout(id){
+  if(!id)return null;
+  if(id==='A_CLASSIFIER')return{id:'A_CLASSIFIER',code:'',label:'À classifier'};
+  for(const c of CODES_COUT){
+    if(c.id===id)return c;
+    for(const sub of(c.children||[])){
+      if(sub.id===id)return{id:sub.id,code:sub.code||c.code,label:sub.label,parentId:c.id};
+    }
+  }
+  return null;
+}
+function labelCodeCout(id){
+  const c=findCodeCout(id);
+  if(!c)return id||'';
+  if(c.id==='A_CLASSIFIER')return'À classifier';
+  if(c.isMain||c.code===c.id)return`${c.code} — ${c.label}`;
+  return`${c.code} · ${c.label}`;
+}
+function shortCodeCout(id){
+  const c=findCodeCout(id);
+  if(!c)return id||'';
+  if(c.id==='A_CLASSIFIER')return'À class.';
+  return c.code||id;
+}
+function selOptsCodes(sel='',opts={}){
+  const ph=opts.placeholder||'-- Choisir --';
+  const includeClassifier=!!opts.includeClassifier;
+  let html=`<option value="">${ph}</option>`;
+  if(includeClassifier)html+=`<option value="A_CLASSIFIER"${sel==='A_CLASSIFIER'?' selected':''}>À classifier</option>`;
+  for(const c of CODES_COUT){
+    html+=`<option value="${esc(c.id)}" class="opt-code-main"${sel===c.id?' selected':''}>▸ ${c.code} — ${c.label}</option>`;
+    for(const sub of(c.children||[])){
+      const code=sub.code||c.code;
+      const prefix=sub.code?`${sub.code} · `:`${c.code} · `;
+      html+=`<option value="${esc(sub.id)}"${sel===sub.id?' selected':''}>&nbsp;&nbsp;&nbsp;${prefix}${sub.label}</option>`;
+    }
+  }
+  return html;
+}
+function entryMetaLine(en){
+  const parts=[en.codeCout?shortCodeCout(en.codeCout):'',en.type,en.desc].filter(Boolean);
+  return parts.join(' · ')||'—';
+}
+function requireDescIfAvenant(codeCout,desc){
+  if(codeCout==='01400-AV'&&!desc){
+    alert("Pour le code 01400-AV (avenant/extra), une description est obligatoire. Plus de détails, mieux c'est.");
+    return false;
+  }
+  return true;
+}
+
 function calcMontant(hFact,ch){const f=state.fiches[ch]||{};const t=parseFloat(f.taux)||0,fg=parseFloat(f.fraisGestion)||0;if(!t)return null;return hFact*t*(1+fg/100);}
 function fmtMoney(v){return v!=null?v.toFixed(2)+' $':'—';}
 
@@ -1019,7 +1136,7 @@ function nextMonth(emp){
 function openModal(date,emp){
   if(!emp)emp=currentHeuresEmp;
   const e=EMPS[emp],de=state.entries[emp].filter(en=>en.date===date),fs=state.pendingFacturable;
-  let ex=de.map(en=>`<div class="entry-item"><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.facturable?'F':'NF'}</span><span class="entry-h" style="color:${e.col};">${en.heures}h</span><div class="entry-info"><div class="e1">${en.chantier||'—'}</div><div class="e2">${[en.type,en.desc].filter(Boolean).join(' · ')||'—'}</div></div><button class="btn-edit" onclick="editEntry(${en.id},'${emp}','${date}')">✏️</button><button class="btn-del" onclick="delEntry(${en.id},'${emp}','${date}')">✕</button></div>`).join('');
+  let ex=de.map(en=>`<div class="entry-item"><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.facturable?'F':'NF'}</span><span class="entry-h" style="color:${e.col};">${en.heures}h</span><div class="entry-info"><div class="e1">${en.chantier||'—'}${en.codeCout?` <span class="badge-code">${shortCodeCout(en.codeCout)}</span>`:''}</div><div class="e2">${entryMetaLine(en)}</div></div><button class="btn-edit" onclick="editEntry(${en.id},'${emp}','${date}')">✏️</button><button class="btn-del" onclick="delEntry(${en.id},'${emp}','${date}')">✕</button></div>`).join('');
   document.getElementById('modalBox').innerHTML=`
     <div class="modal-header"><h3>${fmtDateFr(date)}</h3><button class="modal-close" onclick="closeModal()">×</button></div>
     ${ex?`<div style="margin-bottom:14px;">${ex}</div>`:''}
@@ -1037,7 +1154,8 @@ function openModal(date,emp){
         <div class="field"><label>Chantier</label><select id="m-ch">${selOpts(state.chantiers)}</select></div>
       </div>
       <div class="field"><label>Type de travaux</label><select id="m-ty">${selOpts(state.typesTravaux)}</select></div>
-      <div class="field"><label>Description</label><input type="text" id="m-de" placeholder="Description du travail"/></div>
+      <div class="field"><label>Code de coût</label><select id="m-cc">${selOptsCodes()}</select></div>
+      <div class="field"><label>Description</label><input type="text" id="m-de" placeholder="Détails du travail — surtout si avenant/extra"/></div>
       <button class="btn btn-primary" onclick="saveEntry('${emp}','${date}')">✓ Enregistrer</button>
     </div>`;
   document.getElementById('modalOverlay').classList.add('open');
@@ -1118,8 +1236,11 @@ function saveEntry(emp,date){
   if(!lignes.length){alert("Veuillez entrer au moins une ligne avec des heures.");return;}
   const chantier=document.getElementById('m-ch').value;
   const desc=document.getElementById('m-de').value.trim();
+  const codeCoutEl=document.getElementById('m-cc');
+  const codeCout=codeCoutEl?codeCoutEl.value:'';
+  if(!requireDescIfAvenant(codeCout,desc))return;
   lignes.forEach(l=>{
-    state.entries[emp].push({id:++state.entryId,date,heures:l.heures,chantier,type:l.type,desc,facturable:state.pendingFacturable});
+    state.entries[emp].push({id:++state.entryId,date,heures:l.heures,chantier,type:l.type,codeCout:l.codeCout||codeCout,desc,facturable:state.pendingFacturable});
   });
   closeModal();
   const _c=document.getElementById('content-heures');
@@ -1136,6 +1257,7 @@ function editEntry(id,emp,date){
   state.pendingFacturable=en.facturable;
   const chOpts=selOpts(state.chantiers,en.chantier);
   const tyOpts=selOpts(state.typesTravaux,en.type);
+  const ccOpts=selOptsCodes(en.codeCout||'');
   document.getElementById('modalBox').innerHTML=
     '<div class="modal-header"><h3>Modifier une entree</h3><button class="modal-close" onclick="cancelEdit(\'' +date+ '\',\'' +emp+ '\')">×</button></div>'+
     '<div style="background:#fff3cd;border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:12px;font-size:12px;color:#856404;">✏️ '+fmtDateFr(date)+'</div>'+
@@ -1144,7 +1266,8 @@ function editEntry(id,emp,date){
     '<div class="grid2"><div class="field"><label>Heures</label><input type="number" id="m-h" min="0" step="0.25" value="'+en.heures+'" inputmode="decimal"/></div>'+
     '<div class="field"><label>Chantier</label><select id="m-ch">'+chOpts+'</select></div></div>'+
     '<div class="field"><label>Type de travaux</label><select id="m-ty">'+tyOpts+'</select></div>'+
-    '<div class="field"><label>Description</label><input type="text" id="m-de" value="'+(en.desc||'')+'"/></div>'+
+    '<div class="field"><label>Code de coût</label><select id="m-cc">'+ccOpts+'</select></div>'+
+    '<div class="field"><label>Description</label><input type="text" id="m-de" value="'+(en.desc||'')+'" placeholder="Détails du travail — surtout si avenant/extra"/></div>'+
     '<div style="display:flex;gap:8px;"><button class="btn btn-primary" style="flex:1;" onclick="saveEdit('+id+',\'' +emp+ '\',\'' +date+ '\')">✓ Enregistrer</button>'+
     '<button class="btn btn-sm" onclick="cancelEdit(\'' +date+ '\',\'' +emp+ '\')">Annuler</button></div>';
   document.getElementById('modalOverlay').classList.add('open');
@@ -1155,13 +1278,19 @@ function saveEdit(id,emp,date){
   if(h<=0){document.getElementById('m-h').focus();return;}
   const idx=state.entries[emp].findIndex(e=>e.id===id);
   if(idx===-1)return;
+  const desc=document.getElementById('m-de').value.trim();
+  const codeCout=document.getElementById('m-cc').value;
+  if(!requireDescIfAvenant(codeCout,desc))return;
+  const prev=state.entries[emp][idx];
   state.entries[emp][idx]={
     id:id,date:date,
     heures:h,
     chantier:document.getElementById('m-ch').value,
     type:document.getElementById('m-ty').value,
-    desc:document.getElementById('m-de').value.trim(),
-    facturable:state.pendingFacturable
+    codeCout:codeCout,
+    desc:desc,
+    facturable:state.pendingFacturable,
+    ...(prev.absence?{absence:prev.absence}:{})
   };
   closeModal();
   const _ce=document.getElementById('content-heures');
@@ -1185,7 +1314,7 @@ function buildListe(emp){
   if(!list.length)return`<div class="empty">Aucune entrée pour ${e.label}.</div>`;
   const total=list.reduce((s,en)=>s+en.heures,0),fact=list.filter(en=>en.facturable).reduce((s,en)=>s+en.heures,0);
   return`<div class="stats-row"><div class="stat-box"><div class="label">Total</div><div class="value">${total.toFixed(1)}h</div></div><div class="stat-box stat-fact"><div class="label">Facturable</div><div class="value">${fact.toFixed(1)}h</div></div><div class="stat-box stat-nf"><div class="label">Non-fact.</div><div class="value">${(total-fact).toFixed(1)}h</div></div></div>
-  <div class="card">${list.map(en=>`<div class="list-item"><div class="li-date">${fmtDateShort(en.date)}</div><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.facturable?'F':'NF'}</span><span class="li-h" style="color:${e.col};">${en.heures}h</span><div class="li-info"><div class="t1">${en.chantier||'—'}</div><div class="t2">${[en.type,en.desc].filter(Boolean).join(' · ')||'—'}</div></div><button class="btn-edit" onclick="editFromList(${en.id},'${emp}')">✏️</button><button class="btn-del" onclick="delList(${en.id},'${emp}')">✕</button></div>`).join('')}</div>`;
+  <div class="card">${list.map(en=>`<div class="list-item"><div class="li-date">${fmtDateShort(en.date)}</div><span class="fbadge ${en.facturable?'fb-y':'fb-n'}">${en.facturable?'F':'NF'}</span><span class="li-h" style="color:${e.col};">${en.heures}h</span><div class="li-info"><div class="t1">${en.chantier||'—'}${en.codeCout?` <span class="badge-code">${shortCodeCout(en.codeCout)}</span>`:''}</div><div class="t2">${entryMetaLine(en)}</div></div><button class="btn-edit" onclick="editFromList(${en.id},'${emp}')">✏️</button><button class="btn-del" onclick="delList(${en.id},'${emp}')">✕</button></div>`).join('')}</div>`;
 }
 function delList(id,emp){if(!confirm("Supprimer?"))return;state.entries[emp]=state.entries[emp].filter(e=>e.id!==id);
   const _cl=document.getElementById('content-heures');
@@ -2628,6 +2757,7 @@ function buildMateriaux(){
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
             <span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">${a.typeDepense||'—'}</span>
             ${estChantier&&a.facturable!==undefined?`<span class="fbadge ${a.facturable?'fb-y':'fb-n'}">${a.facturable?'Facturable':'Non-fact.'}</span>`:''}
+            ${a.codeCout?`<span class="badge-code">${shortCodeCout(a.codeCout)}</span>`:''}
           </div>
           ${a.description?`<div style="font-size:11px;color:var(--secondary);">${a.description}</div>`:''}
         </div>
@@ -2725,6 +2855,9 @@ function openModalAchat(editId){
         <button id="fact-n" class="${!a.facturable?'on-nf':''}" onclick="setFactAchat(false)">✕ Non facturable</button>
       </div>
     </div>
+    <div class="field"><label>Code de coût</label>
+      <select id="a-cc" style="width:100%;">${selOptsCodes(a.codeCout||'A_CLASSIFIER',{includeClassifier:true})}</select>
+    </div>
     <div class="field"><label>Description / Notes</label>
       <input type="text" id="a-desc" value="${a.description||''}" placeholder="Description optionnelle..."/>
     </div>
@@ -2792,7 +2925,8 @@ function saveAchat(editId){
     typeDepense,
     chantier:chantierAssoc,
     facturable:estChantier?window._achatFacturable:null,
-    description
+    description,
+    codeCout:(document.getElementById('a-cc')||{}).value||'A_CLASSIFIER'
   };
   if(editId){
     const idx=state.achats.findIndex(a=>a.id===editId);
@@ -2840,6 +2974,7 @@ function buildSstFactures(){
             <span style="font-size:10px;background:#f0f0f0;padding:2px 7px;border-radius:20px;">🏗 ${a.chantier||'—'}</span>
             <span class="fbadge ${a.facturable?'fb-y':'fb-n'}">${a.facturable?'Facturable':'Non-fact.'}</span>
             ${a.depot?'<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:#FEF3C7;color:#92400E;">💰 Dépôt</span>':''}
+            ${a.codeCout?`<span class="badge-code">${shortCodeCout(a.codeCout)}</span>`:''}
           </div>
           ${a.description?`<div style="font-size:11px;color:var(--secondary);">${a.description}</div>`:''}
         </div>
@@ -4343,6 +4478,7 @@ function buildDepenses(){
               ${a.photo?`<span onclick="voirPhoto('${a._type}',${a.id})" style="cursor:pointer;font-size:14px;" title="Voir la photo">📷</span>`:''}
             </div>
             ${a.description?`<div style="font-size:10px;color:var(--secondary);margin-top:1px;">${a.description}</div>`:''}
+            ${a.codeCout?`<div style="margin-top:2px;"><span class="badge-code">${shortCodeCout(a.codeCout)}</span></div>`:''}
           </td>
           <td style="padding:7px 6px;font-size:11px;color:var(--secondary);white-space:nowrap;">${a.date}</td>
           <td style="padding:7px 6px;">
@@ -4532,6 +4668,9 @@ function openModalDepense(editId,editType){
       <select id="dep-ch" style="width:100%;" onchange="onDepChantierChange()">
         <option value="">-- Aucun --</option>${chOpts}
       </select>
+    </div>
+    <div class="field"><label>Code de coût</label>
+      <select id="dep-cc" style="width:100%;">${selOptsCodes(a.codeCout||'A_CLASSIFIER',{includeClassifier:true,placeholder:'-- Choisir --'})}</select>
     </div>
     <div id="dep-facturable-section" style="${a.chantier?'':'display:none;'}">
       <label style="font-size:11px;color:var(--secondary);font-weight:500;display:block;margin-bottom:4px;">Facturable au client?</label>
@@ -4758,6 +4897,7 @@ function saveDepense(editId,editType){
       chantier:estChantier?typeDepense.replace('Chantier: ',''):chantier,
       facturable:chantier?window._achatFacturable:null,
       description:desc,
+      codeCout:(document.getElementById('dep-cc')||{}).value||'A_CLASSIFIER',
       photo:window._depPhoto||null,
       photoType:window._depPhotoType||null,
       photoName:window._depPhotoName||null
@@ -4776,6 +4916,7 @@ function saveDepense(editId,editType){
       description:desc,
       noFacture:document.getElementById('dep-sst-no').value.trim(),
       typeTravaux:depSstTypeEl?depSstTypeEl.value:'',
+      codeCout:(document.getElementById('dep-cc')||{}).value||'A_CLASSIFIER',
       facturable:chantier?window._achatFacturable:false,
       depot:depotEl?depotEl.checked:false,
       photo:window._depPhoto||null,
@@ -4841,6 +4982,9 @@ function ouvrirModalSSTDirect(a){
         ${state.typesTravaux.map(t=>`<option value="${esc(t)}" ${t===a.typeTravaux?'selected':''}>${t}</option>`).join('')}
       </select>
     </div>
+    <div class="field"><label>Code de coût</label>
+      <select id="sst-cc" style="width:100%;">${selOptsCodes(a.codeCout||'A_CLASSIFIER',{includeClassifier:true})}</select>
+    </div>
     <div class="field"><label>Description</label>
       <input type="text" id="sst-desc" value="${a.description||''}" placeholder="Description des travaux..."/>
     </div>
@@ -4902,6 +5046,7 @@ function sauvegarderSSTDirect(editId){
     description:document.getElementById('sst-desc').value.trim(),
     noFacture:document.getElementById('sst-no').value.trim(),
     typeTravaux:document.getElementById('sst-typetrav').value,
+    codeCout:(document.getElementById('sst-cc')||{}).value||'A_CLASSIFIER',
     facturable:chantier?window._sstFacturable:false,
     depot:depotEl?depotEl.checked:false,
     photo:null
@@ -5056,7 +5201,8 @@ function openMultiDayModal(emp){
           <span id="m-total-h" style="font-weight:600;">0h</span>
         </div>
       </div>
-      <div class="field"><label>Description</label><input type="text" id="m-de" placeholder="Description du travail"/></div>
+      <div class="field"><label>Code de coût</label><select id="m-cc">${selOptsCodes()}</select></div>
+      <div class="field"><label>Description</label><input type="text" id="m-de" placeholder="Détails du travail — surtout si avenant/extra"/></div>
       <button class="btn btn-primary" onclick="saveMultiEntry('${emp}')">✓ Enregistrer pour ${dates.length} jour${dates.length>1?'s':''}</button>
     </div>`;
   document.getElementById('modalOverlay').classList.add('open');
@@ -5069,9 +5215,12 @@ function saveMultiEntry(emp){
   const dates=getDragDates();
   const chantier=document.getElementById('m-ch').value;
   const desc=document.getElementById('m-de').value.trim();
+  const codeCoutEl=document.getElementById('m-cc');
+  const codeCout=codeCoutEl?codeCoutEl.value:'';
+  if(!requireDescIfAvenant(codeCout,desc))return;
   dates.forEach(date=>{
     lignes.forEach(l=>{
-      state.entries[emp].push({id:++state.entryId,date,heures:l.heures,chantier,type:l.type,desc,facturable:state.pendingFacturable});
+      state.entries[emp].push({id:++state.entryId,date,heures:l.heures,chantier,type:l.type,codeCout,desc,facturable:state.pendingFacturable});
     });
   });
   closeModal();
@@ -6843,7 +6992,7 @@ function ouvrirHoraireModal(empKey,ds){
       <div style="background:#f9f9f9;border-radius:var(--radius-sm);padding:8px 10px;margin-bottom:12px;font-size:11px;">
         <div style="font-weight:600;color:var(--secondary);margin-bottom:4px;">HEURES ENREGISTRÉES</div>
         ${entries.filter(en=>!en.absence).map(en=>`<div style="display:flex;justify-content:space-between;padding:1px 0;">
-          <span>${en.chantier||'—'} · ${en.type||'—'}</span>
+          <span>${en.chantier||'—'} · ${en.codeCout?shortCodeCout(en.codeCout)+' · ':''}${en.type||'—'}</span>
           <span style="font-weight:600;">${en.heures}h</span>
         </div>`).join('')}
       </div>`:''}

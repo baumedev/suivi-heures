@@ -75,6 +75,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0
 .fbadge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;}
 .fb-y{background:#EAF3DE;color:#27500A;}
 .fb-n{background:#FCEBEB;color:#791F1F;}
+.badge-code{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0;background:#EAF3DE;color:#27500A;}
+select option.opt-code-main{font-weight:600;color:#27500A;}
 .form-section{border-top:1px solid var(--border);padding-top:14px;margin-top:4px;}
 .form-section h4{font-size:12px;font-weight:600;color:var(--secondary);letter-spacing:.05em;margin:0 0 12px;}
 .field{margin-bottom:12px;}
