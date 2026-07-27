@@ -170,9 +170,16 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .som-section{border:0.5px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;}
 .som-section-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f9f9;cursor:pointer;}
 .som-section-header:hover{background:#f0f0f0;}
-.som-ligne{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:0.5px solid var(--border);}
-.som-ligne input[type=number]{width:90px;text-align:right;}
-.som-ligne select{flex:1;}
+.som-section-header.code-main{background:#EAF3DE;}
+.som-section-header.code-main .som-code-title{color:#27500A;font-weight:700;}
+.som-section-header.legacy{background:#FAEEDA;}
+.suivi-table{width:100%;border-collapse:collapse;font-size:12px;}
+.suivi-table th{text-align:left;padding:6px 8px;font-size:10px;color:var(--secondary);border-bottom:1px solid var(--border);font-weight:600;}
+.suivi-table td{padding:7px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+.suivi-table tr:last-child td{border-bottom:none;}
+.som-ligne{display:flex;align-items:center;gap:6px;padding:7px 8px;border-top:0.5px solid var(--border);flex-wrap:wrap;}
+.som-ligne input[type=number]{width:70px;text-align:right;}
+.som-ligne select{font-size:12px;}
 .progress-bar{height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-top:4px;}
 .progress-fill{height:100%;border-radius:4px;transition:width 0.3s;}
 
@@ -284,7 +291,7 @@ body{background:#fff;font-size:11px;}
   <nav class="sub-nav" id="soumissions-subnav">
     <button class="active" onclick="setSub('soumissions','liste')">📋 Mes soumissions</button>
     <button onclick="setSub('soumissions','nouvelle')">➕ Nouvelle</button>
-    <button onclick="setSub('soumissions','suivi')">📊 Suivi des coûts</button>
+    <button onclick="setSub('soumissions','suivi')">📊 Suivi budget</button>
   </nav>
   <div class="content" id="content-soumissions"></div>
 </div>
@@ -764,6 +771,170 @@ function requireDescIfAvenant(codeCout,desc){
   return true;
 }
 
+// ── Codes / budget / réel (suivi soumissions) ─────────────
+const CODE_NON_CLASSE='NON_CLASSE';
+
+function codesCoutPrincipaux(){
+  return CODES_COUT.filter(c=>c.isMain);
+}
+
+function seedSectionsCodes(){
+  return codesCoutPrincipaux().map(c=>({
+    id:c.id,code:c.code,label:c.label,icon:'',
+    incluse:true,open:false,lignes:[]
+  }));
+}
+
+function isLegacySomSection(sec){
+  if(!sec||!sec.id)return true;
+  return !findCodeCout(sec.id);
+}
+
+function soumissionEstLegacy(s){
+  const secs=s&&s.sections||[];
+  if(!secs.length)return false;
+  return secs.some(isLegacySomSection);
+}
+
+function normaliserCodeParent(id){
+  if(!id||id==='A_CLASSIFIER')return CODE_NON_CLASSE;
+  const c=findCodeCout(id);
+  if(!c)return CODE_NON_CLASSE;
+  if(c.id==='01400-AV'||c.code==='01400-AV')return'01400-AV';
+  if(c.parentId){
+    const p=findCodeCout(c.parentId);
+    return p?(p.id||p.code):c.parentId;
+  }
+  if(c.isMain)return c.id;
+  // numbered child like 00510 already returned with parentId from findCodeCout
+  const code=c.code||'';
+  const main=CODES_COUT.find(x=>x.isMain&&x.code===code);
+  if(main)return main.id;
+  // map 00510 → 00500 via parent search
+  for(const m of CODES_COUT){
+    if((m.children||[]).some(ch=>ch.id===id||ch.code===id))return m.id;
+  }
+  return CODE_NON_CLASSE;
+}
+
+function labelCodeParent(parentId){
+  if(parentId===CODE_NON_CLASSE)return'Non classé / À classifier';
+  const c=findCodeCout(parentId);
+  if(!c)return parentId;
+  return`${c.code||parentId} — ${c.label}`;
+}
+
+function selOptsCodesSection(sectionId,sel=''){
+  const main=CODES_COUT.find(c=>c.id===sectionId);
+  if(!main)return selOptsCodes(sel);
+  let html=`<option value="${esc(main.id)}"${(!sel||sel===main.id)?' selected':''}>${main.code} — ${main.label}</option>`;
+  for(const sub of(main.children||[])){
+    const code=sub.code||main.code;
+    const prefix=sub.code?`${sub.code} · `:`${main.code} · `;
+    html+=`<option value="${esc(sub.id)}"${sel===sub.id?' selected':''}>${prefix}${sub.label}</option>`;
+  }
+  if(sectionId==='01400'){
+    html+=`<option value="01400-AV"${sel==='01400-AV'?' selected':''}>01400-AV — Avenant / extra</option>`;
+  }
+  return html;
+}
+
+function montantLigneSom(l){
+  return(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0);
+}
+
+function budgetParCode(soumission){
+  const byParent={};
+  const byCode={};
+  function add(map,key,amt){
+    if(!map[key])map[key]=0;
+    map[key]+=amt;
+  }
+  (soumission.sections||[]).forEach(sec=>{
+    (sec.lignes||[]).forEach(l=>{
+      const amt=montantLigneSom(l);
+      if(amt<=0)return;
+      const raw=l.codeCout||sec.id||'';
+      const parent=normaliserCodeParent(raw);
+      add(byParent,parent,amt);
+      add(byCode,raw||CODE_NON_CLASSE,amt);
+    });
+  });
+  return{byParent,byCode,total:Object.values(byParent).reduce((s,v)=>s+v,0)};
+}
+
+function reelParCode(chantier){
+  const byParent={};
+  const byCode={};
+  const totals={mdo:0,mat:0,sst:0,total:0};
+  function bucket(map,key){
+    if(!map[key])map[key]={mdo:0,mat:0,sst:0,total:0};
+    return map[key];
+  }
+  function add(raw,type,amt){
+    if(amt<=0)return;
+    const parent=normaliserCodeParent(raw);
+    const codeKey=raw||CODE_NON_CLASSE;
+    const bp=bucket(byParent,parent);
+    const bc=bucket(byCode,codeKey);
+    bp[type]+=amt;bp.total+=amt;
+    bc[type]+=amt;bc.total+=amt;
+    totals[type]+=amt;totals.total+=amt;
+  }
+  if(!chantier)return{byParent,byCode,totals};
+  const fiche=state.fiches[chantier]||{};
+  const taux=parseFloat(fiche.taux)||0;
+  Object.keys(EMPS).forEach(k=>{
+    (state.entries[k]||[]).forEach(en=>{
+      if(en.chantier!==chantier||!(en.heures>0)||en.absence)return;
+      add(en.codeCout,'mdo',(en.heures||0)*taux);
+    });
+  });
+  (state.achats||[]).forEach(a=>{
+    if(a.chantier!==chantier)return;
+    add(a.codeCout,'mat',parseFloat(a.montantAvantTax)||0);
+  });
+  (state.sstFactures||[]).forEach(a=>{
+    if(a.chantier!==chantier)return;
+    add(a.codeCout,'sst',parseFloat(a.montant)||0);
+  });
+  return{byParent,byCode,totals};
+}
+
+function budgetActifPourChantier(chantier){
+  if(!chantier)return null;
+  const list=(state.soumissions||[]).filter(s=>s.chantier===chantier&&s.statut==='acceptee');
+  if(!list.length)return null;
+  return list.reduce((best,s)=>!best||s.id>best.id?s:best,null);
+}
+
+function estBudgetActif(s){
+  if(!s||!s.chantier||s.statut!=='acceptee')return false;
+  const actif=budgetActifPourChantier(s.chantier);
+  return!!(actif&&actif.id===s.id);
+}
+
+function nextNumeroSoumission(){
+  const year=new Date().getFullYear();
+  const re=new RegExp('^SOUM-'+year+'-(\\d+)$');
+  let max=0;
+  (state.soumissions||[]).forEach(s=>{
+    const m=String(s.numero||'').match(re);
+    if(m)max=Math.max(max,parseInt(m[1],10));
+  });
+  return'SOUM-'+year+'-'+String(max+1).padStart(3,'0');
+}
+
+function pctSuiviColor(pct){
+  if(pct>100)return'#E24B4A';
+  if(pct>=85)return'#EF9F27';
+  return'#27500A';
+}
+
+function fmtDollars(n){
+  return(Math.round(n)||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,' ')+' $';
+}
+
 function calcMontant(hFact,ch){const f=state.fiches[ch]||{};const t=parseFloat(f.taux)||0,fg=parseFloat(f.fraisGestion)||0;if(!t)return null;return hFact*t*(1+fg/100);}
 function fmtMoney(v){return v!=null?v.toFixed(2)+' $':'—';}
 
@@ -924,17 +1095,6 @@ function setSub(emp,sub){
     else if(sub==='entreprise_fiche'){renderEntreprise();return;}
     else if(sub==='listes')sc.innerHTML=buildGestionListes();
   } else if(emp==='facturation'){
-    if(sub==='liste'||sub==='nouvelle'||sub==='suivi'){
-      const sc2=document.getElementById('content-soumissions');
-      if(!sc2)return;
-      const btns2=document.querySelectorAll('#soumissions-subnav button');
-      const subs2=['liste','nouvelle','suivi'];
-      btns2.forEach((b,i)=>b.classList.toggle('active',subs2[i]===sub));
-      if(sub==='liste')sc2.innerHTML=buildSoumissionsList();
-      else if(sub==='nouvelle')sc2.innerHTML=buildNouvelleSoumission();
-      else if(sub==='suivi')sc2.innerHTML=buildSuiviBudgetaire();
-      return;
-    }
     if(sub==='courantes')sc.innerHTML=buildFacturesCourantes();
     else if(sub==='nouvelle'){sc.innerHTML=buildNouvelleFacture();}
     else if(sub==='historique')sc.innerHTML=buildHistoriqueFactures();
@@ -6039,129 +6199,78 @@ function toggleWeekDetail(id){
 
 // ─── SOUMISSIONS ──────────────────────────────────────────
 
-const CATEGORIES_CONSTRUCTION = [
-  {id:'preparation',label:'Préparation chantier',icon:'🏗'},
-  {id:'excavation',label:'Excavation',icon:'⛏'},
-  {id:'fondation',label:'Fondation',icon:'🧱'},
-  {id:'demolition',label:'Démolition',icon:'🔨'},
-  {id:'dechets',label:'Gestion des déchets',icon:'♻️'},
-  {id:'charpente',label:'Charpente',icon:'🪵'},
-  {id:'toiture',label:'Toiture',icon:'🏠'},
-  {id:'fenetres',label:'Portes & fenêtres',icon:'🪟'},
-  {id:'plomberie',label:'Plomberie',icon:'🔧'},
-  {id:'electricite',label:'Électricité',icon:'⚡'},
-  {id:'ventilation',label:'Ventilation/CVAC',icon:'💨'},
-  {id:'isolation',label:'Isolation',icon:'🌡'},
-  {id:'gypse',label:'Gypse & plâtre',icon:'🪣'},
-  {id:'carrelage',label:'Carrelage & maçonnerie',icon:'🔲'},
-  {id:'plancher',label:'Plancher',icon:'🟫'},
-  {id:'comptoir',label:'Comptoir & armoires',icon:'🗄'},
-  {id:'peinture',label:'Peinture',icon:'🎨'},
-  {id:'finition',label:'Finition',icon:'✨'},
-  {id:'amenagement',label:'Aménagement paysager',icon:'🌿'},
-  {id:'autre',label:'Autre / Divers',icon:'📦'},
-];
-
 const CLASSES_SOUMISSION = {
   C: {label:'Classe C — Estimé budgétaire',color:'#EF9F27',bg:'#FAEEDA',desc:'Estimé rough ±30%. Idéal pour budgétisation préliminaire et faisabilité.'},
   B: {label:'Classe B — Soumission préliminaire',color:'#185FA5',bg:'#E6F1FB',desc:'Plus précis ±15%. Basé sur plans préliminaires et discussions avec client.'},
   A: {label:'Classe A — Soumission ferme',color:'#27500A',bg:'#EAF3DE',desc:'Prix fixe prêt à signer. Basé sur plans finaux et devis complets.'},
 };
 
-// ── Liste des soumissions ──────────────────────────────────
-function buildSoumissionsList(){
-  const list = state.soumissions || [];
-  if(!list.length) return `
-    <div class="card" style="text-align:center;padding:40px 20px;">
-      <div style="font-size:48px;margin-bottom:12px;">📋</div>
-      <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Aucune soumission</div>
-      <div style="font-size:13px;color:var(--secondary);margin-bottom:24px;">Crée ta première soumission budgétaire</div>
-      <button class="btn btn-primary" style="width:auto;padding:12px 28px;" onclick="setSub('soumissions','nouvelle')">➕ Nouvelle soumission</button>
-    </div>`;
-
-  // Stats globales
-  const totalA = list.filter(s=>s.classe==='A').length;
-  const totalB = list.filter(s=>s.classe==='B').length;
-  const totalC = list.filter(s=>s.classe==='C').length;
-  const totalMontant = list.reduce((s,x)=>s+(x.totalAvecTaxes||0),0);
-  const acceptees = list.filter(s=>s.statut==='acceptee').reduce((s,x)=>s+(x.totalAvecTaxes||0),0);
-
-  const cartes = list.slice().sort((a,b)=>b.id-a.id).map(s=>{
-    const cl = CLASSES_SOUMISSION[s.classe]||CLASSES_SOUMISSION.C;
-    const statutColors = {brouillon:'#f0f0f0|#555',envoyee:'#E6F1FB|#0C447C',acceptee:'#EAF3DE|#27500A',refusee:'#FCEBEB|#791F1F'};
-    const [sbg,scol] = (statutColors[s.statut]||'#f0f0f0|#555').split('|');
-    const statutLabel = {brouillon:'Brouillon',envoyee:'Envoyée',acceptee:'Acceptée',refusee:'Refusée'}[s.statut]||s.statut;
-    const totalLignes = (s.lignes||[]).length;
-    const lignesRemplies = (s.lignes||[]).filter(l=>l.montant>0).length;
-    const pct = totalLignes>0?Math.round(lignesRemplies/totalLignes*100):0;
-    return `<div class="card" style="border-left:4px solid ${cl.color};cursor:pointer;margin-bottom:10px;" onclick="ouvrirSoumission(${s.id})">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-            <span style="font-size:15px;font-weight:500;">${s.titre||'Sans titre'}</span>
-            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${cl.bg};color:${cl.color};">${s.classe}</span>
-            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:${sbg};color:${scol};">${statutLabel}</span>
-          </div>
-          <div style="font-size:12px;color:var(--secondary);">${s.chantier||'Sans chantier'} · ${s.date||'—'}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:20px;font-weight:500;color:#0C447C;">${(s.totalAvecTaxes||0).toLocaleString('fr-CA',{minimumFractionDigits:0,maximumFractionDigits:0})} $</div>
-          <div style="font-size:11px;color:var(--secondary);">avant taxes: ${(s.totalAvantTaxes||0).toLocaleString('fr-CA',{minimumFractionDigits:0,maximumFractionDigits:0})} $</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="flex:1;height:6px;background:#f0f0f0;border-radius:3px;overflow:hidden;">
-          <div style="height:100%;width:${pct}%;background:${cl.color};border-radius:3px;transition:width 0.3s;"></div>
-        </div>
-        <span style="font-size:11px;color:var(--secondary);">${lignesRemplies}/${totalLignes} postes · ${pct}%</span>
-      </div>
-    </div>`;
-  }).join('');
-
-  return `
-    <div class="stats-row" style="margin-bottom:16px;">
-      <div class="stat-box" style="border-left:3px solid #EF9F27;"><div class="label">Classe C</div><div class="value">${totalC}</div></div>
-      <div class="stat-box" style="border-left:3px solid #185FA5;"><div class="label">Classe B</div><div class="value">${totalB}</div></div>
-      <div class="stat-box" style="border-left:3px solid #27500A;"><div class="label">Classe A</div><div class="value">${totalA}</div></div>
-      <div class="stat-box stat-money"><div class="label">Total soumis</div><div class="value">${Math.round(totalMontant/1000)}k $</div></div>
-      <div class="stat-box stat-fact"><div class="label">Accepté</div><div class="value">${Math.round(acceptees/1000)}k $</div></div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-      <button class="btn btn-primary" style="width:auto;padding:9px 20px;" onclick="setSub('soumissions','nouvelle')">➕ Nouvelle soumission</button>
-    </div>
-    ${cartes}`;
-}
-
-// ── Nouvelle soumission / éditeur ─────────────────────────
-
 function totalSoumission(s){
   let total=0;
   (s.sections||[]).forEach(sec=>{
-    (sec.lignes||[]).forEach(l=>{
-      total+=(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0);
-    });
+    (sec.lignes||[]).forEach(l=>{total+=montantLigneSom(l);});
   });
   return total;
 }
 
 function totalSection(sec){
-  return (sec.lignes||[]).reduce((sum,l)=>{
-    return sum+(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0);
-  },0);
+  return (sec.lignes||[]).reduce((sum,l)=>sum+montantLigneSom(l),0);
 }
 
 function totalReel(s){
   if(!s.chantier)return 0;
+  return reelParCode(s.chantier).totals.total;
+}
+
+function totauxCommerciauxSom(s){
+  const sous=totalSoumission(s);
   const fiche=state.fiches[s.chantier]||{};
-  const taux=parseFloat(fiche.taux)||0;
-  let h=0;
-  Object.keys(EMPS).forEach(k=>{
-    h+=state.entries[k].filter(en=>en.chantier===s.chantier&&en.heures>0).reduce((sum,en)=>sum+en.heures,0);
+  const fgPct=parseFloat(fiche.fraisGestion)||0;
+  const fg=s.inclureFG&&fgPct>0?sous*(fgPct/100):0;
+  const avantTaxes=sous+fg;
+  const tps=avantTaxes*0.05;
+  const tvq=avantTaxes*0.09975;
+  return{sous,fg,fgPct,avantTaxes,tps,tvq,grand:avantTaxes+tps+tvq};
+}
+
+function refreshSomTotauxAffiches(){
+  const s=window._somEdit;if(!s)return;
+  const t=totauxCommerciauxSom(s);
+  const map={
+    'som-subtotal':t.sous.toFixed(0)+' $',
+    'som-fg':t.fg.toFixed(0)+' $',
+    'som-tps':t.tps.toFixed(0)+' $',
+    'som-tvq':t.tvq.toFixed(0)+' $',
+    'som-grand-total':t.grand.toFixed(0)+' $'
+  };
+  Object.keys(map).forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=map[id];});
+  const fgRow=document.getElementById('som-fg-row');
+  if(fgRow)fgRow.style.display=s.inclureFG&&t.fgPct>0?'':'none';
+  afficherFGSoumission(s.chantier);
+}
+
+function convertirSoumissionVersCodes(){
+  const old=window._somEdit;
+  if(!old)return;
+  if(!confirm('Convertir cette soumission vers les codes de coût? Les lignes existantes seront regroupées sous 01400 — Autres frais et avenant.'))return;
+  const allLignes=[];
+  (old.sections||[]).forEach(sec=>{
+    (sec.lignes||[]).forEach(l=>{
+      allLignes.push({
+        desc:l.desc||sec.label||'',
+        unite:l.unite||'forfait',
+        quantite:l.quantite||0,
+        prixUnit:l.prixUnit||0,
+        codeCout:'01400'
+      });
+    });
   });
-  const mdo=taux>0?h*taux:0;
-  const mat=state.achats.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montantAvantTax)||0),0);
-  const sst=state.sstFactures.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montant)||0),0);
-  return mdo+mat+sst;
+  const sections=seedSectionsCodes();
+  const sec014=sections.find(x=>x.id==='01400');
+  if(sec014){sec014.lignes=allLignes;sec014.open=!!allLignes.length;}
+  old.sections=sections;
+  const c=document.getElementById('content-soumissions');
+  if(c)c.innerHTML=buildEditorSoumission(old.id);
 }
 
 // ── LISTE ──────────────────────────────────────────────────
@@ -6171,7 +6280,7 @@ function buildSoumissionsListe(){
     <div class="card" style="text-align:center;padding:40px 20px;">
       <div style="font-size:48px;margin-bottom:12px;">📋</div>
       <div style="font-size:15px;font-weight:500;margin-bottom:8px;">Aucune soumission</div>
-      <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;">Crée ta première soumission budgétaire pour commencer à suivre tes coûts.</div>
+      <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;">Crée ta première soumission par codes de coût pour suivre le budget chantier.</div>
       <button class="btn btn-primary" style="width:auto;padding:12px 24px;" onclick="setSub('soumissions','nouvelle')">➕ Nouvelle soumission</button>
     </div>`;
 
@@ -6179,19 +6288,25 @@ function buildSoumissionsListe(){
     const total=totalSoumission(s);
     const reel=s.chantier?totalReel(s):0;
     const pct=total>0?Math.round(reel/total*100):0;
-    const pctColor=pct>100?'#E24B4A':pct>80?'#EF9F27':'#27500A';
+    const pctColor=pctSuiviColor(pct);
     const badgeClass='som-badge-'+s.classe;
     const cardClass='som-classe-'+s.classe;
-    const nbSections=(s.sections||[]).filter(sec=>(sec.lignes||[]).length>0).length;
+    const nbSections=(s.sections||[]).filter(sec=>(sec.lignes||[]).some(l=>montantLigneSom(l)>0)).length;
+    const actif=estBudgetActif(s);
+    const legacy=soumissionEstLegacy(s);
     return`<div class="card ${cardClass}" style="margin-bottom:10px;cursor:pointer;" onclick="ouvrirSoumission(${s.id})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
         <div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
             <span style="font-size:15px;font-weight:700;">${s.titre||'Sans titre'}</span>
             <span class="${badgeClass}">Classe ${s.classe}</span>
-            ${s.statut==='acceptee'?'<span style="font-size:10px;background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:20px;">✅ Acceptée</span>':''}
+            ${s.numero?`<span style="font-size:10px;background:#f0f0f0;color:#555;padding:2px 8px;border-radius:20px;font-weight:600;">${s.numero}</span>`:''}
+            ${actif?'<span style="font-size:10px;background:#27500A;color:#fff;padding:2px 8px;border-radius:20px;font-weight:600;">Budget actif</span>':''}
+            ${legacy?'<span style="font-size:10px;background:#FAEEDA;color:#633806;padding:2px 8px;border-radius:20px;">Ancien format</span>':''}
+            ${s.statut==='acceptee'&&!actif?'<span style="font-size:10px;background:#EAF3DE;color:#27500A;padding:2px 8px;border-radius:20px;">✅ Acceptée</span>':''}
             ${s.statut==='refusee'?'<span style="font-size:10px;background:#FCEBEB;color:#791F1F;padding:2px 8px;border-radius:20px;">❌ Refusée</span>':''}
             ${s.statut==='envoyee'?'<span style="font-size:10px;background:#E6F1FB;color:#0C447C;padding:2px 8px;border-radius:20px;">📤 Envoyée</span>':''}
+            ${s.statut==='brouillon'?'<span style="font-size:10px;background:#f0f0f0;color:#555;padding:2px 8px;border-radius:20px;">📝 Brouillon</span>':''}
           </div>
           <div style="font-size:11px;color:var(--secondary);">
             ${s.client||''}${s.chantier?' · 🏗 '+s.chantier:''}
@@ -6200,25 +6315,24 @@ function buildSoumissionsListe(){
         </div>
         <div style="text-align:right;">
           <div style="font-size:11px;color:var(--secondary);">Budget estimé</div>
-          <div style="font-size:20px;font-weight:700;color:#0C447C;">${total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} $</div>
+          <div style="font-size:20px;font-weight:700;color:#0C447C;">${fmtDollars(total)}</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:${s.chantier?'10px':'0'};">
-        <div class="stat-box"><div class="label">Sections</div><div class="value" style="font-size:14px;">${nbSections}</div></div>
+        <div class="stat-box"><div class="label">Codes avec lignes</div><div class="value" style="font-size:14px;">${nbSections}</div></div>
         <div class="stat-box"><div class="label">TPS+TVQ</div><div class="value" style="font-size:14px;">${(total*0.14975).toFixed(0)} $</div></div>
         <div class="stat-box"><div class="label">Total+taxes</div><div class="value" style="font-size:14px;color:#0C447C;">${(total*1.14975).toFixed(0)} $</div></div>
       </div>
       ${s.chantier&&reel>0?`<div>
         <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">
           <span style="color:var(--secondary);">Coûts réels vs estimé</span>
-          <span style="color:${pctColor};font-weight:600;">${reel.toFixed(0)} $ / ${total.toFixed(0)} $ (${pct}%)</span>
+          <span style="color:${pctColor};font-weight:600;">${fmtDollars(reel)} / ${fmtDollars(total)} (${pct}%)</span>
         </div>
         <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${pctColor};"></div></div>
       </div>`:''}
     </div>`;
   }).join('');
 
-  // Résumé stats
   const totalBudgets=list.reduce((s,x)=>s+totalSoumission(x),0);
   const nbAcceptees=list.filter(x=>x.statut==='acceptee').length;
   const nbEnCours=list.filter(x=>!x.statut||x.statut==='brouillon'||x.statut==='envoyee').length;
@@ -6236,106 +6350,83 @@ function buildSoumissionsListe(){
     ${cards}`;
 }
 
-// ── OUVRIR SOUMISSION ─────────────────────────────────────
 function ouvrirSoumission(id){
   const s=state.soumissions.find(x=>x.id===id);
   if(!s)return;
   window._somEdit=JSON.parse(JSON.stringify(s));
   const c=document.getElementById('content-soumissions');
   if(c)c.innerHTML=buildEditorSoumission(s.id);
-  // Update subnav
+  afficherFGSoumission(window._somEdit.chantier);
   document.querySelectorAll('#soumissions-subnav button').forEach((b,i)=>b.classList.toggle('active',i===1));
 }
 
-// ── NOUVELLE SOUMISSION ────────────────────────────────────
-function buildNouvelleSOumission(){
-  window._somEdit={
-    id:null,titre:'',client:'',chantier:'',classe:'C',
-    statut:'brouillon',dateCreation:new Date().toISOString().slice(0,10),
-    notes:'',
-    sections:CATEGORIES_CONSTRUCTION.map(s=>({
-      id:s.id,label:s.label,icon:s.icon,
-      incluse:true,open:false,
-      lignes:[]
-    }))
-  };
-  return buildEditorSoumission(null);
-}
-
-
 function buildNouvelleSoumission(){
   window._somEdit={
-    id:null,titre:'',client:'',chantier:'',classe:'C',
-    statut:'brouillon',dateCreation:new Date().toISOString().slice(0,10),
+    id:null,
+    numero:nextNumeroSoumission(),
+    titre:'',client:'',chantier:'',classe:'C',
+    statut:'brouillon',
+    dateCreation:new Date().toISOString().slice(0,10),
+    dateValidite:'',
     notes:'',
-    sections:CATEGORIES_CONSTRUCTION.map(s=>({
-      id:s.id,label:s.label,icon:s.icon,
-      incluse:true,open:false,
-      lignes:[]
-    }))
+    inclureFG:false,
+    sections:seedSectionsCodes()
   };
+  setTimeout(()=>afficherFGSoumission(window._somEdit.chantier),0);
   return buildEditorSoumission(null);
 }
 
 function buildEditorSoumission(editId){
   const s=window._somEdit;
   const chOpts=state.chantiers.map(c=>`<option value="${esc(c)}" ${c===s.chantier?'selected':''}>${c}</option>`).join('');
-  const clientOpts=state.clients.map((c,i)=>`<option value="${esc([c.prenom,c.nom].filter(Boolean).join(' '))}" ${[c.prenom,c.nom].filter(Boolean).join(' ')===s.client?'selected':''}>${[c.prenom,c.nom].filter(Boolean).join(' ')}</option>`).join('');
-
-  const totalEst=totalSoumission(s);
-  const tps=totalEst*0.05;
-  const tvq=totalEst*0.09975;
-  const grandTotal=totalEst+tps+tvq;
+  const clientOpts=state.clients.map(c=>{
+    const nom=[c.prenom,c.nom].filter(Boolean).join(' ');
+    return`<option value="${esc(nom)}" ${nom===s.client?'selected':''}>${nom}</option>`;
+  }).join('');
+  const t=totauxCommerciauxSom(s);
+  const legacy=soumissionEstLegacy(s);
+  const fiche=state.fiches[s.chantier]||{};
+  const fgPct=parseFloat(fiche.fraisGestion)||0;
 
   const sectionsHtml=(s.sections||[]).map((sec,si)=>{
     const secTotal=totalSection(sec);
-    const lignesHtml=(sec.lignes||[]).map((l,li)=>`
-      <div class="som-ligne">
-        <input type="text" value="${esc(l.desc||'')}" placeholder="Description" style="flex:2;font-size:12px;" onchange="updateSomLigne(${si},${li},'desc',this.value)"/>
-        <select style="width:90px;font-size:12px;" onchange="updateSomLigne(${si},${li},'unite',this.value)">
-          <option ${l.unite==='forfait'?'selected':''}>forfait</option>
-          <option ${l.unite==='h'?'selected':''}>h</option>
-          <option ${l.unite==='pi2'?'selected':''}>pi2</option>
-          <option ${l.unite==='pi3'?'selected':''}>pi3</option>
-          <option ${l.unite==='pi'?'selected':''}>pi</option>
-          <option ${l.unite==='u'?'selected':''}>u</option>
-          <option ${l.unite==='kg'?'selected':''}>kg</option>
-          <option ${l.unite==='m'?'selected':''}>m</option>
+    const isCode=!isLegacySomSection(sec);
+    const title=isCode?`${sec.code||sec.id} — ${sec.label}`:(sec.icon?sec.icon+' ':'')+sec.label;
+    const lignesHtml=(sec.lignes||[]).map((l,li)=>{
+      const lineTotal=montantLigneSom(l);
+      const cc=l.codeCout||sec.id;
+      return`<div class="som-ligne">
+        <input type="text" value="${esc(l.desc||'')}" placeholder="Description" style="flex:2;min-width:120px;font-size:12px;" onchange="updateSomLigne(${si},${li},'desc',this.value)"/>
+        ${isCode?`<select style="min-width:140px;max-width:180px;font-size:11px;" onchange="updateSomLigne(${si},${li},'codeCout',this.value)">${selOptsCodesSection(sec.id,cc)}</select>`:''}
+        <select style="width:80px;font-size:12px;" onchange="updateSomLigne(${si},${li},'unite',this.value)">
+          ${['forfait','h','pi2','pi3','pi','u','kg','m'].map(u=>`<option value="${u}" ${l.unite===u?'selected':''}>${u}</option>`).join('')}
         </select>
         <input type="number" value="${l.quantite||''}" placeholder="Qté" min="0" step="0.5" style="width:60px;font-size:12px;text-align:right;" onchange="updateSomLigne(${si},${li},'quantite',this.value)"/>
-        <input type="number" value="${l.prixUnit||''}" placeholder="$/u" min="0" step="1" style="width:80px;font-size:12px;text-align:right;" onchange="updateSomLigne(${si},${li},'prixUnit',this.value)"/>
-        <span style="width:80px;text-align:right;font-size:12px;font-weight:600;color:#0C447C;">${((parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0)).toFixed(0)} $</span>
+        <input type="number" value="${l.prixUnit||''}" placeholder="$/u" min="0" step="1" style="width:70px;font-size:12px;text-align:right;" onchange="updateSomLigne(${si},${li},'prixUnit',this.value)"/>
+        <span style="width:70px;text-align:right;font-size:12px;font-weight:600;color:#0C447C;">${lineTotal.toFixed(0)} $</span>
         <button onclick="supprimerSomLigne(${si},${li})" style="background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:0 2px;">✕</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     return`<div class="som-section">
-      <div class="som-section-header" onclick="toggleSomSection(${si})">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span>${sec.icon}</span>
-          <span style="font-size:13px;font-weight:500;">${sec.label}</span>
-          <span style="font-size:11px;color:var(--secondary);">${sec.lignes.length} ligne${sec.lignes.length>1?'s':''}</span>
+      <div class="som-section-header ${isCode?'code-main':'legacy'}" onclick="toggleSomSection(${si})">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span class="som-code-title" style="font-size:13px;">${title}</span>
+          <span style="font-size:11px;color:var(--secondary);">${(sec.lignes||[]).length} ligne${(sec.lignes||[]).length>1?'s':''}</span>
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          ${secTotal>0?`<span style="font-size:13px;font-weight:700;color:#0C447C;">${secTotal.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} $</span>`:''}
+          ${secTotal>0?`<span style="font-size:13px;font-weight:700;color:#0C447C;">${fmtDollars(secTotal)}</span>`:''}
           <span style="font-size:16px;color:var(--secondary);">${sec.open?'▾':'›'}</span>
         </div>
       </div>
       ${sec.open?`
-        <div style="padding:8px 12px;background:#fafafa;border-top:0.5px solid var(--border);">
-          <div style="display:flex;gap:4px;font-size:10px;font-weight:600;color:var(--secondary);padding:0 0 4px 0;">
-            <span style="flex:2;">DESCRIPTION</span>
-            <span style="width:90px;">UNITÉ</span>
-            <span style="width:60px;text-align:right;">QTÉ</span>
-            <span style="width:80px;text-align:right;">$/UNITÉ</span>
-            <span style="width:80px;text-align:right;">TOTAL</span>
-            <span style="width:22px;"></span>
-          </div>
-          ${lignesHtml}
+        <div style="padding:8px 10px;background:#fafafa;border-top:0.5px solid var(--border);">
+          ${lignesHtml||'<div style="font-size:12px;color:var(--secondary);padding:6px 0;">Aucune ligne</div>'}
           <button onclick="ajouterSomLigne(${si})" class="btn btn-sm" style="margin-top:6px;width:100%;background:#f0f0f0;">+ Ajouter une ligne</button>
         </div>
-        ${secTotal>0?`<div style="display:flex;justify-content:space-between;padding:6px 12px;background:#f0f4ff;font-size:12px;font-weight:600;border-top:0.5px solid var(--border);">
-          <span>Sous-total ${sec.label}</span>
-          <span style="color:#0C447C;">${secTotal.toFixed(2)} $</span>
+        ${secTotal>0?`<div style="display:flex;justify-content:space-between;padding:6px 12px;background:#EAF3DE;font-size:12px;font-weight:600;border-top:0.5px solid var(--border);">
+          <span>Sous-total ${isCode?(sec.code||sec.id):sec.label}</span>
+          <span style="color:#27500A;">${secTotal.toFixed(2)} $</span>
         </div>`:''}
       `:''}
     </div>`;
@@ -6345,14 +6436,20 @@ function buildEditorSoumission(editId){
     <div class="card" style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
         <div style="flex:1;">
+          <div style="font-size:11px;color:var(--secondary);margin-bottom:2px;">${s.numero||'Nouveau'}</div>
           <input type="text" id="som-titre" value="${esc(s.titre)}" placeholder="Titre de la soumission..." style="font-size:16px;font-weight:600;border:none;border-bottom:2px solid var(--primary);border-radius:0;width:100%;padding:4px 0;background:transparent;" oninput="window._somEdit.titre=this.value"/>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <button onclick="sauvegarderSoumission()" class="btn btn-primary" style="width:auto;padding:8px 14px;">💾 Sauvegarder</button>
-          ${editId?`<button onclick="apercuSoumission()" class="btn-pdf" style="padding:8px 14px;">👁 Aperçu</button>`:''}
+          <button onclick="apercuSoumission()" class="btn-pdf" style="padding:8px 14px;">👁 Aperçu</button>
+          ${editId?`<button onclick="supprimerSoumission(${editId})" class="btn btn-sm" style="background:#FCEBEB;color:#791F1F;border-color:#F09595;">🗑</button>`:''}
           <button onclick="setSub('soumissions','liste')" class="btn btn-sm">← Retour</button>
         </div>
       </div>
+      ${legacy?`<div style="background:#FAEEDA;border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:12px;color:#633806;">
+        Cette soumission utilise l'ancien format de catégories.
+        <button class="btn btn-sm" style="margin-left:8px;" onclick="convertirSoumissionVersCodes()">Convertir vers codes de coût</button>
+      </div>`:''}
       <div class="grid2">
         <div class="field"><label>Client</label>
           <select id="som-client" style="width:100%;" onchange="window._somEdit.client=this.value">
@@ -6360,20 +6457,18 @@ function buildEditorSoumission(editId){
           </select>
         </div>
         <div class="field"><label>Chantier associé</label>
-          <select id="som-chantier" style="width:100%;" onchange="window._somEdit.chantier=this.value;afficherFGSoumission(this.value)">
+          <select id="som-chantier" style="width:100%;" onchange="window._somEdit.chantier=this.value;afficherFGSoumission(this.value);refreshSomTotauxAffiches()">
             <option value="">-- Choisir (optionnel) --</option>${chOpts}
           </select>
-          <div id="som-fg-info" style="${(()=>{const f=state.fiches[s.chantier]||{};const fg=parseFloat(f.fraisGestion)||0;return fg>0?'':'display:none;'})()}background:#EAF3DE;border-radius:var(--radius-sm);padding:6px 10px;margin-top:4px;font-size:12px;color:#27500A;">
-            ${(()=>{const f=state.fiches[s.chantier]||{};const fg=parseFloat(f.fraisGestion)||0;const total=totalSoumission(s);const montantFG=total*(fg/100);return fg>0?'📊 Frais de gestion '+fg+'% = '+montantFG.toFixed(2)+' $ (sous-total: '+total.toFixed(2)+' $)':''})()}
-          </div>
+          <div id="som-fg-info" style="margin-top:6px;"></div>
         </div>
       </div>
       <div class="grid2">
         <div class="field"><label>Classe de soumission</label>
           <div class="toggle-group">
-            <button class="${s.classe==='C'?'active':''}" onclick="setClasseSom('C')" style="flex:1;font-size:12px;">C · Estimé rough</button>
-            <button class="${s.classe==='B'?'active':''}" onclick="setClasseSom('B')" style="flex:1;font-size:12px;">B · Détaillé</button>
-            <button class="${s.classe==='A'?'active':''}" onclick="setClasseSom('A')" style="flex:1;font-size:12px;">A · Final</button>
+            <button class="${s.classe==='C'?'on-f':''}" onclick="setClasseSom('C')" style="flex:1;font-size:12px;">C · Estimé rough</button>
+            <button class="${s.classe==='B'?'on-f':''}" onclick="setClasseSom('B')" style="flex:1;font-size:12px;">B · Détaillé</button>
+            <button class="${s.classe==='A'?'on-f':''}" onclick="setClasseSom('A')" style="flex:1;font-size:12px;">A · Final</button>
           </div>
           <div style="font-size:11px;color:var(--secondary);margin-top:4px;">
             ${s.classe==='C'?'⚠️ Estimé budgétaire préliminaire — précision ±30 à 50%':
@@ -6385,9 +6480,21 @@ function buildEditorSoumission(editId){
           <select id="som-statut" style="width:100%;" onchange="window._somEdit.statut=this.value">
             <option value="brouillon" ${s.statut==='brouillon'?'selected':''}>📝 Brouillon</option>
             <option value="envoyee" ${s.statut==='envoyee'?'selected':''}>📤 Envoyée au client</option>
-            <option value="acceptee" ${s.statut==='acceptee'?'selected':''}>✅ Acceptée</option>
+            <option value="acceptee" ${s.statut==='acceptee'?'selected':''}>✅ Acceptée (budget chantier)</option>
             <option value="refusee" ${s.statut==='refusee'?'selected':''}>❌ Refusée</option>
           </select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Validité (optionnel)</label>
+          <input type="date" id="som-validite" value="${s.dateValidite||''}" style="width:100%;" onchange="window._somEdit.dateValidite=this.value"/>
+        </div>
+        <div class="field"><label>Frais de gestion</label>
+          <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#f9f9f9;border-radius:var(--radius-sm);border:1px solid var(--border);">
+            <input type="checkbox" id="som-inclure-fg" ${s.inclureFG?'checked':''} ${fgPct<=0?'disabled':''}
+              onchange="window._somEdit.inclureFG=this.checked;refreshSomTotauxAffiches()" style="width:18px;height:18px;"/>
+            <label for="som-inclure-fg" style="font-size:12px;cursor:pointer;">Inclure FG du chantier dans le total client${fgPct>0?' ('+fgPct+'%)':' (aucun FG sur fiche)'}</label>
+          </div>
         </div>
       </div>
       <div class="field"><label>Notes / Conditions</label>
@@ -6395,21 +6502,21 @@ function buildEditorSoumission(editId){
       </div>
     </div>
 
-    <div style="background:#f0f4ff;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
-      <div><div style="font-size:11px;color:var(--secondary);">Sous-total</div><div style="font-size:16px;font-weight:700;" id="som-subtotal">${totalEst.toFixed(0)} $</div></div>
-      <div><div style="font-size:11px;color:var(--secondary);">TPS (5%)</div><div style="font-size:16px;font-weight:700;" id="som-tps">${tps.toFixed(0)} $</div></div>
-      <div><div style="font-size:11px;color:var(--secondary);">TVQ (9.975%)</div><div style="font-size:16px;font-weight:700;" id="som-tvq">${tvq.toFixed(0)} $</div></div>
-      <div><div style="font-size:11px;color:var(--secondary);">TOTAL</div><div style="font-size:20px;font-weight:700;color:#0C447C;" id="som-grand-total">${grandTotal.toFixed(0)} $</div></div>
+    <div style="background:#f0f4ff;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;text-align:center;">
+      <div><div style="font-size:11px;color:var(--secondary);">Sous-total</div><div style="font-size:16px;font-weight:700;" id="som-subtotal">${t.sous.toFixed(0)} $</div></div>
+      <div id="som-fg-row" style="${s.inclureFG&&t.fgPct>0?'':'display:none;'}"><div style="font-size:11px;color:var(--secondary);">FG</div><div style="font-size:16px;font-weight:700;" id="som-fg">${t.fg.toFixed(0)} $</div></div>
+      <div><div style="font-size:11px;color:var(--secondary);">TPS (5%)</div><div style="font-size:16px;font-weight:700;" id="som-tps">${t.tps.toFixed(0)} $</div></div>
+      <div><div style="font-size:11px;color:var(--secondary);">TVQ (9.975%)</div><div style="font-size:16px;font-weight:700;" id="som-tvq">${t.tvq.toFixed(0)} $</div></div>
+      <div><div style="font-size:11px;color:var(--secondary);">TOTAL</div><div style="font-size:20px;font-weight:700;color:#0C447C;" id="som-grand-total">${t.grand.toFixed(0)} $</div></div>
     </div>
 
     <div style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;font-weight:600;">Sections de travaux</span>
+      <span style="font-size:13px;font-weight:600;color:#27500A;">Codes de coût</span>
       <button onclick="ouvrirToutSom()" class="btn btn-sm">Tout ouvrir / fermer</button>
     </div>
     <div id="som-sections">${sectionsHtml}</div>`;
 }
 
-// ── FONCTIONS EDITOR ──────────────────────────────────────
 function setClasseSom(c){
   window._somEdit.classe=c;
   const c2=document.getElementById('content-soumissions');
@@ -6430,9 +6537,10 @@ function ouvrirToutSom(){
 }
 
 function ajouterSomLigne(si){
-  if(!window._somEdit.sections[si].lignes)window._somEdit.sections[si].lignes=[];
-  window._somEdit.sections[si].lignes.push({desc:'',unite:'forfait',quantite:1,prixUnit:0});
-  window._somEdit.sections[si].open=true;
+  const sec=window._somEdit.sections[si];
+  if(!sec.lignes)sec.lignes=[];
+  sec.lignes.push({desc:'',unite:'forfait',quantite:1,prixUnit:0,codeCout:sec.id});
+  sec.open=true;
   const c=document.getElementById('content-soumissions');
   if(c)c.innerHTML=buildEditorSoumission(window._somEdit.id);
 }
@@ -6445,26 +6553,31 @@ function supprimerSomLigne(si,li){
 
 function updateSomLigne(si,li,field,val){
   window._somEdit.sections[si].lignes[li][field]=val;
-  // Update totals display
-  const s=window._somEdit;
-  const totalEst=totalSoumission(s);
-  const t1=document.getElementById('som-subtotal');
-  const t2=document.getElementById('som-tps');
-  const t3=document.getElementById('som-tvq');
-  const t4=document.getElementById('som-grand-total');
-  if(t1)t1.textContent=totalEst.toFixed(0)+' $';
-  if(t2)t2.textContent=(totalEst*0.05).toFixed(0)+' $';
-  if(t3)t3.textContent=(totalEst*0.09975).toFixed(0)+' $';
-  if(t4)t4.textContent=(totalEst*1.14975).toFixed(0)+' $';
+  refreshSomTotauxAffiches();
+  const c=document.getElementById('content-soumissions');
+  if(c&&(field==='quantite'||field==='prixUnit'||field==='codeCout')){
+    // rebuild to refresh line totals without losing focus heavily — lightweight full rebuild
+    const openIds=window._somEdit.sections.map(sec=>sec.open);
+    c.innerHTML=buildEditorSoumission(window._somEdit.id);
+  }
 }
 
 function sauvegarderSoumission(){
   const s=window._somEdit;
-  s.titre=document.getElementById('som-titre').value.trim()||'Sans titre';
-  s.client=document.getElementById('som-client').value;
-  s.chantier=document.getElementById('som-chantier').value;
-  s.statut=document.getElementById('som-statut').value;
-  s.notes=document.getElementById('som-notes').value.trim();
+  s.titre=((document.getElementById('som-titre')||{}).value||'').trim()||s.titre||'Sans titre';
+  const elClient=document.getElementById('som-client');
+  const elCh=document.getElementById('som-chantier');
+  const elStatut=document.getElementById('som-statut');
+  const elNotes=document.getElementById('som-notes');
+  const elVal=document.getElementById('som-validite');
+  const elFg=document.getElementById('som-inclure-fg');
+  if(elClient)s.client=elClient.value;
+  if(elCh)s.chantier=elCh.value;
+  if(elStatut)s.statut=elStatut.value;
+  if(elNotes)s.notes=elNotes.value.trim();
+  if(elVal)s.dateValidite=elVal.value;
+  if(elFg)s.inclureFG=!!elFg.checked;
+  if(!s.numero)s.numero=nextNumeroSoumission();
   if(!s.id){
     s.id=++state.soumissionId;
     s.dateCreation=new Date().toISOString().slice(0,10);
@@ -6473,42 +6586,60 @@ function sauvegarderSoumission(){
     const idx=state.soumissions.findIndex(x=>x.id===s.id);
     if(idx>=0)state.soumissions[idx]=JSON.parse(JSON.stringify(s));
   }
+  window._somEdit=JSON.parse(JSON.stringify(state.soumissions.find(x=>x.id===s.id)));
   saveToCloud();
-  // Notif
   const notif=document.createElement('div');
   notif.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;';
   notif.textContent='✅ Soumission sauvegardée!';
   document.body.appendChild(notif);
   setTimeout(()=>notif.remove(),2500);
+  const c=document.getElementById('content-soumissions');
+  if(c)c.innerHTML=buildEditorSoumission(s.id);
 }
 
 function supprimerSoumission(id){
-  if(!confirm("Supprimer cette soumission?"))return;
+  if(!confirm('Supprimer cette soumission?'))return;
   state.soumissions=state.soumissions.filter(x=>x.id!==id);
+  window._somEdit=null;
   saveToCloud();
   setSub('soumissions','liste');
 }
 
-// ── APERÇU / PDF ──────────────────────────────────────────
 function apercuSoumission(){
   const s=window._somEdit;
-  const e=state.entreprise;
-  const totalEst=totalSoumission(s);
-  const tps=totalEst*0.05;
-  const tvq=totalEst*0.09975;
-  const grandTotal=totalEst+tps+tvq;
+  if(!s)return;
+  // sync fields from form if present
+  const elTitre=document.getElementById('som-titre');
+  if(elTitre)s.titre=elTitre.value.trim()||s.titre;
+  const elClient=document.getElementById('som-client');
+  if(elClient)s.client=elClient.value;
+  const elCh=document.getElementById('som-chantier');
+  if(elCh)s.chantier=elCh.value;
+  const elNotes=document.getElementById('som-notes');
+  if(elNotes)s.notes=elNotes.value.trim();
+  const elVal=document.getElementById('som-validite');
+  if(elVal)s.dateValidite=elVal.value;
+  const elFg=document.getElementById('som-inclure-fg');
+  if(elFg)s.inclureFG=!!elFg.checked;
+
+  const e=state.entreprise||{};
+  const t=totauxCommerciauxSom(s);
 
   const sectionsHtml=(s.sections||[]).filter(sec=>totalSection(sec)>0).map(sec=>{
-    const lignesHtml=(sec.lignes||[]).filter(l=>(parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0)>0).map(l=>`
-      <tr>
-        <td style="padding:5px 8px;font-size:12px;">${l.desc||'—'}</td>
+    const isCode=!isLegacySomSection(sec);
+    const secLabel=isCode?`${sec.code||sec.id} — ${sec.label}`:((sec.icon||'')+' '+sec.label);
+    const lignesHtml=(sec.lignes||[]).filter(l=>montantLigneSom(l)>0).map(l=>{
+      const cc=l.codeCout&&l.codeCout!==sec.id?` <span style="color:#27500A;font-size:10px;">(${shortCodeCout(l.codeCout)})</span>`:'';
+      return`<tr>
+        <td style="padding:5px 8px;font-size:12px;">${l.desc||'—'}${cc}</td>
         <td style="padding:5px 8px;font-size:12px;text-align:center;">${l.quantite} ${l.unite}</td>
         <td style="padding:5px 8px;font-size:12px;text-align:right;">${parseFloat(l.prixUnit||0).toFixed(2)} $</td>
-        <td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:500;">${((parseFloat(l.quantite)||0)*(parseFloat(l.prixUnit)||0)).toFixed(2)} $</td>
-      </tr>`).join('');
+        <td style="padding:5px 8px;font-size:12px;text-align:right;font-weight:500;">${montantLigneSom(l).toFixed(2)} $</td>
+      </tr>`;
+    }).join('');
     const secTotal=totalSection(sec);
     return`<div style="margin-bottom:16px;">
-      <div style="background:#f5f5f5;padding:8px 12px;font-size:12px;font-weight:700;color:#1a1a1a;border-left:4px solid #185FA5;">${sec.icon} ${sec.label}</div>
+      <div style="background:#EAF3DE;padding:8px 12px;font-size:12px;font-weight:700;color:#27500A;border-left:4px solid #27500A;">${secLabel}</div>
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:#fafafa;">
           <th style="padding:5px 8px;text-align:left;font-size:11px;color:#888;">DESCRIPTION</th>
@@ -6518,8 +6649,8 @@ function apercuSoumission(){
         </tr></thead>
         <tbody>${lignesHtml}</tbody>
         <tfoot><tr style="background:#f0f0f0;">
-          <td colspan="3" style="padding:6px 8px;font-size:12px;font-weight:700;">Sous-total ${sec.label}</td>
-          <td style="padding:6px 8px;text-align:right;font-size:12px;font-weight:700;color:#185FA5;">${secTotal.toFixed(2)} $</td>
+          <td colspan="3" style="padding:6px 8px;font-size:12px;font-weight:700;">Sous-total</td>
+          <td style="padding:6px 8px;text-align:right;font-size:12px;font-weight:700;color:#27500A;">${secTotal.toFixed(2)} $</td>
         </tr></tfoot>
       </table>
     </div>`;
@@ -6540,12 +6671,14 @@ function apercuSoumission(){
       </div>
       <div style="text-align:right;">
         <div style="font-size:22px;font-weight:700;color:#185FA5;">SOUMISSION</div>
+        <div style="font-size:13px;font-weight:600;color:#555;margin:4px 0;">${s.numero||''}</div>
         <div style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;margin:4px 0;
           background:${s.classe==='C'?'#FAEEDA':s.classe==='B'?'#E6F1FB':'#EAF3DE'};
           color:${s.classe==='C'?'#633806':s.classe==='B'?'#0C447C':'#27500A'};">
           Classe ${s.classe} — ${classeDesc}
         </div>
         <div style="font-size:11px;color:#666;">Date: ${s.dateCreation||new Date().toISOString().slice(0,10)}</div>
+        ${s.dateValidite?`<div style="font-size:11px;color:#666;">Validité: ${s.dateValidite}</div>`:''}
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
@@ -6559,13 +6692,14 @@ function apercuSoumission(){
         ${s.chantier?`<div style="font-size:12px;color:#666;">${s.chantier}</div>`:''}
       </div>
     </div>
-    ${sectionsHtml}
+    ${sectionsHtml||'<div style="padding:20px;text-align:center;color:#888;">Aucune ligne budgétée</div>'}
     <div style="border-top:2px solid #1a1a1a;padding-top:12px;margin-top:8px;">
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total avant taxes</span><span>${totalEst.toFixed(2)} $</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${tps.toFixed(2)} $</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${tvq.toFixed(2)} $</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;"><span>Sous-total avant taxes</span><span>${t.sous.toFixed(2)} $</span></div>
+      ${t.fg>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#27500A;"><span>Frais de gestion (${t.fgPct}%)</span><span>${t.fg.toFixed(2)} $</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TPS (5%)${e.noTPS?' — '+e.noTPS:''}</span><span>${t.tps.toFixed(2)} $</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#666;"><span>TVQ (9.975%)${e.noTVQ?' — '+e.noTVQ:''}</span><span>${t.tvq.toFixed(2)} $</span></div>
       <div style="display:flex;justify-content:space-between;background:#185FA5;color:#fff;padding:12px;border-radius:8px;margin-top:8px;font-size:16px;font-weight:700;">
-        <span>TOTAL</span><span>${grandTotal.toFixed(2)} $</span>
+        <span>TOTAL</span><span>${t.grand.toFixed(2)} $</span>
       </div>
     </div>
     ${s.notes?`<div style="margin-top:20px;padding:12px;background:#f9f9f9;border-radius:8px;font-size:12px;color:#666;border-left:3px solid #ccc;">${s.notes}</div>`:''}
@@ -6575,14 +6709,14 @@ function apercuSoumission(){
 
   document.getElementById('modalBox').innerHTML=`
     <div class="modal-header">
-      <h3>👁 Aperçu soumission — ${s.titre||'Sans titre'}</h3>
+      <h3>👁 Aperçu — ${s.numero||''} ${s.titre||'Sans titre'}</h3>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
     <div style="max-height:60vh;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:12px;">
       ${apercuHTML}
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-primary" style="flex:1;" onclick="exporterSoumissionPDF('${esc(s.titre)}')">📥 Sauvegarder PDF</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="exporterSoumissionPDF('${esc(s.titre||s.numero||'soumission')}')">📥 Sauvegarder PDF</button>
       <button class="btn btn-sm" onclick="closeModal()">Fermer</button>
     </div>`;
   window._somApercuHTML=apercuHTML;
@@ -6607,113 +6741,127 @@ function exporterSoumissionPDF(titre){
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
 
-// ── SUIVI DES COÛTS ────────────────────────────────────────
+// ── SUIVI BUDGET (estimé vs réel par code) ─────────────────
 function buildSuiviCouts(){
-  const avecChantier=state.soumissions.filter(s=>s.chantier&&s.statut==='acceptee');
-  if(!avecChantier.length)return`
+  const chantiers=[...new Set((state.soumissions||[]).filter(s=>s.chantier&&s.statut==='acceptee').map(s=>s.chantier))];
+  if(!chantiers.length)return`
     <div class="card" style="text-align:center;padding:40px 20px;">
       <div style="font-size:48px;margin-bottom:12px;">📊</div>
-      <div style="font-size:14px;font-weight:500;margin-bottom:8px;">Aucun suivi disponible</div>
-      <div style="font-size:13px;color:var(--secondary);">Pour voir le suivi des coûts, crée une soumission, associe-la à un chantier et marque-la comme Acceptée.</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:8px;">Aucun suivi budget disponible</div>
+      <div style="font-size:13px;color:var(--secondary);">Associe une soumission à un chantier et marque-la <strong>Acceptée</strong> pour en faire le budget actif.</div>
     </div>`;
 
-  const cards=avecChantier.map(s=>{
-    const totalEst=totalSoumission(s);
-    const fiche=state.fiches[s.chantier]||{};
-    const taux=parseFloat(fiche.taux)||0;
-    // Heures réelles
-    let hTotal=0;
-    Object.keys(EMPS).forEach(k=>{
-      hTotal+=state.entries[k].filter(en=>en.chantier===s.chantier&&en.heures>0&&!en.absence).reduce((sum,en)=>sum+en.heures,0);
-    });
-    const mdoReel=taux>0?hTotal*taux:0;
-    const matReel=state.achats.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montantAvantTax)||0),0);
-    const sstReel=state.sstFactures.filter(a=>a.chantier===s.chantier).reduce((sum,a)=>sum+(parseFloat(a.montant)||0),0);
-    const totalReel=mdoReel+matReel+sstReel;
-    const pct=totalEst>0?Math.round(totalReel/totalEst*100):0;
-    const pctColor=pct>100?'#E24B4A':pct>85?'#EF9F27':'#27500A';
-    const restant=totalEst-totalReel;
+  const cards=chantiers.sort().map(chantier=>{
+    const accepted=(state.soumissions||[]).filter(s=>s.chantier===chantier&&s.statut==='acceptee');
+    const s=budgetActifPourChantier(chantier);
+    if(!s)return'';
+    const multi=accepted.length>1;
+    const budget=budgetParCode(s);
+    const reel=reelParCode(chantier);
+    const totalEst=budget.total;
+    const totalReelAmt=reel.totals.total;
+    const pct=totalEst>0?Math.round(totalReelAmt/totalEst*100):0;
+    const pctColor=pctSuiviColor(pct);
+    const restant=totalEst-totalReelAmt;
 
-    // Suivi par section
-    const sectionsHtml=(s.sections||[]).filter(sec=>totalSection(sec)>0).map(sec=>{
-      const estSec=totalSection(sec);
-      // Rough % basé sur le poids dans l'estimé total
-      const poidsEst=totalEst>0?estSec/totalEst:0;
-      const reelSec=totalReel*poidsEst;
-      const pctSec=estSec>0?Math.round(reelSec/estSec*100):0;
-      const colSec=pctSec>100?'#E24B4A':pctSec>80?'#EF9F27':'#27500A';
-      return`<div style="margin-bottom:8px;">
-        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
-          <span>${sec.icon} ${sec.label}</span>
-          <span><span style="color:${colSec};font-weight:600;">${reelSec.toFixed(0)} $</span> / ${estSec.toFixed(0)} $</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pctSec,100)}%;background:${colSec};"></div></div>
-      </div>`;
+    const parentKeys=new Set([...Object.keys(budget.byParent),...Object.keys(reel.byParent)]);
+    const ordered=[];
+    codesCoutPrincipaux().forEach(c=>{if(parentKeys.has(c.id))ordered.push(c.id);});
+    if(parentKeys.has(CODE_NON_CLASSE))ordered.push(CODE_NON_CLASSE);
+    parentKeys.forEach(k=>{if(!ordered.includes(k))ordered.push(k);});
+
+    const rows=ordered.map(pid=>{
+      const est=budget.byParent[pid]||0;
+      const r=reel.byParent[pid]||{mdo:0,mat:0,sst:0,total:0};
+      if(est<=0&&r.total<=0)return'';
+      const p=est>0?Math.round(r.total/est*100):(r.total>0?999:0);
+      const col=pctSuiviColor(p>900?101:p);
+      const ecart=est-r.total;
+      return`<tr>
+        <td style="font-weight:600;color:#27500A;">${labelCodeParent(pid)}</td>
+        <td style="text-align:right;">${est?est.toFixed(0)+' $':'—'}</td>
+        <td style="text-align:right;">
+          <div style="font-weight:600;color:${col};">${r.total.toFixed(0)} $</div>
+          <div style="font-size:10px;color:var(--secondary);">MDO ${r.mdo.toFixed(0)} · Mat ${r.mat.toFixed(0)} · SST ${r.sst.toFixed(0)}</div>
+        </td>
+        <td style="text-align:right;color:${ecart<0?'#E24B4A':'inherit'};">${ecart.toFixed(0)} $</td>
+        <td style="text-align:right;font-weight:600;color:${col};">${p>900?'—':p+'%'}</td>
+      </tr>`;
     }).join('');
 
     return`<div class="card som-classe-${s.classe}" style="margin-bottom:14px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
         <div>
           <div style="font-size:15px;font-weight:700;">${s.titre}</div>
-          <div style="font-size:12px;color:var(--secondary);">🏗 ${s.chantier} · Classe ${s.classe}</div>
+          <div style="font-size:12px;color:var(--secondary);">🏗 ${chantier} · ${s.numero||''} · Classe ${s.classe}</div>
+          ${multi?`<div style="margin-top:6px;font-size:11px;background:#FAEEDA;color:#633806;padding:4px 8px;border-radius:6px;display:inline-block;">⚠️ ${accepted.length} soumissions acceptées — budget actif = la plus récente (#${s.id})</div>`:''}
         </div>
         <div style="text-align:right;">
           <div style="font-size:11px;color:var(--secondary);">Budget estimé</div>
-          <div style="font-size:20px;font-weight:700;color:#0C447C;">${totalEst.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g,' ')} $</div>
+          <div style="font-size:20px;font-weight:700;color:#0C447C;">${fmtDollars(totalEst)}</div>
+          <button class="btn btn-sm" style="margin-top:6px;" onclick="ouvrirSoumission(${s.id})">Ouvrir estimé</button>
         </div>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
-        <div class="stat-box"><div class="label">MDO réelle</div><div class="value" style="font-size:13px;">${mdoReel.toFixed(0)} $</div></div>
-        <div class="stat-box"><div class="label">Matériaux</div><div class="value" style="font-size:13px;">${matReel.toFixed(0)} $</div></div>
-        <div class="stat-box"><div class="label">SST</div><div class="value" style="font-size:13px;">${sstReel.toFixed(0)} $</div></div>
-        <div class="stat-box ${pct>100?'stat-nf':pct>85?'':'stat-fact'}"><div class="label">Total réel</div><div class="value" style="font-size:13px;color:${pctColor};">${totalReel.toFixed(0)} $</div></div>
+        <div class="stat-box"><div class="label">MDO réelle</div><div class="value" style="font-size:13px;">${reel.totals.mdo.toFixed(0)} $</div></div>
+        <div class="stat-box"><div class="label">Matériaux</div><div class="value" style="font-size:13px;">${reel.totals.mat.toFixed(0)} $</div></div>
+        <div class="stat-box"><div class="label">SST</div><div class="value" style="font-size:13px;">${reel.totals.sst.toFixed(0)} $</div></div>
+        <div class="stat-box ${pct>100?'stat-nf':pct>=85?'':'stat-fact'}"><div class="label">Total réel</div><div class="value" style="font-size:13px;color:${pctColor};">${totalReelAmt.toFixed(0)} $</div></div>
       </div>
 
-      <div style="margin-bottom:12px;">
+      <div style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:4px;">
-          <span>Coûts réels vs estimé</span>
-          <span style="color:${pctColor};">${pct}% utilisé</span>
+          <span>Réel vs budget</span>
+          <span style="color:${pctColor};">${pct}%</span>
         </div>
         <div class="progress-bar" style="height:12px;"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${pctColor};"></div></div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--secondary);margin-top:4px;">
-          <span>${totalReel.toFixed(0)} $ dépensé</span>
-          <span>${restant>=0?'Reste: '+restant.toFixed(0)+' $':'DÉPASSEMENT: '+Math.abs(restant).toFixed(0)+' $'}</span>
+          <span>${fmtDollars(totalReelAmt)} dépensé</span>
+          <span>${restant>=0?'Reste: '+fmtDollars(restant):'DÉPASSEMENT: '+fmtDollars(Math.abs(restant))}</span>
         </div>
       </div>
 
-      <div>
-        <div style="font-size:11px;font-weight:600;color:var(--secondary);margin-bottom:8px;">SUIVI PAR SECTION (estimé)</div>
-        ${sectionsHtml}
+      <div style="font-size:11px;font-weight:600;color:var(--secondary);margin-bottom:8px;">SUIVI PAR CODE DE COÛT</div>
+      <div style="overflow-x:auto;">
+        <table class="suivi-table">
+          <thead><tr>
+            <th>CODE</th>
+            <th style="text-align:right;">ESTIMÉ</th>
+            <th style="text-align:right;">RÉEL</th>
+            <th style="text-align:right;">ÉCART</th>
+            <th style="text-align:right;">%</th>
+          </tr></thead>
+          <tbody>${rows||'<tr><td colspan="5" style="color:var(--secondary);">Aucune donnée</td></tr>'}</tbody>
+        </table>
       </div>
     </div>`;
   }).join('');
 
   return`
-    <div class="card" style="margin-bottom:12px;background:#f0f4ff;">
-      <div style="font-size:13px;font-weight:500;color:#0C447C;margin-bottom:4px;">📊 Suivi des coûts réels vs estimés</div>
-      <div style="font-size:12px;color:#185FA5;">Visible uniquement pour les soumissions <strong>Acceptées</strong> liées à un chantier actif.</div>
+    <div class="card" style="margin-bottom:12px;background:#EAF3DE;">
+      <div style="font-size:13px;font-weight:500;color:#27500A;margin-bottom:4px;">📊 Suivi budget — estimé vs réel par code de coût</div>
+      <div style="font-size:12px;color:#3B6D11;">Budget actif = soumission <strong>Acceptée</strong> la plus récente par chantier. Les heures, matériaux et SST sont regroupés via leur code de coût.</div>
     </div>
     ${cards}`;
 }
 
-
 function afficherFGSoumission(chantier){
   const el=document.getElementById('som-fg-info');
   if(!el)return;
-  if(!chantier){el.style.display='none';return;}
+  if(!chantier){el.innerHTML='';el.style.display='none';return;}
   const fiche=state.fiches[chantier]||{};
   const fg=parseFloat(fiche.fraisGestion)||0;
+  const s=window._somEdit||{};
   if(fg>0){
-    const total=totalSoumission(window._somEdit);
+    const total=totalSoumission(s);
     const montantFG=total*(fg/100);
-    const avecFG=total+montantFG;
-    const tps=avecFG*0.05;
-    const tvq=avecFG*0.09975;
-    el.innerHTML='📊 Frais de gestion '+fg+'% = '+montantFG.toFixed(2)+' $'
-      +'<br><span style="font-size:11px;">Sous-total: '+total.toFixed(2)+' $ → Avec FG: '+avecFG.toFixed(2)+' $ → Total+taxes: '+(avecFG+tps+tvq).toFixed(2)+' $</span>';
+    el.innerHTML='<div style="background:#EAF3DE;border-radius:var(--radius-sm);padding:6px 10px;font-size:12px;color:#27500A;">📊 FG chantier: '+fg+'% = '+montantFG.toFixed(2)+' $'
+      +(s.inclureFG?' <strong>(inclus dans le total client)</strong>':' <span style="opacity:.8;">(hors total — cochez pour inclure)</span>')
+      +'</div>';
     el.style.display='block';
   } else {
+    el.innerHTML='';
     el.style.display='none';
   }
 }

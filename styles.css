@@ -160,9 +160,16 @@ details summary{font-size:12px;color:var(--secondary);cursor:pointer;padding:6px
 .som-section{border:0.5px solid var(--border);border-radius:8px;margin-bottom:8px;overflow:hidden;}
 .som-section-header{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f9f9f9;cursor:pointer;}
 .som-section-header:hover{background:#f0f0f0;}
-.som-ligne{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:0.5px solid var(--border);}
-.som-ligne input[type=number]{width:90px;text-align:right;}
-.som-ligne select{flex:1;}
+.som-section-header.code-main{background:#EAF3DE;}
+.som-section-header.code-main .som-code-title{color:#27500A;font-weight:700;}
+.som-section-header.legacy{background:#FAEEDA;}
+.suivi-table{width:100%;border-collapse:collapse;font-size:12px;}
+.suivi-table th{text-align:left;padding:6px 8px;font-size:10px;color:var(--secondary);border-bottom:1px solid var(--border);font-weight:600;}
+.suivi-table td{padding:7px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle;}
+.suivi-table tr:last-child td{border-bottom:none;}
+.som-ligne{display:flex;align-items:center;gap:6px;padding:7px 8px;border-top:0.5px solid var(--border);flex-wrap:wrap;}
+.som-ligne input[type=number]{width:70px;text-align:right;}
+.som-ligne select{font-size:12px;}
 .progress-bar{height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;margin-top:4px;}
 .progress-fill{height:100%;border-radius:4px;transition:width 0.3s;}
 
